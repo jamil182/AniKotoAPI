@@ -43,7 +43,7 @@ function cardHTML(item) {
   return `
     <div class="card" data-id="${esc(item.id)}">
       <div class="card-poster">
-        <img loading="lazy" src="${esc(item.poster)}" alt="${esc(title)}"
+        <img loading="lazy" src="${esc(item.poster || '/favicon.svg')}" alt="${esc(title)}"
              onerror="this.style.visibility='hidden'">
         <div class="card-badges">${subDubChips(item)}</div>
         ${type ? `<span class="card-type">${esc(type)}</span>` : ''}

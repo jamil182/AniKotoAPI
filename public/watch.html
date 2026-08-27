@@ -96,8 +96,9 @@
   <script>
     mountNav();
 
+    // Path: /watch/<library-id>/<ep>
     const parts = location.pathname.replace(/^\/watch\//, '').split('/');
-    const slug = decodeURIComponent(parts[0] || '');
+    const id = decodeURIComponent(parts[0] || '');
     const epNo = decodeURIComponent(parts[1] || '1');
 
     const video = document.getElementById('video');
@@ -116,7 +117,7 @@
 
     const showMsg = (h) => { msg.innerHTML = `<div class="box">${h}</div>`; msg.style.display = 'flex'; };
     const hideMsg = () => { msg.style.display = 'none'; };
-    const epUrl = (n) => `/watch/${encodeURIComponent(slug)}/${encodeURIComponent(n)}`;
+    const epUrl = (n) => `/watch/${encodeURIComponent(id)}/${encodeURIComponent(n)}`;
 
     // ---- Persisted toggles ----
     const prefs = (() => { try { return JSON.parse(localStorage.getItem('anijs_watch') || '{}'); } catch { return {}; } })();
@@ -192,6 +193,29 @@
       if (serverBtns[0]) selectServer(serverMap.get(serverBtns[0]), serverBtns[0]);
     }
 
+    // ---- MAL/AniList episode: one synthetic server resolving the stored embed ----
+    function renderEmbedServer(embedUrl) {
+      const box = document.getElementById('servers');
+      box.innerHTML = `<div class="servers-group"><h4>SUB</h4><div class="server-btns"><button class="server-btn on" id="embedBtn">MegaPlay</button></div></div>`;
+      const btn = document.getElementById('embedBtn');
+      serverBtns = [btn];
+      serverMap = new Map([[btn, { embedUrl }]]);
+      tried = new Set();
+      btn.onclick = () => selectEmbed(embedUrl);
+      selectEmbed(embedUrl);
+    }
+    async function selectEmbed(embedUrl) {
+      showMsg('Resolving stream…');
+      try {
+        const r = await apiGet('/stream/resolve-url?url=' + encodeURIComponent(embedUrl));
+        if (!r.url) throw new Error(r.error || 'no stream');
+        skipData = r.skipData || null; subtitles = r.subtitles || [];
+        play(r.url);
+      } catch (e) {
+        showMsg(`Couldn't resolve this stream (${esc(e.message)}).`);
+      }
+    }
+
     // ---- Episode grid with 100-episode ranges ----
     function renderEpisodeGrid() {
       const range = document.getElementById('epRange');
@@ -221,7 +245,7 @@
       const list = (items || []).slice(0, 12);
       el.innerHTML = `<h3>Related</h3>` + (list.length
         ? list.map(it => `
-            <div class="related-row" data-slug="${esc(animeSlug(it.slug))}">
+            <div class="related-row" data-id="${esc(it.id)}">
               <img loading="lazy" src="${esc(it.poster)}" alt="" onerror="this.style.visibility='hidden'">
               <div><div class="t">${esc(it.title)}</div><div class="m">${esc(it.type || 'Anime')}</div></div>
             </div>`).join('')
@@ -229,10 +253,11 @@
     }
 
     function renderInfo(w) {
-      const jp = w.japaneseTitle && w.japaneseTitle !== w.title ? w.japaneseTitle : '';
+      const jpt = w.japaneseTitle || w.japanese_title;
+      const jp = jpt && jpt !== w.title ? jpt : '';
       document.getElementById('infoPanel').innerHTML = `
         <div class="watch-info">
-          <img src="${esc(w.poster)}" alt="${esc(w.title)}" onerror="this.style.visibility='hidden'">
+          <img src="${esc(w.poster || '/favicon.svg')}" alt="${esc(w.title)}" onerror="this.style.visibility='hidden'">
           <div>
             <h2>${esc(w.title)}</h2>
             ${jp ? `<div class="alt">${esc(jp)}</div>` : ''}
@@ -242,7 +267,7 @@
               ${w.rating ? `<span class="badge q">★ ${esc(String(w.rating).replace(/\s+/g,' ').trim())}</span>` : ''}
             </div>
             ${w.synopsis ? `<p class="syn">${esc(w.synopsis)}</p>` : ''}
-            <div style="margin-top:10px"><a href="/anime/${encodeURIComponent(slug)}" style="color:var(--accent-hi);font-size:.85rem">Full details →</a></div>
+            <div style="margin-top:10px"><a href="/anime/${encodeURIComponent(id)}" style="color:var(--accent-hi);font-size:.85rem">Full details →</a></div>
           </div>
         </div>`;
     }
@@ -533,31 +558,42 @@
     }
 
     async function boot() {
-      if (!slug) { showMsg('No anime specified.'); return; }
+      if (!id) { showMsg('No anime specified.'); return; }
       showMsg('Loading episode…');
       try {
-        // /episodes drives the grid + switching; /watch gives rich metadata,
-        // related titles and the next-episode time in one call.
-        const [eps, w] = await Promise.all([
-          apiGet('/episodes/' + encodeURIComponent(slug)),
-          apiGet(`/watch?slug=${encodeURIComponent(slug)}&ep=${encodeURIComponent(epNo)}`).catch(() => null),
+        // The library drives metadata + the episode grid; each episode carries
+        // its source (anikoto server_ids, or a MAL/AniList embed_url).
+        const [info, rows] = await Promise.all([
+          apiGet('/library/anime/' + encodeURIComponent(id)),
+          apiGet('/library/episodes/' + encodeURIComponent(id)),
         ]);
-        episodes = eps.episodes || [];
+        episodes = rows.map(e => ({
+          episode_no: e.number, title: e.title,
+          server_ids: e.server_ids, embed_url: e.embed_url, source: e.source,
+        }));
         const ep = episodes.find(e => String(e.episode_no) === String(epNo)) || episodes[0];
         if (!ep) throw new Error('Episode not found');
 
-        const title = (w && w.title) || eps.title || slug;
-        document.title = `${title} — Ep ${ep.episode_no} — AniJs`;
+        document.title = `${info.title} — Ep ${ep.episode_no} — AniJs`;
         document.getElementById('nowWatching').innerHTML =
           `You're watching<br><b>Episode ${esc(ep.episode_no)}</b><br><span style="font-size:.78rem">If a server doesn't work, try another.</span>`;
 
         renderEpisodeGrid();
         wireToolbar();
         setupPlayer();
-        if (w) { renderInfo(w); renderRelated(w.recommended); renderCountdown(w.nextEpisodeTimestamp); }
+        renderInfo(info);
+        renderRelated(info.recommended || []);
+        renderCountdown(null);
 
-        const servers = await apiGet('/servers?ids=' + encodeURIComponent(ep.server_ids));
-        renderServers(servers);
+        // Stream source branches on the episode's origin.
+        if (ep.source === 'anikoto' && ep.server_ids) {
+          const servers = await apiGet('/servers?ids=' + encodeURIComponent(ep.server_ids));
+          renderServers(servers);
+        } else if (ep.embed_url) {
+          renderEmbedServer(ep.embed_url);
+        } else {
+          showMsg('No playable source stored for this episode.');
+        }
       } catch (e) {
         showMsg(`Couldn't load this episode (${esc(e.message)}).<br><button id="rb">Retry</button>`);
         document.getElementById('rb').onclick = boot;
