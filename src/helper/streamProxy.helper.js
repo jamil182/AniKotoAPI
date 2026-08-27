@@ -34,6 +34,7 @@ const DEFAULT_PROXY_DOMAINS = [
   "norami.top",
   "kryntal.top",
   "akirax.buzz",
+  "mikora.top",   // subtitle host (vidtub.mikora.top)
   // Some servers host their TS segments here behind a fake image header
   // (p16-/p19-ad-site-sign-sg.tiktokcdn.com). This is a large shared CDN; it
   // is allowed only so those segments can be fetched and de-obfuscated. The

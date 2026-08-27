@@ -16,8 +16,38 @@
   <div class="wrap">
     <div class="watch2">
       <div>
-        <div class="player-wrap" id="playerWrap">
-          <video id="video" controls playsinline></video>
+        <div class="player-wrap paused" id="playerWrap">
+          <video id="video" playsinline></video>
+          <div class="v-center">
+            <div class="v-spinner"></div>
+            <button class="big-play" id="bigPlay" aria-label="Play">▶</button>
+          </div>
+          <button class="skip-intro" id="skipIntro">Skip Intro ›</button>
+          <div class="v-controls" id="vControls">
+            <div class="v-seek" id="vSeek">
+              <div class="v-seek-track">
+                <div class="v-buffered" id="vBuffered"></div>
+                <div class="v-progress" id="vProgress"></div>
+                <div class="v-thumb" id="vThumb"></div>
+              </div>
+            </div>
+            <div class="v-bar">
+              <button class="v-btn" id="vPlay" aria-label="Play/Pause"></button>
+              <div class="v-vol-wrap">
+                <button class="v-btn" id="vMute" aria-label="Mute"></button>
+                <input class="v-vol" id="vVol" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume">
+              </div>
+              <span class="v-time" id="vTime">00:00 / 00:00</span>
+              <span class="v-spacer"></span>
+              <button class="v-btn" id="vBack10" aria-label="Back 10s">⏮10</button>
+              <button class="v-btn" id="vFwd10" aria-label="Forward 10s">10⏭</button>
+              <button class="v-btn" id="vCC" aria-label="Captions">CC<span class="v-tooltip">Closed Captions</span></button>
+              <button class="v-btn" id="vSettings" aria-label="Settings">⚙<span class="v-tooltip">Settings</span></button>
+              <button class="v-btn" id="vPip" aria-label="Picture in picture">⧉<span class="v-tooltip">Miniplayer</span></button>
+              <button class="v-btn" id="vFull" aria-label="Fullscreen">⛶<span class="v-tooltip">Fullscreen</span></button>
+            </div>
+          </div>
+          <div class="v-menu" id="vMenu"></div>
           <div class="player-msg" id="playerMsg"><div class="box">Loading…</div></div>
         </div>
         <div class="player-toolbar" id="toolbar">
@@ -27,7 +57,6 @@
           <button class="tbtn" id="tbAutoNext"><span class="dot"></span>Auto Next</button>
           <button class="tbtn" id="tbAutoSkip"><span class="dot"></span>Auto Skip</button>
           <button class="tbtn spacer" id="tbLight"><span class="dot"></span>Light</button>
-          <button class="tbtn" id="tbExpand" title="Fullscreen">⤢ Expand</button>
         </div>
 
         <div id="countdown"></div>
@@ -75,6 +104,15 @@
     const msg = document.getElementById('playerMsg');
     let hls = null, episodes = [], skipData = null, curIndex = -1;
     let serverBtns = [], serverMap = new Map(), tried = new Set();
+    let subtitles = [], ccOn = false;
+
+    // ---- SVG icons ----
+    const ICON = {
+      play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
+      pause: '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>',
+      volHigh: '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>',
+      volMute: '<svg viewBox="0 0 24 24"><path d="M16.5 12a4.5 4.5 0 0 0-2.5-4v2.2l2.5 2.5c0-.2 0-.5 0-.7zM19 12c0 .9-.2 1.8-.5 2.6l1.5 1.5A9 9 0 0 0 21 12a9 9 0 0 0-7-8.8v2.1A7 7 0 0 1 19 12zM4.3 3L3 4.3 7.7 9H3v6h4l5 5v-6.7l4.3 4.3c-.7.5-1.4.9-2.3 1.2v2.1c1.4-.3 2.7-1 3.8-1.8L19.7 21 21 19.7 4.3 3zM12 4L9.9 6.1 12 8.2V4z"/></svg>',
+    };
 
     const showMsg = (h) => { msg.innerHTML = `<div class="box">${h}</div>`; msg.style.display = 'flex'; };
     const hideMsg = () => { msg.style.display = 'none'; };
@@ -103,12 +141,12 @@
       if (window.Hls && Hls.isSupported()) {
         hls = new Hls({ maxBufferLength: 30 });
         hls.loadSource(src); hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => { if (pref('autoplay', true)) video.play().catch(() => {}); });
+        hls.on(Hls.Events.MANIFEST_PARSED, () => { buildMenu(); applySubtitle(); if (pref('autoplay', true)) video.play().catch(() => {}); });
         hls.on(Hls.Events.ERROR, (_e, d) => {
           if (d.fatal) { destroyHls(); showMsg('This server failed — trying another…'); fallbackToNext(); }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = src; if (pref('autoplay', true)) video.play().catch(() => {});
+        video.src = src; applySubtitle(); if (pref('autoplay', true)) video.play().catch(() => {});
       } else { showMsg('This browser cannot play HLS.'); }
     }
 
@@ -120,6 +158,7 @@
         const r = await apiGet('/stream/resolve?id=' + encodeURIComponent(server.link_id));
         if (!r.url) throw new Error(r.error || 'No stream URL');
         skipData = r.skipData || null;
+        subtitles = r.subtitles || [];
         play(r.url);
       } catch (e) {
         // Resolve failed — fall through to the next server automatically.
@@ -244,11 +283,6 @@
       setToggle(document.getElementById('tbAutoSkip'), 'autoskip', true);
       setToggle(document.getElementById('tbLight'), 'light', false, (on) => document.body.classList.toggle('dimmed', on));
 
-      document.getElementById('tbExpand').onclick = () => {
-        const wrap = document.getElementById('playerWrap');
-        if (!document.fullscreenElement) wrap.requestFullscreen?.(); else document.exitFullscreen?.();
-      };
-
       // Auto Skip: jump past intro/outro when enabled
       video.addEventListener('timeupdate', () => {
         if (!pref('autoskip', true) || !skipData) return;
@@ -261,6 +295,228 @@
       video.addEventListener('ended', () => {
         if (pref('autonext', false) && curIndex >= 0 && curIndex < episodes.length - 1) goto(episodes[curIndex + 1].episode_no);
       });
+    }
+
+    // ---- Subtitles ----
+    // Parse WebVTT text into { start, end, text } cues. Timestamps may use a
+    // dot or comma for the fraction; tags are stripped for VTTCue.
+    function parseVTT(text) {
+      const toSec = (s) => {
+        const m = s.trim().match(/(?:(\d+):)?(\d+):(\d+)[.,](\d+)/);
+        if (!m) return null;
+        return (+(m[1] || 0)) * 3600 + (+m[2]) * 60 + (+m[3]) + (+m[4]) / 1000;
+      };
+      const cues = [];
+      for (const block of text.replace(/\r/g, '').split(/\n\n+/)) {
+        const lines = block.split('\n').filter(Boolean);
+        const tl = lines.find(l => l.includes('-->'));
+        if (!tl) continue;
+        const [a, b] = tl.split('-->');
+        // toSec finds the timestamp anywhere in the string, so pass the halves
+        // as-is — splitting on spaces broke on the leading space after "-->".
+        const start = toSec(a), end = toSec(b || '');
+        if (start == null || end == null || end <= start) continue;
+        const txt = lines.slice(lines.indexOf(tl) + 1).join('\n').replace(/<[^>]+>/g, '').trim();
+        if (txt) cues.push({ start, end, text: txt });
+      }
+      return cues;
+    }
+
+    let subTrack = null;
+    async function applySubtitle() {
+      const ccBtn = document.getElementById('vCC');
+      const sub = subtitles[0];
+      // remove any prior programmatic track's cues
+      if (subTrack) { try { [...(subTrack.cues || [])].forEach(c => subTrack.removeCue(c)); } catch {} subTrack.mode = 'disabled'; subTrack = null; }
+      if (!sub) { ccBtn.style.display = 'none'; return; }
+      ccBtn.style.display = '';
+      try {
+        // Fetch + parse ourselves: a dynamically-created <track src> fails to
+        // load in this setup, so we add cues via addTextTrack instead.
+        const vtt = await (await fetch('/api/stream/sub-proxy?url=' + encodeURIComponent(sub.url || sub.file))).text();
+        subTrack = video.addTextTrack('subtitles', sub.label || 'English', 'en');
+        for (const c of parseVTT(vtt)) subTrack.addCue(new VTTCue(c.start, c.end, c.text));
+        subTrack.mode = ccOn ? 'showing' : 'hidden';
+      } catch { ccBtn.style.display = 'none'; }
+    }
+
+    // ---- Volume boost via Web Audio (amplifies beyond the 100% cap) ----
+    let audioCtx = null, gainNode = null, boost = 1;
+    function ensureGain() {
+      if (gainNode) return gainNode;
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const srcNode = audioCtx.createMediaElementSource(video);
+        gainNode = audioCtx.createGain();
+        srcNode.connect(gainNode); gainNode.connect(audioCtx.destination);
+      } catch { return null; }
+      return gainNode;
+    }
+    function setBoost(x) {
+      boost = x;
+      const g = ensureGain();
+      if (g) { if (audioCtx.state === 'suspended') audioCtx.resume(); g.gain.value = x; }
+    }
+
+    // ---- CC on/off (shared by the bar button and the menu) ----
+    function setCC(on) {
+      ccOn = on; prefs.cc = on; savePrefs();
+      document.getElementById('vCC').classList.toggle('on', on);
+      if (subTrack) subTrack.mode = on ? 'showing' : 'hidden';
+    }
+
+    // ---- Tabbed settings menu: Captions / Speed / Volume Boost (+ Quality) ----
+    let menuTab = 'cc';
+    function buildMenu() {
+      const menu = document.getElementById('vMenu');
+      const levels = (hls && hls.levels) || [];
+      const hasSubs = subtitles.length > 0;
+      const tabs = [
+        hasSubs ? ['cc', 'CC'] : null,
+        ['speed', '🕑'],
+        ['vol', '🔊'],
+        levels.length > 1 ? ['quality', 'HD'] : null,
+      ].filter(Boolean);
+      if (!tabs.find(t => t[0] === menuTab)) menuTab = tabs[0][0];
+
+      let panel = '';
+      if (menuTab === 'cc') {
+        panel = `<h5>Captions</h5>
+          <button data-cc="off" class="${!ccOn ? 'on' : ''}">Off</button>
+          <button data-cc="on" class="${ccOn ? 'on' : ''}">${esc(subtitles[0]?.label || 'English')}</button>`;
+      } else if (menuTab === 'speed') {
+        panel = `<h5>Playback speed</h5>` + [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map(s =>
+          `<button data-s="${s}" class="${video.playbackRate === s ? 'on' : ''}">${s === 1 ? 'Normal' : s + '×'}</button>`).join('');
+      } else if (menuTab === 'vol') {
+        const pct = Math.round(boost * 100);
+        panel = `<h5>Volume Boost</h5>
+          <div style="padding:6px 10px">
+            <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--ink);margin-bottom:8px">
+              <span>Level</span><b>${boost <= 1 ? 'Off' : '+' + pct + '%'}</b></div>
+            <input id="boostSlider" type="range" min="1" max="3" step="0.05" value="${boost}" style="width:100%;accent-color:var(--pl-accent)">
+            <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-top:4px"><span>Off</span><span>+150%</span><span>+300%</span></div>
+          </div>`;
+      } else if (menuTab === 'quality') {
+        panel = `<h5>Quality</h5>
+          <button data-q="-1" class="${hls.autoLevelEnabled ? 'on' : ''}">Auto</button>` +
+          levels.map((l, i) => `<button data-q="${i}" class="${!hls.autoLevelEnabled && hls.currentLevel === i ? 'on' : ''}">${l.height ? l.height + 'p' : (l.bitrate/1000|0)+'k'}</button>`).join('');
+      }
+
+      menu.innerHTML = `
+        <div class="v-menu-tabs">
+          ${tabs.map(([id, lbl]) => `<button class="v-mtab${id === menuTab ? ' on' : ''}" data-tab="${id}">${lbl}</button>`).join('')}
+          <button class="v-mtab close" data-close="1">✕</button>
+        </div>
+        <div class="v-menu-panel">${panel}</div>`;
+
+      menu.querySelectorAll('.v-mtab[data-tab]').forEach(b => b.onclick = () => { menuTab = b.dataset.tab; buildMenu(); });
+      menu.querySelector('[data-close]').onclick = () => menu.classList.remove('open');
+      menu.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { video.playbackRate = +b.dataset.s; buildMenu(); });
+      menu.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const q = +b.dataset.q; hls.currentLevel = q; hls.loadLevel = q; buildMenu(); });
+      menu.querySelectorAll('[data-cc]').forEach(b => b.onclick = () => { setCC(b.dataset.cc === 'on'); buildMenu(); });
+      const bs = menu.querySelector('#boostSlider');
+      if (bs) bs.oninput = () => { setBoost(+bs.value); prefs.boost = +bs.value; savePrefs(); buildMenu(); };
+    }
+
+    // ---- Custom player controls ----
+    function setupPlayer() {
+      const wrap = document.getElementById('playerWrap');
+      const seek = document.getElementById('vSeek'), prog = document.getElementById('vProgress'),
+            buf = document.getElementById('vBuffered'), thumb = document.getElementById('vThumb'),
+            timeEl = document.getElementById('vTime'), playBtn = document.getElementById('vPlay'),
+            muteBtn = document.getElementById('vMute'), vol = document.getElementById('vVol'),
+            menu = document.getElementById('vMenu');
+      const fmt = (t) => { if (!isFinite(t)) return '00:00'; const h = t/3600|0, m = t%3600/60|0, s = t%60|0;
+        return (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(s).padStart(2,'0'); };
+      const setPlayIcons = () => { const p = video.paused; playBtn.innerHTML = p ? ICON.play : ICON.pause; wrap.classList.toggle('paused', p); };
+      const setVolIcon = () => { muteBtn.innerHTML = (video.muted || video.volume === 0) ? ICON.volMute : ICON.volHigh; };
+
+      const toggle = () => { video.paused ? video.play().catch(()=>{}) : video.pause(); };
+      playBtn.onclick = toggle;
+      document.getElementById('bigPlay').onclick = toggle;
+      video.addEventListener('click', toggle);
+      video.addEventListener('play', setPlayIcons);
+      video.addEventListener('pause', setPlayIcons);
+      video.addEventListener('waiting', () => wrap.classList.add('buffering'));
+      video.addEventListener('playing', () => wrap.classList.remove('buffering'));
+      video.addEventListener('canplay', () => wrap.classList.remove('buffering'));
+
+      video.addEventListener('timeupdate', () => {
+        const p = video.currentTime / (video.duration || 1);
+        prog.style.width = (p * 100) + '%'; thumb.style.left = (p * 100) + '%';
+        timeEl.textContent = `${fmt(video.currentTime)} / ${fmt(video.duration)}`;
+        // Skip Intro visibility
+        const intro = skipData && skipData.intro;
+        const inIntro = Array.isArray(intro) && intro[1] > intro[0] && video.currentTime >= intro[0] && video.currentTime < intro[1] - 0.5;
+        document.getElementById('skipIntro').classList.toggle('show', !!inIntro);
+      });
+      video.addEventListener('progress', () => {
+        if (video.buffered.length) buf.style.width = (video.buffered.end(video.buffered.length-1) / (video.duration||1) * 100) + '%';
+      });
+
+      // Seek (click + drag)
+      const seekTo = (e) => { const r = seek.getBoundingClientRect(); const x = Math.min(Math.max(0, (e.clientX - r.left) / r.width), 1); video.currentTime = x * (video.duration || 0); };
+      let dragging = false;
+      seek.addEventListener('mousedown', (e) => { dragging = true; seekTo(e); });
+      document.addEventListener('mousemove', (e) => { if (dragging) seekTo(e); });
+      document.addEventListener('mouseup', () => { dragging = false; });
+
+      // Volume
+      vol.value = pref('volume', 1); video.volume = +vol.value;
+      vol.oninput = () => { video.volume = +vol.value; video.muted = video.volume === 0; prefs.volume = +vol.value; savePrefs(); setVolIcon(); };
+      muteBtn.onclick = () => { video.muted = !video.muted; setVolIcon(); };
+      video.addEventListener('volumechange', setVolIcon);
+
+      // Skip ±10
+      document.getElementById('vBack10').onclick = () => video.currentTime = Math.max(0, video.currentTime - 10);
+      document.getElementById('vFwd10').onclick = () => video.currentTime = Math.min(video.duration || 0, video.currentTime + 10);
+
+      // Skip Intro
+      document.getElementById('skipIntro').onclick = () => { if (skipData && skipData.intro) video.currentTime = skipData.intro[1]; };
+
+      // CC
+      const ccBtn = document.getElementById('vCC');
+      ccOn = pref('cc', false);
+      ccBtn.classList.toggle('on', ccOn);
+      ccBtn.onclick = () => { setCC(!ccOn); if (menu.classList.contains('open')) buildMenu(); };
+      // Restore persisted volume boost, but only after a real user gesture —
+      // creating the audio graph on a suspended context would mute playback.
+      if (pref('boost', 1) > 1) {
+        const restore = () => { setBoost(pref('boost', 1)); document.removeEventListener('pointerdown', restore); };
+        document.addEventListener('pointerdown', restore, { once: true });
+      }
+
+      // Settings menu
+      document.getElementById('vSettings').onclick = (e) => { e.stopPropagation(); menu.classList.toggle('open'); };
+      document.addEventListener('click', (e) => { if (!e.target.closest('#vMenu') && !e.target.closest('#vSettings')) menu.classList.remove('open'); });
+
+      // PiP
+      const pipBtn = document.getElementById('vPip');
+      if (!document.pictureInPictureEnabled) pipBtn.style.display = 'none';
+      pipBtn.onclick = async () => { try { document.pictureInPictureElement ? await document.exitPictureInPicture() : await video.requestPictureInPicture(); } catch {} };
+
+      // Fullscreen
+      document.getElementById('vFull').onclick = () => { if (!document.fullscreenElement) wrap.requestFullscreen?.(); else document.exitFullscreen?.(); };
+
+      // Auto-hide controls
+      let hideT = null;
+      const show = () => { wrap.classList.remove('hide-controls', 'hide-cursor'); clearTimeout(hideT);
+        hideT = setTimeout(() => { if (!video.paused) { wrap.classList.add('hide-controls', 'hide-cursor'); menu.classList.remove('open'); } }, 2600); };
+      wrap.addEventListener('mousemove', show);
+      wrap.addEventListener('mouseleave', () => { if (!video.paused) wrap.classList.add('hide-controls'); });
+      show();
+
+      // Keyboard
+      document.addEventListener('keydown', (e) => {
+        if (/input|select|textarea/i.test(e.target.tagName)) return;
+        if (e.key === ' ') { e.preventDefault(); toggle(); }
+        else if (e.key === 'ArrowLeft') video.currentTime -= 5;
+        else if (e.key === 'ArrowRight') video.currentTime += 5;
+        else if (e.key.toLowerCase() === 'f') document.getElementById('vFull').click();
+        else if (e.key.toLowerCase() === 'm') muteBtn.click();
+      });
+
+      setPlayIcons(); setVolIcon();
     }
 
     async function boot() {
@@ -284,6 +540,7 @@
 
         renderEpisodeGrid();
         wireToolbar();
+        setupPlayer();
         if (w) { renderInfo(w); renderRelated(w.recommended); renderCountdown(w.nextEpisodeTimestamp); }
 
         const servers = await apiGet('/servers?ids=' + encodeURIComponent(ep.server_ids));

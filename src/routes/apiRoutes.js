@@ -321,6 +321,44 @@ app.use((req, res, next) => {
     }
   });
 
+  // ---- FEATURE: Subtitle proxy — fetch caption files through the API ----
+  // NOTE: Subtitle files sit behind the same Referer wall as the segments, so
+  // a browser <track> cannot load them directly. This fetches with the CDN
+  // Referer and serves WebVTT same-origin. The same allowlist guard applies.
+  app.get("/api/stream/sub-proxy", async (req, res, next) => {
+    try {
+      const { url } = req.query;
+      if (!url) {
+        return res.status(400).json({ success: false, message: "Subtitle URL is required" });
+      }
+      const check = assertProxyableUrl(url);
+      if (!check.ok) {
+        return res.status(check.status).json({ success: false, message: check.message });
+      }
+
+      const axios = (await import("axios")).default;
+      const { headers: defaultHeaders } = await import("../configs/header.config.js");
+
+      const response = await axios.get(url, {
+        headers: { ...defaultHeaders, ...streamRefererHeaders() },
+        timeout: 15000,
+        responseType: "text",
+      });
+
+      // Serve as WebVTT. The source already emits WEBVTT; add the header only
+      // if it is somehow missing so the browser still accepts the track.
+      let body = typeof response.data === "string" ? response.data : String(response.data);
+      if (!body.trimStart().startsWith("WEBVTT")) body = "WEBVTT\n\n" + body;
+
+      res.setHeader("Content-Type", "text/vtt; charset=utf-8");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.send(body);
+    } catch (error) {
+      jsonError(res, error.message);
+    }
+  });
+
   // ══════════════════════════════════════════════════════════════
   // SCHEDULE
   // ══════════════════════════════════════════════════════════════

@@ -193,7 +193,13 @@ setInterval(() => {
   }
 }, RATE_CLEANUP_INTERVAL);
 
+// Media proxy endpoints stream many segments per minute; they are media
+// delivery, not API calls, so exempt them from the per-IP API rate limit —
+// otherwise a single video trips the limit within seconds.
+const RATE_EXEMPT = ["/api/stream/proxy", "/api/stream/ts-proxy", "/api/stream/sub-proxy"];
+
 app.use((req, res, next) => {
+  if (RATE_EXEMPT.some(p => req.path.startsWith(p))) return next();
   const ip = req.ip || req.connection.remoteAddress;
   const now = Date.now();
   if (!requestCounts.has(ip)) {
