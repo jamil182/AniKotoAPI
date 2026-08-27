@@ -109,8 +109,8 @@
       document.getElementById('heroInner').innerHTML = `
         <div class="hero-badges">${badges.join('')}</div>
         <h1>${esc(it.title || it.name)}</h1>
-        ${it.description ? `<p>${esc(it.description)}</p>` : ''}
-        <a class="btn primary" href="${animeHref(it.slug)}">▶ Details</a>`;
+        ${(it.description || it.synopsis) ? `<p>${esc(it.description || it.synopsis)}</p>` : ''}
+        <a class="btn primary" href="${animeHref(it.id)}">▶ Details</a>`;
     }
 
     function heroError() {
@@ -125,7 +125,7 @@
       const el = document.getElementById('topten');
       if (!list || !list.length) { el.innerHTML = '<div class="state">No ranking.</div>'; return; }
       el.innerHTML = list.slice(0, 10).map(it => `
-        <div class="rank-row" data-slug="${esc(animeSlug(it.slug))}">
+        <div class="rank-row" data-id="${esc(it.id)}">
           <div class="rank-n">${it.rank ?? ''}</div>
           <img loading="lazy" src="${esc(it.poster)}" alt="" onerror="this.style.visibility='hidden'">
           <div>
@@ -135,28 +135,27 @@
         </div>`).join('');
     }
 
-    // ---- Loaders ----
+    // ---- Loaders (from the stored library) ----
+    let homeCache = null;
     const loaders = {
-      latest: () => apiGet('/latest-updated').then(r => r.data || r),
-      trending: () => apiGet('/').then(r => r.trending),
-      popular: () => apiGet('/most-popular').then(r => r.data || r),
+      latest: () => Promise.resolve(homeCache?.latest || []),
+      trending: () => Promise.resolve(homeCache?.top || []),
+      popular: () => Promise.resolve(homeCache?.top || []),
     };
 
     async function boot() {
-      // Hero + trending come from one /api/ call; fetch it once and share.
       document.getElementById('heroInner').innerHTML = '<div class="skeleton" style="height:120px;width:60%"></div>';
-      apiGet('/').then(home => {
-        renderHero(home.spotlights || []);
-      }).catch(heroError);
+      try {
+        homeCache = await apiGet('/library/home');
+      } catch { return heroError(); }
 
-      renderCards(document.getElementById('latest'), loaders.latest, { count: 12, empty: 'No recent episodes.' });
-      renderCards(document.getElementById('popular'), loaders.popular, { count: 12, empty: 'Nothing popular right now.' });
+      renderHero(homeCache.spotlights || []);
+      renderCards(document.getElementById('latest'), loaders.latest, { count: 12, empty: 'Library is empty — add anime in /admin.' });
+      renderCards(document.getElementById('popular'), loaders.popular, { count: 12, empty: 'Nothing here yet.' });
 
-      // Top-ten (tabbed)
-      const topEl = document.getElementById('topten');
-      topEl.innerHTML = Array.from({ length: 5 }, () => '<div class="skeleton" style="height:64px;margin:12px 0"></div>').join('');
-      apiGet('/top-ten').then(d => { topData = d; renderTop(d.today); })
-        .catch(e => { topEl.innerHTML = `<div class="state">Couldn't load ranking.<br><button>Retry</button></div>`; topEl.querySelector('button').onclick = boot; });
+      // Top-ten rail (library top, shown under every tab)
+      topData = { today: homeCache.top, week: homeCache.top, month: homeCache.top };
+      renderTop(homeCache.top);
     }
 
     // ---- Tabs ----

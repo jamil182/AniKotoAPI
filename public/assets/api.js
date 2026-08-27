@@ -41,7 +41,7 @@ function cardHTML(item) {
   const title = item.title || item.name || 'Untitled';
   const type = item.type || '';
   return `
-    <div class="card" data-slug="${esc(animeSlug(item.slug))}">
+    <div class="card" data-id="${esc(item.id)}">
       <div class="card-poster">
         <img loading="lazy" src="${esc(item.poster)}" alt="${esc(title)}"
              onerror="this.style.visibility='hidden'">
@@ -72,14 +72,16 @@ async function renderCards(el, loader, { count = 12, empty = 'Nothing here yet.'
 }
 
 // ---- Navigation ----
-const animeHref = (slug) => '/anime/' + encodeURIComponent(animeSlug(slug));
+// The frontend is library-backed: anime are addressed by their internal
+// library id (mixed-source — MAL entries have no slug), so navigation is by id.
+const animeHref = (id) => '/anime/' + encodeURIComponent(id);
 
-// Any element carrying a non-empty data-slug navigates to that anime's detail
+// Any element carrying a non-empty data-id navigates to that anime's detail
 // page. One delegated listener covers cards, ranking rows, and search results,
 // on every page, without per-element wiring.
 document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-slug]');
-  if (el && el.dataset.slug) location.href = animeHref(el.dataset.slug);
+  const el = e.target.closest('[data-id]');
+  if (el && el.dataset.id) location.href = animeHref(el.dataset.id);
 });
 
 // ---- Shared nav ----
@@ -113,11 +115,11 @@ function wireNav() {
     if (q.length < 2) { drop.classList.remove('open'); return; }
     timer = setTimeout(async () => {
       try {
-        const r = await apiGet('/search?keyword=' + encodeURIComponent(q));
+        const r = await apiGet('/library/search?keyword=' + encodeURIComponent(q));
         const items = (r.data || []).slice(0, 6);
         drop.innerHTML = items.length
           ? items.map(it => `
-              <div class="search-row" data-slug="${esc(animeSlug(it.slug))}">
+              <div class="search-row" data-id="${esc(it.id)}">
                 <img loading="lazy" src="${esc(it.poster)}" alt="" onerror="this.style.visibility='hidden'">
                 <div>
                   <div class="t">${esc(it.title)}</div>
@@ -140,8 +142,10 @@ function wireNav() {
   document.getElementById('navRandom').onclick = async (e) => {
     const btn = e.target; const old = btn.textContent; btn.textContent = '…'; btn.disabled = true;
     try {
-      const r = await apiGet('/random');
-      if (r && r.slug) location.href = animeHref(r.slug);
+      // Random picks from the stored library.
+      const h = await apiGet('/library/home');
+      const pool = h.latest || [];
+      if (pool.length) location.href = animeHref(pool[Math.floor((Date.now() % pool.length))].id);
     } catch (_) { /* ignore */ }
     finally { btn.textContent = old; btn.disabled = false; }
   };
