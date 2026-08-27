@@ -517,7 +517,13 @@ fetch("https://anikototvapi.vercel.app/api")
   </div>
 
   <script>
-    const BASE = 'https://anikototvapi.vercel.app/api';
+    // NOTE: The interactive playground calls the API on the same origin the page
+    // is served from, so opening it on localhost tests the local server and
+    // opening it on the deployment tests that deployment. Falls back to the
+    // public API only when opened from disk (file://), where there is no origin.
+    const BASE = location.protocol.startsWith('http')
+      ? location.origin + '/api'
+      : 'https://anikototvapi.vercel.app/api';
     const endpoints = {
       home: { url: '/', label: 'Home' },
       search: { url: '/search?keyword=naruto', label: 'Search' },
