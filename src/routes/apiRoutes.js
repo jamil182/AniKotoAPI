@@ -51,6 +51,14 @@ import { categoryRoutes } from "./category.route.js";
 import { getMirrorStatus, resetMirrorCache, getProxyStatus } from "../helper/mirror.helper.js";
 import { getCacheStats } from "../helper/cache.helper.js";
 import { assertProxyableUrl, streamRefererHeaders, stripToTsSync } from "../helper/streamProxy.helper.js";
+import { adminAuth } from "../middleware/adminAuth.js";
+import { getDb } from "../db/index.js";
+import { ingestAnikoto, ingestMalEpisode, malEmbedUrl } from "../services/adminIngest.js";
+import { listAnime, deleteAnime } from "../db/library.repo.js";
+import { extractAnimeInfo } from "../extractors/animeInfo.extractor.js";
+import { extractEpisodeList } from "../extractors/episodeList.extractor.js";
+import { extractSearchResults } from "../extractors/search.extractor.js";
+import { resolveStreamUrl } from "../extractors/streamResolver.extractor.js";
 
 // ══════════════════════════════════════════════════════════════
 // ROUTE REGISTRATION
@@ -737,6 +745,61 @@ app.get("/api/openapi", (req, res) => {
     ],
   });
 });
+
+  // ══════════════════════════════════════════════════════════════
+  // ADMIN CMS (token-protected)
+  // ══════════════════════════════════════════════════════════════
+
+  app.use("/api/admin", adminAuth);
+
+  // ---- FEATURE: Admin search (for the fetch picker) ----
+  app.get("/api/admin/search", async (req, res) => {
+    try {
+      const kw = (req.query.keyword || "").toString();
+      const data = await extractSearchResults(kw, 1);
+      const items = (data.data || []).map(a => ({
+        animeId: a.animeId, slug: (a.slug || "").split("/")[0],
+        title: a.title, poster: a.poster, type: a.type, sub: a.sub, dub: a.dub,
+      }));
+      res.json({ success: true, results: items });
+    } catch (e) { res.status(502).json({ success: false, message: e.message }); }
+  });
+
+  // ---- FEATURE: Fetch a full Anikoto series into the library ----
+  app.post("/api/admin/fetch-anikoto", async (req, res) => {
+    try {
+      const { slug, sub = true, dub = false, autoUpdate = false } = req.body || {};
+      if (!slug) return res.status(400).json({ success: false, message: "slug is required" });
+      const info = await extractAnimeInfo(slug);
+      const epData = await extractEpisodeList(slug);
+      const result = ingestAnikoto(getDb(), { info: { ...info, slug }, episodes: epData.episodes || [], sub, dub, autoUpdate });
+      res.json({ success: true, results: result });
+    } catch (e) { res.status(502).json({ success: false, message: e.message }); }
+  });
+
+  // ---- FEATURE: Fetch one MAL/AniList episode into the library ----
+  app.post("/api/admin/fetch-mal", async (req, res) => {
+    try {
+      const { source, id, episode, sub = true, dub = false } = req.body || {};
+      if (!["mal", "anilist"].includes(source) || !id || !episode)
+        return res.status(400).json({ success: false, message: "source (mal|anilist), id and episode are required" });
+      const embedUrl = malEmbedUrl({ source, id, episode, dub });
+      const resolved = await resolveStreamUrl(embedUrl);
+      if (!resolved.url) return res.status(502).json({ success: false, message: `Could not resolve: ${resolved.error || "no stream"}` });
+      const result = ingestMalEpisode(getDb(), { source, id, episode, sub, dub, embedUrl });
+      res.json({ success: true, results: { ...result, embedUrl } });
+    } catch (e) { res.status(502).json({ success: false, message: e.message }); }
+  });
+
+  // ---- FEATURE: List / delete stored anime ----
+  app.get("/api/admin/library", (req, res) => {
+    res.json({ success: true, results: listAnime(getDb()) });
+  });
+
+  app.delete("/api/admin/anime/:id", (req, res) => {
+    deleteAnime(getDb(), Number(req.params.id));
+    res.json({ success: true, results: { deleted: Number(req.params.id) } });
+  });
 };
 
 export { createApiRoutes };
