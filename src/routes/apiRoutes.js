@@ -786,8 +786,11 @@ app.get("/api/openapi", (req, res) => {
       const embedUrl = malEmbedUrl({ source, id, episode, dub });
       const resolved = await resolveStreamUrl(embedUrl);
       if (!resolved.url) return res.status(502).json({ success: false, message: `Could not resolve: ${resolved.error || "no stream"}` });
-      const result = ingestMalEpisode(getDb(), { source, id, episode, sub, dub, embedUrl });
-      res.json({ success: true, results: { ...result, embedUrl } });
+      // Enrich with real title/poster from the catalog (best-effort).
+      const { fetchCatalogMeta } = await import("../services/catalogMeta.js");
+      const meta = await fetchCatalogMeta(resolved.mediaId);
+      const result = ingestMalEpisode(getDb(), { source, id, episode, sub, dub, embedUrl, meta });
+      res.json({ success: true, results: { ...result, embedUrl, title: meta?.title || null } });
     } catch (e) { res.status(502).json({ success: false, message: e.message }); }
   });
 

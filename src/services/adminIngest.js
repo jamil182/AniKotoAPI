@@ -10,7 +10,9 @@ import { upsertAnime, upsertEpisode } from "../db/library.repo.js";
 
 /** Build the megaplay embed URL for a MAL/AniList episode. */
 export function malEmbedUrl({ source, id, episode, dub }) {
-  return `https://megaplay.buzz/stream/${source}/${id}/${episode}/${dub ? "dub" : "sub"}`;
+  // MegaPlay's AniList path segment is "ani", not "anilist".
+  const seg = source === "anilist" ? "ani" : source;
+  return `https://megaplay.buzz/stream/${seg}/${id}/${episode}/${dub ? "dub" : "sub"}`;
 }
 
 /** Store a full Anikoto series (metadata + every episode). */
@@ -31,10 +33,21 @@ export function ingestAnikoto(db, { info, episodes, sub, dub, autoUpdate }) {
   return { animeId, episodeCount: episodes.length };
 }
 
-/** Store a single MAL/AniList episode, merged into the matching anime. */
-export function ingestMalEpisode(db, { source, id, episode, sub, dub, embedUrl }) {
+/**
+ * Store a single MAL/AniList episode, merged into the matching anime. When
+ * `meta` (from the catalog) is present, the anime gets a real title/poster/
+ * synopsis instead of a placeholder.
+ */
+export function ingestMalEpisode(db, { source, id, episode, sub, dub, embedUrl, meta }) {
   const key = source === "anilist" ? { anilistId: Number(id) } : { malId: Number(id) };
-  const animeId = upsertAnime(db, { ...key, title: `${source.toUpperCase()} ${id}` });
+  const animeId = upsertAnime(db, {
+    ...key,
+    title: meta?.title || `${source.toUpperCase()} ${id}`,
+    poster: meta?.poster || null,
+    synopsis: meta?.synopsis || null,
+    status: meta?.status || null,
+    type: meta?.type || null,
+  });
   upsertEpisode(db, animeId, {
     number: Number(episode), sub: !!sub, dub: !!dub, embedUrl, source,
   });

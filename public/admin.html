@@ -109,8 +109,10 @@
 
     // ---- Panel 2: Fetch MAL/AniList ----
     const preview = () => {
+      const src = document.getElementById('mSource').value;
+      const seg = src === 'anilist' ? 'ani' : src;   // MegaPlay uses /ani/ for AniList
       document.getElementById('mPreview').textContent =
-        `https://megaplay.buzz/stream/${document.getElementById('mSource').value}/${document.getElementById('mId').value || 'ID'}/${document.getElementById('mEp').value || '1'}/${document.getElementById('mDub').checked ? 'dub' : 'sub'}`;
+        `https://megaplay.buzz/stream/${seg}/${document.getElementById('mId').value || 'ID'}/${document.getElementById('mEp').value || '1'}/${document.getElementById('mDub').checked ? 'dub' : 'sub'}`;
     };
     ['mSource', 'mId', 'mEp', 'mSub', 'mDub'].forEach(id => document.getElementById(id).addEventListener('input', preview));
     preview();

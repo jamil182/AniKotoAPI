@@ -15,7 +15,7 @@ function tmpDb() {
 
 test("malEmbedUrl builds the megaplay pattern", () => {
   assert.equal(malEmbedUrl({ source: "mal", id: 21, episode: 3, dub: false }), "https://megaplay.buzz/stream/mal/21/3/sub");
-  assert.equal(malEmbedUrl({ source: "anilist", id: 5, episode: 1, dub: true }), "https://megaplay.buzz/stream/anilist/5/1/dub");
+  assert.equal(malEmbedUrl({ source: "anilist", id: 5, episode: 1, dub: true }), "https://megaplay.buzz/stream/ani/5/1/dub");
 });
 
 test("ingestAnikoto stores anime and episodes", () => {
@@ -37,5 +37,16 @@ test("ingestMalEpisode merges one episode by mal id", () => {
   assert.equal(eps.length, 1);
   assert.equal(eps[0].embed_url, "https://megaplay.buzz/stream/mal/61316/1/sub");
   assert.equal(eps[0].source, "mal");
+  cleanup();
+});
+
+test("ingestMalEpisode uses catalog meta for title/poster when present", () => {
+  const { db, cleanup } = tmpDb();
+  const meta = { title: "Real Title", poster: "http://p", synopsis: "syn", status: "Finished", type: "TV" };
+  const r = ingestMalEpisode(db, { source: "mal", id: 999, episode: 1, sub: true, embedUrl: "e", meta });
+  const a = getAnimeByAny(db, { malId: 999 });
+  assert.equal(a.title, "Real Title");
+  assert.equal(a.poster, "http://p");
+  assert.equal(a.type, "TV");
   cleanup();
 });
