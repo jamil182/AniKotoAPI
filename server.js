@@ -122,6 +122,12 @@ app.get("/docs", (req, res) => {
   res.sendFile(path.join(publicDir, "docs.html"));
 });
 
+// NOTE: Anime detail page. The slug is read client-side from the path, so every
+// /anime/<slug> serves the same shell.
+app.get("/anime/:slug", (req, res) => {
+  res.sendFile(path.join(publicDir, "anime.html"));
+});
+
 app.get("/tos", (req, res) => {
   res.sendFile(path.join(publicDir, "tos.html"));
 });

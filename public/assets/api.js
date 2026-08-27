@@ -70,3 +70,88 @@ async function renderCards(el, loader, { count = 12, empty = 'Nothing here yet.'
     el.querySelector('button').onclick = () => renderCards(el, loader, { count, empty });
   }
 }
+
+// ---- Navigation ----
+const animeHref = (slug) => '/anime/' + encodeURIComponent(animeSlug(slug));
+
+// Any element carrying a non-empty data-slug navigates to that anime's detail
+// page. One delegated listener covers cards, ranking rows, and search results,
+// on every page, without per-element wiring.
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-slug]');
+  if (el && el.dataset.slug) location.href = animeHref(el.dataset.slug);
+});
+
+// ---- Shared nav ----
+// Markup + behaviour for the top bar, so the home and detail pages share one
+// implementation. `active` dims the matching nav link.
+function navHTML(active) {
+  const on = (k) => active === k ? ' style="color:var(--ink)"' : '';
+  return `
+    <div class="wrap nav-inner">
+      <a href="/" class="logo">Ani<b>Js</b></a>
+      <div class="nav-search">
+        <input id="navSearch" type="text" placeholder="Search anime…" autocomplete="off" />
+        <div class="search-drop" id="navSearchDrop"></div>
+      </div>
+      <nav class="nav-links">
+        <button class="nav-btn" id="navRandom">Random</button>
+        <a class="nav-btn" href="/docs"${on('docs')}>API Docs</a>
+        <a class="nav-btn solid" href="https://github.com/Shineii86/AniKotoAPI" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </div>`;
+}
+
+function wireNav() {
+  const input = document.getElementById('navSearch');
+  const drop = document.getElementById('navSearchDrop');
+  let timer = null;
+
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 2) { drop.classList.remove('open'); return; }
+    timer = setTimeout(async () => {
+      try {
+        const r = await apiGet('/search?keyword=' + encodeURIComponent(q));
+        const items = (r.data || []).slice(0, 6);
+        drop.innerHTML = items.length
+          ? items.map(it => `
+              <div class="search-row" data-slug="${esc(animeSlug(it.slug))}">
+                <img loading="lazy" src="${esc(it.poster)}" alt="" onerror="this.style.visibility='hidden'">
+                <div>
+                  <div class="t">${esc(it.title)}</div>
+                  <div class="m">${esc(it.type || 'Anime')}${it.rating ? ' · ★ ' + esc(it.rating) : ''}</div>
+                </div>
+              </div>`).join('')
+          : '<div class="search-empty">No matches.</div>';
+        drop.classList.add('open');
+      } catch (e) {
+        drop.innerHTML = `<div class="search-empty">Search failed: ${esc(e.message)}</div>`;
+        drop.classList.add('open');
+      }
+    }, 280);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.nav-search')) drop.classList.remove('open');
+  });
+
+  document.getElementById('navRandom').onclick = async (e) => {
+    const btn = e.target; const old = btn.textContent; btn.textContent = '…'; btn.disabled = true;
+    try {
+      const r = await apiGet('/random');
+      if (r && r.slug) location.href = animeHref(r.slug);
+    } catch (_) { /* ignore */ }
+    finally { btn.textContent = old; btn.disabled = false; }
+  };
+}
+
+// Inject the nav into a <header id="nav"> and wire it. Both pages call this.
+function mountNav(active) {
+  const host = document.getElementById('nav');
+  if (!host) return;
+  host.className = 'nav';
+  host.innerHTML = navHTML(active);
+  wireNav();
+}

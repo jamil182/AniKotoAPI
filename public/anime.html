@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AniJs</title>
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body>
+  <header id="nav"></header>
+
+  <div id="page">
+    <div class="wrap" style="padding:60px 24px"><div class="state">Loading…</div></div>
+  </div>
+
+  <footer class="foot">
+    <div class="wrap foot-inner">
+      <span>AniJs — a frontend for the <a href="/docs">AniKoto API</a>.</span>
+      <a class="sp" href="/">Home</a>
+      <a href="https://github.com/Shineii86/AniKotoAPI" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </footer>
+
+  <script src="/assets/api.js"></script>
+  <script>
+    mountNav();
+
+    // Slug comes from the path: /anime/<slug>
+    const slug = decodeURIComponent(location.pathname.replace(/^\/anime\//, '').replace(/\/$/, ''));
+    const page = document.getElementById('page');
+
+    // Rating field is sometimes noisy ("6   0 /10"); collapse whitespace and
+    // only show it when it carries a real number.
+    const cleanRating = (r) => {
+      const t = String(r || '').replace(/\s+/g, ' ').trim();
+      return /\d/.test(t) && !/^\?/.test(t) ? t : '';
+    };
+
+    function fact(label, val) {
+      return val && val !== '?' ? `<div class="fact"><b>${label}</b><span>${esc(val)}</span></div>` : '';
+    }
+
+    function renderDetail(info, eps) {
+      const backdrop = info.poster || '';
+      const jp = info.japaneseTitle && info.japaneseTitle !== info.title ? info.japaneseTitle : '';
+      const meta = [];
+      if (info.type) meta.push(`<span class="badge">${esc(info.type)}</span>`);
+      if (info.status) meta.push(`<span class="badge">${esc(info.status)}</span>`);
+      const rating = cleanRating(info.rating) || cleanRating(info.malScore);
+      if (rating) meta.push(`<span class="badge q">★ ${esc(rating)}</span>`);
+      const total = eps && eps.totalEpisodes ? eps.totalEpisodes : null;
+      if (total) meta.push(`<span class="badge">${total} ep</span>`);
+
+      const genres = (info.genres || []).map(g => `<span class="genre-tag">${esc(g)}</span>`).join('');
+      const studios = (info.studios || []).join(', ');
+      const producers = (info.producers || []).join(', ');
+
+      const epList = (eps && eps.episodes) || [];
+      const epsHTML = epList.length
+        ? `<div class="eps-grid">${epList.map(e => `
+             <div class="ep${e.active ? ' active' : ''}" data-ep="${esc(e.episode_no)}" title="Episode ${esc(e.episode_no)}${e.title ? ' — ' + esc(e.title) : ''}">${esc(e.episode_no)}</div>`).join('')}</div>`
+        : `<div class="state">No episodes listed.</div>`;
+
+      page.innerHTML = `
+        <section class="detail-hero">
+          <div class="detail-bg" style="background-image:url('${esc(backdrop)}')"></div>
+          <div class="wrap detail-top">
+            <div class="detail-poster"><img src="${esc(info.poster)}" alt="${esc(info.title)}" onerror="this.style.visibility='hidden'"></div>
+            <div class="detail-info">
+              <h1>${esc(info.title)}</h1>
+              ${jp ? `<div class="detail-jp">${esc(jp)}</div>` : ''}
+              <div class="detail-meta">${meta.join('')}</div>
+              ${genres ? `<div class="detail-genres">${genres}</div>` : ''}
+              ${info.synopsis ? `<p class="detail-syn">${esc(info.synopsis)}</p>` : ''}
+              <div class="detail-facts">
+                ${fact('Aired', info.aired)}
+                ${fact('Premiered', info.premiered)}
+                ${fact('Duration', info.duration)}
+                ${fact('Studios', studios)}
+                ${fact('Producers', producers)}
+                ${fact('Score', cleanRating(info.malScore))}
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="wrap eps">
+          <div class="section-head"><h2 class="section-title">Episodes${total ? ` <span style="color:var(--muted);font-size:1rem">(${total})</span>` : ''}</h2></div>
+          ${epsHTML}
+        </section>`;
+
+      document.title = `${info.title} — AniJs`;
+    }
+
+    async function boot() {
+      if (!slug) { page.innerHTML = '<div class="wrap" style="padding:60px 24px"><div class="state">No anime specified.</div></div>'; return; }
+      page.innerHTML = '<div class="wrap" style="padding:60px 24px"><div class="state">Loading…</div></div>';
+      try {
+        // info is required; episodes is best-effort so a listing hiccup still
+        // shows the detail page.
+        const [info, eps] = await Promise.all([
+          apiGet('/info?id=' + encodeURIComponent(slug)),
+          apiGet('/episodes/' + encodeURIComponent(slug)).catch(() => null),
+        ]);
+        renderDetail(info, eps);
+      } catch (e) {
+        page.innerHTML = `<div class="wrap" style="padding:60px 24px"><div class="state">Couldn't load this anime (${esc(e.message)}).<br><button>Retry</button></div></div>`;
+        page.querySelector('button').onclick = boot;
+      }
+    }
+
+    boot();
+  </script>
+</body>
+</html>

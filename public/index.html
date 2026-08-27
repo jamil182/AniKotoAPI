@@ -12,21 +12,8 @@
   <link rel="stylesheet" href="/assets/app.css" />
 </head>
 <body>
-  <!-- Nav -->
-  <header class="nav">
-    <div class="wrap nav-inner">
-      <a href="/" class="logo">Ani<b>Js</b></a>
-      <div class="nav-search">
-        <input id="search" type="text" placeholder="Search anime…" autocomplete="off" />
-        <div class="search-drop" id="searchDrop"></div>
-      </div>
-      <nav class="nav-links">
-        <button class="nav-btn" id="randomBtn">Random</button>
-        <a class="nav-btn" href="/docs">API Docs</a>
-        <a class="nav-btn solid" href="https://github.com/Shineii86/AniKotoAPI" target="_blank" rel="noopener">GitHub</a>
-      </nav>
-    </div>
-  </header>
+  <!-- Nav (shared, mounted from api.js) -->
+  <header id="nav"></header>
 
   <!-- Hero -->
   <section class="hero" id="hero" aria-label="Featured anime">
@@ -83,6 +70,8 @@
 
   <script src="/assets/api.js"></script>
   <script>
+    mountNav();
+
     // ---- Hero carousel (spotlights) ----
     let heroSlides = [], heroIdx = 0, heroTimer = null;
 
@@ -121,7 +110,7 @@
         <div class="hero-badges">${badges.join('')}</div>
         <h1>${esc(it.title || it.name)}</h1>
         ${it.description ? `<p>${esc(it.description)}</p>` : ''}
-        <button class="btn primary" disabled title="Coming in a later phase">▶ Play</button>`;
+        <a class="btn primary" href="${animeHref(it.slug)}">▶ Details</a>`;
     }
 
     function heroError() {
@@ -180,51 +169,6 @@
       const b = e.target.closest('.tab'); if (!b || !topData) return;
       document.querySelectorAll('#topTabs .tab').forEach(t => t.classList.toggle('on', t === b));
       renderTop(topData[b.dataset.k]);
-    };
-
-    // ---- Search (live dropdown) ----
-    const searchInput = document.getElementById('search');
-    const searchDrop = document.getElementById('searchDrop');
-    let searchTimer = null;
-    searchInput.addEventListener('input', () => {
-      clearTimeout(searchTimer);
-      const q = searchInput.value.trim();
-      if (q.length < 2) { searchDrop.classList.remove('open'); return; }
-      searchTimer = setTimeout(async () => {
-        try {
-          const r = await apiGet('/search?keyword=' + encodeURIComponent(q));
-          const items = (r.data || []).slice(0, 6);
-          searchDrop.innerHTML = items.length
-            ? items.map(it => `
-                <div class="search-row" data-slug="${esc(animeSlug(it.slug))}">
-                  <img loading="lazy" src="${esc(it.poster)}" alt="" onerror="this.style.visibility='hidden'">
-                  <div>
-                    <div class="t">${esc(it.title)}</div>
-                    <div class="m">${esc(it.type || 'Anime')}${it.rating ? ' · ★ ' + esc(it.rating) : ''}</div>
-                  </div>
-                </div>`).join('')
-            : '<div class="search-empty">No matches.</div>';
-          searchDrop.classList.add('open');
-        } catch (e) {
-          searchDrop.innerHTML = `<div class="search-empty">Search failed: ${esc(e.message)}</div>`;
-          searchDrop.classList.add('open');
-        }
-      }, 280);
-    });
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.nav-search')) searchDrop.classList.remove('open');
-    });
-
-    // ---- Random ----
-    document.getElementById('randomBtn').onclick = async (e) => {
-      const btn = e.target; const old = btn.textContent; btn.textContent = '…'; btn.disabled = true;
-      try {
-        const r = await apiGet('/random');
-        // Detail route lands in a later phase; for now surface the pick in search.
-        searchInput.value = r.title || '';
-        searchInput.dispatchEvent(new Event('input'));
-      } catch (_) { /* ignore */ }
-      finally { btn.textContent = old; btn.disabled = false; }
     };
 
     boot();
