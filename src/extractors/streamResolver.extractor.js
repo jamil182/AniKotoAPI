@@ -37,13 +37,17 @@ const SERVER_NAME_MAP = {
   "StreamTape-2": "streamtape",
 };
 
-// Embed domain to API domain mapping
-const EMBED_API_MAP = {
-  "vidtube.site": "megaplay-1.buzz",
-  "vidplay.site": "megaplay-1.buzz",
-  "megaplay.buzz": "megaplay-1.buzz",
-  "embed.bunkrerrer.com": "megaplay-1.buzz",
-};
+// Embed domain to API domain overrides
+// NOTE: Prefer the base_url the embed page declares in its own `settings` block —
+// a hardcoded map rots. The previous map pointed every host at megaplay-1.buzz,
+// which no longer resolves (ENOTFOUND), breaking resolution for all servers.
+// Entries here are a last-resort override for pages that declare no base_url.
+const EMBED_API_MAP = {};
+
+// Sources endpoint paths, in priority order. The player ships a rewrite that
+// swaps getSources -> getSourcesNew, so the "New" variant is the current one;
+// the legacy path is kept as a fallback while both are served.
+const SOURCES_PATHS = ["/stream/getSourcesNew", "/stream/getSources"];
 
 // ---- FEATURE: Server Name Normalization ----
 /**
@@ -106,38 +110,75 @@ const resolveStreamUrl = async (embedUrl, options = {}) => {
       };
     }
 
-    // NOTE: Determine API domain from embed URL or extract from page
+    // NOTE: Determine API domain — the page's own settings.base_url is authoritative,
+    // since the player reads its API host from there. Fall back to an override, then
+    // to the embed host itself.
     const embedDomain = new URL(embedUrl).hostname;
-    const apiDomain = EMBED_API_MAP[embedDomain] || embedDomain;
+    const declaredBaseUrl = embedHtml.match(/base_url\s*:\s*['"]([^'"]+)['"]/)?.[1];
+    let apiDomain = EMBED_API_MAP[embedDomain] || embedDomain;
+    if (declaredBaseUrl) {
+      try { apiDomain = new URL(declaredBaseUrl).hostname; } catch { /* keep fallback */ }
+    }
 
-    // NOTE: Query the megaplay API for the actual stream URL
-    const apiResponse = await axios.get(
-      `https://${apiDomain}/ajax/sources/${dataId}`,
-      {
-        headers: {
-          ...headers,
-          "Referer": embedUrl,
-          "Origin": `https://${embedDomain}`,
-        },
-        timeout,
+    // NOTE: Query the sources API. Try each known path until one returns JSON —
+    // a wrong path answers 200 with an HTML error page, not a 4xx.
+    let apiData = null;
+    let lastPathError = null;
+    for (const sourcesPath of SOURCES_PATHS) {
+      try {
+        const apiResponse = await axios.get(
+          `https://${apiDomain}${sourcesPath}?id=${encodeURIComponent(dataId)}`,
+          {
+            headers: {
+              ...headers,
+              "Referer": embedUrl,
+              "Origin": `https://${embedDomain}`,
+              "X-Requested-With": "XMLHttpRequest",
+            },
+            timeout,
+          }
+        );
+
+        const parsed = typeof apiResponse.data === "string"
+          ? (() => { try { return JSON.parse(apiResponse.data); } catch { return null; } })()
+          : apiResponse.data;
+
+        if (parsed && typeof parsed === "object") {
+          apiData = parsed;
+          break;
+        }
+        lastPathError = `${sourcesPath} returned a non-JSON body`;
+      } catch (pathError) {
+        lastPathError = `${sourcesPath}: ${pathError.message}`;
       }
-    );
+    }
 
-    const apiData = typeof apiResponse.data === "string"
-      ? (() => { try { return JSON.parse(apiResponse.data); } catch { return {}; } })()
-      : apiResponse.data;
+    if (!apiData) {
+      return {
+        url: null,
+        qualities: [],
+        skipData: null,
+        type: null,
+        error: `Sources API did not return JSON (${lastPathError})`,
+      };
+    }
 
-    // NOTE: Extract stream URL from API response
-    const streamUrl = apiData?.source || apiData?.url || apiData?.file || null;
+    // NOTE: Stream URL lives under `sources` — object or array depending on server.
+    // Older shapes (source/url/file at the top level) are kept as fallbacks.
+    const streamUrl = (Array.isArray(apiData.sources) ? apiData.sources[0]?.file : apiData.sources?.file)
+      || apiData?.source || apiData?.url || apiData?.file || null;
     const streamType = apiData?.type || (streamUrl?.includes(".m3u8") ? "hls" : "mp4");
 
-    // NOTE: Parse m3u8 qualities if it's an HLS stream
+    // NOTE: Parse m3u8 qualities if it's an HLS stream.
+    // The CDN checks Referer and answers 403 to the full embed page URL —
+    // it only accepts the player origin, so send that.
+    const playerOrigin = `${new URL(embedUrl).origin}/`;
     let qualities = [];
     if (streamUrl && streamType === "hls") {
       qualities = await parseM3u8Qualities(streamUrl, {
         headers: {
           ...headers,
-          "Referer": embedUrl,
+          "Referer": playerOrigin,
         },
         timeout,
       });
@@ -151,7 +192,7 @@ const resolveStreamUrl = async (embedUrl, options = {}) => {
       type: streamType,
       qualities,
       subtitles,
-      skipData: apiData?.skip_data || null,
+      skipData: normalizeSkipData(apiData),
       dataId,
       realId,
       mediaId,
@@ -266,6 +307,28 @@ const parseM3u8Qualities = async (m3u8Url, options = {}) => {
 };
 
 // ══════════════════════════════════════════════════════════════
+// SKIP DATA NORMALIZER
+// ══════════════════════════════════════════════════════════════
+
+// ---- FEATURE: Intro/Outro Skip Range Normalization ----
+/**
+ * Normalizes intro/outro skip ranges to the { intro: [start, end] } shape the
+ * rest of the API emits. The sources API returns them as separate
+ * { start, end } objects; older responses used a single `skip_data` field.
+ *
+ * @param {object} apiData - The sources API response
+ * @returns {object|null} { intro: [start, end], outro: [start, end] } or null
+ */
+const normalizeSkipData = (apiData) => {
+  if (apiData?.skip_data) return apiData.skip_data;
+
+  const toRange = (range) => [Number(range?.start) || 0, Number(range?.end) || 0];
+  if (!apiData?.intro && !apiData?.outro) return null;
+
+  return { intro: toRange(apiData.intro), outro: toRange(apiData.outro) };
+};
+
+// ══════════════════════════════════════════════════════════════
 // SUBTITLE EXTRACTOR
 // ══════════════════════════════════════════════════════════════
 
@@ -293,7 +356,10 @@ const extractSubtitles = (apiData) => {
   // NOTE: Some sources embed subtitles in tracks array
   if (apiData?.tracks && Array.isArray(apiData.tracks)) {
     for (const track of apiData.tracks) {
-      if (track.kind === "subtitles" || track.type === "subtitles") {
+      // NOTE: The player labels subtitle tracks "captions"; "subtitles" is the
+      // WebVTT spelling other sources use. Accept both.
+      const trackKind = track.kind || track.type;
+      if (trackKind === "subtitles" || trackKind === "captions") {
         subtitles.push({
           label: track.label || track.language || "Unknown",
           language: track.srclang || track.language || "unknown",
