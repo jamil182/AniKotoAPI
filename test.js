@@ -38,7 +38,8 @@ const tests = [
   { name: "Search", url: "/search?keyword=naruto", check: (d) => d.results?.data },
   { name: "Info", url: "/info?id=one-piece-odmau", check: (d) => d.results?.title },
   { name: "Episodes", url: "/episodes/one-piece-odmau", check: (d) => d.results?.episodes },
-  { name: "Servers", url: "/servers?ids=1", check: (d) => d.results },
+  // NOTE: "Servers" is injected in runAll — it needs a real server_ids token
+  // discovered from the episode list.
   // Streaming
   { name: "Stream", url: "/watch?slug=one-piece-odmau&ep=1", check: (d) => d.results?.servers || d.results?.episodeNumber },
 
@@ -172,6 +173,7 @@ async function runAll() {
   // NOTE: Fetch info to get numeric animeId for episodes-ajax
   let animeId = "1642";
   let linkId = "";
+  let serverIds = "";
   try {
     const info = await fetchJson("/info?id=one-piece-odmau");
     if (info?.success && info.results?.animeId) {
@@ -182,6 +184,7 @@ async function runAll() {
     if (epData?.success && epData.results?.episodes?.length > 0) {
       const sid = epData.results.episodes[0].server_ids;
       if (sid) {
+        serverIds = sid;
         const srvData = await fetchJson(`/servers?ids=${encodeURIComponent(sid)}`);
         if (srvData?.success && srvData.results?.length > 0) {
           linkId = srvData.results[0].link_id || "";
@@ -192,6 +195,16 @@ async function runAll() {
 
   // ---- FEATURE: Inject dynamic tests with live data ----
   tests.push({ name: "Episodes Ajax", url: `/episodes-ajax/${animeId}`, check: (d) => d.results?.episodes || d.results?.totalEpisodes });
+  // NOTE: /servers wants the opaque server_ids token from the episode list, not
+  // an episode number — a bare id makes the upstream answer 500 Bad request.
+  // Marked optional so a discovery failure reports as skipped rather than as a
+  // false /servers failure; the Episodes test is what flags that case.
+  tests.push({
+    name: "Servers",
+    url: `/servers?ids=${encodeURIComponent(serverIds)}`,
+    optional: !serverIds,
+    check: (d) => Array.isArray(d.results) && d.results.length > 0 && !!d.results[0].link_id,
+  });
   if (linkId) {
     tests.push({ name: "Stream Resolve", url: `/stream/resolve?id=${encodeURIComponent(linkId)}&slug=one-piece-odmau`, check: (d) => d.results?.url });
   }
