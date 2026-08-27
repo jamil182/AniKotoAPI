@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AniJs — Admin</title>
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body>
+  <header id="nav"></header>
+  <div class="wrap" style="padding:28px 0 60px">
+    <h1 style="font-family:var(--font-display);color:var(--ink);margin:0 0 4px">Anime Fetch Data</h1>
+    <p style="color:var(--muted);margin-top:0">Fetch a complete series via Anikoto, or add one episode at a time via MAL/AniList.</p>
+
+    <div class="admin-grid">
+      <section class="admin-card">
+        <h3>1. Fetch Anikoto</h3>
+        <label>Search anime title</label>
+        <div class="admin-row">
+          <input id="aSearch" type="text" placeholder="Naruto: Shippuden" autocomplete="off">
+          <button class="btn primary" id="aSearchBtn">Search</button>
+        </div>
+        <div id="aResults"></div>
+        <label>Anikoto Series ID</label>
+        <input id="aSeriesId" type="text" placeholder="—" readonly>
+        <div class="admin-langs">
+          <label><input type="checkbox" id="aSub" checked> SUB</label>
+          <label><input type="checkbox" id="aDub"> DUB</label>
+        </div>
+        <label class="admin-langs" style="margin-top:8px"><input type="checkbox" id="aAuto"> Automatic hourly episode updates</label>
+        <button class="btn primary" id="aFetch" disabled style="margin-top:12px">Fetch Anikoto</button>
+        <div id="aOut" class="admin-out"></div>
+      </section>
+
+      <section class="admin-card">
+        <h3>2. Fetch MAL/AniList Episode</h3>
+        <label>Source</label>
+        <select id="mSource">
+          <option value="mal">MAL ID + episode</option>
+          <option value="anilist">AniList ID + episode</option>
+        </select>
+        <div class="admin-row" style="margin-top:10px">
+          <input id="mId" type="text" placeholder="61316" autocomplete="off">
+          <input id="mEp" type="text" placeholder="1" value="1" autocomplete="off">
+        </div>
+        <div class="admin-langs">
+          <label><input type="checkbox" id="mSub" checked> SUB</label>
+          <label><input type="checkbox" id="mDub"> DUB</label>
+        </div>
+        <div class="admin-out" id="mPreview"></div>
+        <button class="btn primary" id="mFetch" style="margin-top:12px">Fetch MAL/AniList Episode</button>
+        <div id="mOut" class="admin-out"></div>
+      </section>
+    </div>
+
+    <h2 style="font-family:var(--font-display);color:var(--ink);margin-top:32px">Library</h2>
+    <div id="library"></div>
+  </div>
+
+  <script src="/assets/api.js"></script>
+  <script>
+    mountNav();
+
+    let TOKEN = null;
+    try { TOKEN = localStorage.getItem('anijs_admin_token'); } catch {}
+    if (!TOKEN) { TOKEN = prompt('Admin token:') || ''; try { localStorage.setItem('anijs_admin_token', TOKEN); } catch {} }
+    const H = { 'x-admin-token': TOKEN, 'content-type': 'application/json' };
+    const adminGet = async (p) => (await fetch('/api/admin' + p, { headers: H })).json();
+    const adminPost = async (p, body) => (await fetch('/api/admin' + p, { method: 'POST', headers: H, body: JSON.stringify(body) })).json();
+
+    // ---- Panel 1: Fetch Anikoto ----
+    document.getElementById('aSearchBtn').onclick = async () => {
+      const box = document.getElementById('aResults');
+      box.innerHTML = '<div class="state">Searching…</div>';
+      const r = await adminGet('/search?keyword=' + encodeURIComponent(document.getElementById('aSearch').value.trim()));
+      const items = r.results || [];
+      // NOTE: use data-aslug (not data-slug) — api.js installs a global
+      // [data-slug] click listener that would navigate away from this page.
+      box.innerHTML = items.length ? items.slice(0, 8).map(a =>
+        `<div class="admin-hit" data-aslug="${esc(a.slug)}" data-id="${esc(a.animeId)}">
+           <img src="${esc(a.poster)}" onerror="this.style.display='none'">
+           <div><b>${esc(a.title)}</b><div class="admin-hit-m">ID ${esc(a.animeId)} · ${esc(a.type || '')} · SUB ${a.sub || 0} DUB ${a.dub || 0}</div></div>
+           <button class="btn">Select</button>
+         </div>`).join('') : '<div class="state">No results (or wrong token).</div>';
+      box.querySelectorAll('.admin-hit').forEach(el => el.querySelector('button').onclick = () => {
+        document.getElementById('aSeriesId').value = el.dataset.id;
+        const fetchBtn = document.getElementById('aFetch');
+        fetchBtn.disabled = false;
+        fetchBtn.dataset.aslug = el.dataset.aslug;
+      });
+    };
+
+    document.getElementById('aFetch').onclick = async (e) => {
+      const out = document.getElementById('aOut'); out.textContent = 'Fetching…';
+      const r = await adminPost('/fetch-anikoto', {
+        slug: e.target.dataset.aslug,
+        sub: document.getElementById('aSub').checked,
+        dub: document.getElementById('aDub').checked,
+        autoUpdate: document.getElementById('aAuto').checked,
+      });
+      out.textContent = r.success ? `Stored — ${r.results.episodeCount} episodes.` : 'Error: ' + r.message;
+      loadLibrary();
+    };
+
+    // ---- Panel 2: Fetch MAL/AniList ----
+    const preview = () => {
+      document.getElementById('mPreview').textContent =
+        `https://megaplay.buzz/stream/${document.getElementById('mSource').value}/${document.getElementById('mId').value || 'ID'}/${document.getElementById('mEp').value || '1'}/${document.getElementById('mDub').checked ? 'dub' : 'sub'}`;
+    };
+    ['mSource', 'mId', 'mEp', 'mSub', 'mDub'].forEach(id => document.getElementById(id).addEventListener('input', preview));
+    preview();
+
+    document.getElementById('mFetch').onclick = async () => {
+      const out = document.getElementById('mOut'); out.textContent = 'Fetching…';
+      const r = await adminPost('/fetch-mal', {
+        source: document.getElementById('mSource').value,
+        id: document.getElementById('mId').value.trim(),
+        episode: document.getElementById('mEp').value.trim(),
+        sub: document.getElementById('mSub').checked,
+        dub: document.getElementById('mDub').checked,
+      });
+      out.textContent = r.success ? 'Stored episode.' : 'Error: ' + r.message;
+      loadLibrary();
+    };
+
+    // ---- Library ----
+    async function loadLibrary() {
+      const r = await adminGet('/library');
+      const rows = r.results || [];
+      document.getElementById('library').innerHTML = rows.length ? rows.map(a =>
+        `<div class="admin-libitem"><b>${esc(a.title)}</b> <span class="admin-hit-m">${a.total_episodes || 0} ep${a.auto_update ? ' · auto' : ''}</span> <button class="btn" data-del="${a.id}">Delete</button></div>`).join('')
+        : '<div class="state">Empty — fetch something above.</div>';
+      document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+        await fetch('/api/admin/anime/' + b.dataset.del, { method: 'DELETE', headers: H });
+        loadLibrary();
+      });
+    }
+    loadLibrary();
+  </script>
+</body>
+</html>

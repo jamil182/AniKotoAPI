@@ -136,6 +136,12 @@ app.get(["/watch/:slug/:ep", "/watch/:slug"], (req, res) => {
   res.sendFile(path.join(publicDir, "watch.html"));
 });
 
+// NOTE: Admin CMS page. The page itself is static; its JS supplies the admin
+// token to the (token-protected) /api/admin/* endpoints.
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(publicDir, "admin.html"));
+});
+
 app.get("/tos", (req, res) => {
   res.sendFile(path.join(publicDir, "tos.html"));
 });
