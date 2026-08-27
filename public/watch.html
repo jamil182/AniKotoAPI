@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AniJs — Watch</title>
+  <title>aniJr — Watch</title>
   <link rel="icon" href="/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -39,12 +39,12 @@
               </div>
               <span class="v-time" id="vTime">00:00 / 00:00</span>
               <span class="v-spacer"></span>
-              <button class="v-btn" id="vBack10" aria-label="Back 10s">⏮10</button>
-              <button class="v-btn" id="vFwd10" aria-label="Forward 10s">10⏭</button>
-              <button class="v-btn" id="vCC" aria-label="Captions">CC<span class="v-tooltip">Closed Captions</span></button>
-              <button class="v-btn" id="vSettings" aria-label="Settings">⚙<span class="v-tooltip">Settings</span></button>
-              <button class="v-btn" id="vPip" aria-label="Picture in picture">⧉<span class="v-tooltip">Miniplayer</span></button>
-              <button class="v-btn" id="vFull" aria-label="Fullscreen">⛶<span class="v-tooltip">Fullscreen</span></button>
+              <button class="v-btn" id="vBack10" aria-label="Back 10s"></button>
+              <button class="v-btn" id="vFwd10" aria-label="Forward 10s"></button>
+              <button class="v-btn" id="vCC" aria-label="Captions"><span class="v-tooltip">Closed Captions</span></button>
+              <button class="v-btn" id="vSettings" aria-label="Settings"><span class="v-tooltip">Settings</span></button>
+              <button class="v-btn" id="vPip" aria-label="Picture in picture"><span class="v-tooltip">Miniplayer</span></button>
+              <button class="v-btn" id="vFull" aria-label="Fullscreen"><span class="v-tooltip">Fullscreen</span></button>
             </div>
           </div>
           <div class="v-menu" id="vMenu"></div>
@@ -85,7 +85,7 @@
 
   <footer class="foot">
     <div class="wrap foot-inner">
-      <span>AniJs — a frontend for the <a href="/docs">AniKoto API</a>.</span>
+      <span>aniJr — a frontend for the <a href="/docs">AniKoto API</a>.</span>
       <a class="sp" href="/">Home</a>
       <a href="https://github.com/Shineii86/AniKotoAPI" target="_blank" rel="noopener">GitHub</a>
     </div>
@@ -116,6 +116,17 @@
       pause: '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>',
       volHigh: '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>',
       volMute: '<svg viewBox="0 0 24 24"><path d="M16.5 12a4.5 4.5 0 0 0-2.5-4v2.2l2.5 2.5c0-.2 0-.5 0-.7zM19 12c0 .9-.2 1.8-.5 2.6l1.5 1.5A9 9 0 0 0 21 12a9 9 0 0 0-7-8.8v2.1A7 7 0 0 1 19 12zM4.3 3L3 4.3 7.7 9H3v6h4l5 5v-6.7l4.3 4.3c-.7.5-1.4.9-2.3 1.2v2.1c1.4-.3 2.7-1 3.8-1.8L19.7 21 21 19.7 4.3 3zM12 4L9.9 6.1 12 8.2V4z"/></svg>',
+      back10: '<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" d="M4.2 8.6h15.6v9.6a1.8 1.8 0 0 1-1.8 1.8H6a1.8 1.8 0 0 1-1.8-1.8z"/><path d="M10.6 3.4 4.9 7.1a.6.6 0 0 0 0 1l5.7 3.7a.6.6 0 0 0 .92-.5V3.9a.6.6 0 0 0-.92-.5z"/><text x="12" y="17.6" text-anchor="middle" font-size="7.6" font-weight="700" fill="currentColor" font-family="Inter,sans-serif">10</text></svg>',
+      fwd10:  '<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" d="M4.2 8.6h15.6v9.6a1.8 1.8 0 0 1-1.8 1.8H6a1.8 1.8 0 0 1-1.8-1.8z"/><path d="M13.4 3.4l5.7 3.7a.6.6 0 0 1 0 1l-5.7 3.7a.6.6 0 0 1-.92-.5V3.9a.6.6 0 0 1 .92-.5z"/><text x="12" y="17.6" text-anchor="middle" font-size="7.6" font-weight="700" fill="currentColor" font-family="Inter,sans-serif">10</text></svg>',
+      cc:     '<svg viewBox="0 0 24 24"><rect x="2.6" y="5.4" width="18.8" height="13.2" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.7"/><text x="12" y="15.4" text-anchor="middle" font-size="7.4" font-weight="700" fill="currentColor" font-family="Inter,sans-serif">CC</text></svg>',
+      gear:   '<svg viewBox="0 0 24 24"><path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.6a.5.5 0 0 0 .12-.62l-1.9-3.3a.5.5 0 0 0-.6-.22l-2.4.96a7.3 7.3 0 0 0-1.72-1l-.36-2.54a.5.5 0 0 0-.5-.42h-3.8a.5.5 0 0 0-.5.42l-.36 2.54a7.3 7.3 0 0 0-1.72 1l-2.4-.96a.5.5 0 0 0-.6.22l-1.9 3.3a.5.5 0 0 0 .12.62L4.6 11a7.8 7.8 0 0 0 0 2l-2 1.6a.5.5 0 0 0-.12.62l1.9 3.3a.5.5 0 0 0 .6.22l2.4-.96a7.3 7.3 0 0 0 1.72 1l.36 2.54a.5.5 0 0 0 .5.42h3.8a.5.5 0 0 0 .5-.42l.36-2.54a7.3 7.3 0 0 0 1.72-1l2.4.96a.5.5 0 0 0 .6-.22l1.9-3.3a.5.5 0 0 0-.12-.62zM12 15.4A3.4 3.4 0 1 1 15.4 12 3.4 3.4 0 0 1 12 15.4z"/></svg>',
+      pip:    '<svg viewBox="0 0 24 24"><rect x="2.6" y="4.6" width="18.8" height="14.8" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="12" y="11.4" width="7.4" height="6" rx="1.2"/></svg>',
+      expand: '<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M14.5 4h5.5v5.5M20 4l-6.4 6.4M9.5 20H4v-5.5M4 20l6.4-6.4"/></svg>',
+      quality:'<svg viewBox="0 0 24 24"><rect x="3.2" y="14" width="3.8" height="6.4" rx="1"/><rect x="10.1" y="9.4" width="3.8" height="11" rx="1"/><rect x="17" y="4.4" width="3.8" height="16" rx="1"/></svg>',
+      speed:  '<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M2.6 7.6h6M2.6 11.4h4.4M2.6 15.2h4.4"/><circle cx="15" cy="12" r="6.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M15 8.6V12l2.4 1.6"/></svg>',
+      close:  '<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>',
+      back:   '<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M14.5 5.5 8 12l6.5 6.5"/></svg>',
+      chevron:'<svg viewBox="0 0 24 24" class="v-chev"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9.5 5.5 16 12l-6.5 6.5"/></svg>',
     };
 
     const showMsg = (h) => { msg.innerHTML = `<div class="box">${h}</div>`; msg.style.display = 'flex'; };
@@ -139,18 +150,42 @@
       return true;
     }
 
+    // Start playback for the Auto Play toggle.
+    // NOTE: Browsers refuse play() on an unmuted element until the viewer has
+    // interacted with the page, rejecting with NotAllowedError. The old code
+    // swallowed that rejection, so Auto Play silently did nothing on a fresh
+    // page load. Muted playback is always permitted, so fall back to it and
+    // give the sound back on the first real gesture.
+    function armUnmute() {
+      const unmute = () => {
+        video.muted = false;
+        document.removeEventListener('pointerdown', unmute);
+        document.removeEventListener('keydown', unmute);
+      };
+      document.addEventListener('pointerdown', unmute);
+      document.addEventListener('keydown', unmute);
+    }
+
+    function startPlayback() {
+      if (!pref('autoplay', true)) return;
+      video.play().catch(() => {
+        video.muted = true;
+        video.play().then(armUnmute).catch(() => {});
+      });
+    }
+
     function play(masterUrl) {
       const src = '/api/stream/proxy?url=' + encodeURIComponent(masterUrl);
       destroyHls(); hideMsg();
       if (window.Hls && Hls.isSupported()) {
         hls = new Hls({ maxBufferLength: 30 });
         hls.loadSource(src); hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => { buildMenu(); applySubtitle(); if (pref('autoplay', true)) video.play().catch(() => {}); });
+        hls.on(Hls.Events.MANIFEST_PARSED, () => { buildMenu(); applySubtitle(); startPlayback(); });
         hls.on(Hls.Events.ERROR, (_e, d) => {
           if (d.fatal) { destroyHls(); onPlaybackFail(); }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = src; applySubtitle(); if (pref('autoplay', true)) video.play().catch(() => {});
+        video.src = src; applySubtitle(); startPlayback();
       } else { showMsg('This browser cannot play HLS.'); }
     }
 
@@ -367,7 +402,15 @@
       if (subTrack) { try { [...(subTrack.cues || [])].forEach(c => subTrack.removeCue(c)); } catch {} subTrack.mode = 'disabled'; subTrack = null; }
       if (!subtitles.length) { ccBtn.style.display = 'none'; curSub = -1; return; }
       ccBtn.style.display = '';
-      if (idx == null) { idx = subtitles.findIndex(s => s.default); if (idx < 0) idx = 0; }
+      if (idx == null) {
+        // Honour the track the viewer last picked. subLang was written on every
+        // pick but never read back anywhere, so each new episode fell through to
+        // the default track -- or, failing that, whatever sat first in the list.
+        const saved = prefs.subLang;
+        idx = saved ? subtitles.findIndex(s => (s.label || s.language) === saved) : -1;
+        if (idx < 0) idx = subtitles.findIndex(s => s.default);
+        if (idx < 0) idx = 0;
+      }
       curSub = idx;
       const sub = subtitles[idx];
       if (!sub) return;
@@ -377,9 +420,80 @@
         const vtt = await (await fetch('/api/stream/sub-proxy?url=' + encodeURIComponent(sub.url || sub.file))).text();
         subTrack = video.addTextTrack('subtitles', sub.label || sub.language || 'Subtitle', 'sub');
         for (const c of parseVTT(vtt)) subTrack.addCue(new VTTCue(c.start, c.end, c.text));
+        applyCuePosition();
         subTrack.mode = ccOn ? 'showing' : 'hidden';
       } catch { /* leave off */ }
     }
+
+    // ---- Subtitle appearance ----------------------------------------------
+    // Cues are rendered natively by the browser (addTextTrack + VTTCue), so the
+    // look is driven by a `video::cue` rule. That rule cannot be reached through
+    // element.style, so the settings are written into one injected <style>.
+    const SUB_COLORS = {
+      white: '255,255,255', yellow: '255,222,0', green: '0,214,92', cyan: '0,214,214',
+      blue: '58,124,255', magenta: '232,64,214', red: '240,62,62', black: '0,0,0',
+    };
+    const SUB_EDGES = {
+      none: 'none',
+      drop: '0 2px 4px rgba(0,0,0,.95)',
+      raised: '1px 1px 0 rgba(0,0,0,.9), 2px 2px 0 rgba(0,0,0,.55)',
+      depressed: '-1px -1px 0 rgba(0,0,0,.9), -2px -2px 0 rgba(0,0,0,.55)',
+      outline: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000',
+    };
+    // Cue placement is a property of the cue, not of ::cue — negative values
+    // count lines up from the bottom, so -3 clears the control bar.
+    const SUB_LINES = { bottom: -1, above: -3, top: 1 };
+
+    const SUB_OPTS = {
+      color:   { label: 'Font Color',       def: 'white',  items: Object.keys(SUB_COLORS).map(k => [k, k[0].toUpperCase() + k.slice(1)]) },
+      opacity: { label: 'Font Opacity',     def: '100',    items: [['25','25%'],['50','50%'],['75','75%'],['100','100%']] },
+      size:    { label: 'Font Size',        def: '100',    items: [['50','50%'],['75','75%'],['100','100%'],['150','150%'],['200','200%'],['300','300%']] },
+      family:  { label: 'Font Family',      def: 'sans',   items: [['sans','Arial'],['serif','Serif'],['mono','Monospace'],['round','Rounded']] },
+      edge:    { label: 'Character Edge',   def: 'none',   items: [['none','None'],['drop','Drop shadow'],['raised','Raised'],['depressed','Depressed'],['outline','Outline']] },
+      bg:      { label: 'Background Color', def: 'black',  items: Object.keys(SUB_COLORS).map(k => [k, k[0].toUpperCase() + k.slice(1)]).concat([['transparent','Transparent']]) },
+      pos:     { label: 'Position',         def: 'above',  items: [['bottom','Bottom'],['above','Above controls'],['top','Top']] },
+    };
+    const SUB_FAMILIES = {
+      sans: 'Arial, Helvetica, sans-serif',
+      serif: 'Georgia, "Times New Roman", serif',
+      mono: '"Courier New", Consolas, monospace',
+      round: '"Trebuchet MS", Verdana, sans-serif',
+    };
+
+    const subPref = (k) => prefs['sub_' + k] ?? SUB_OPTS[k].def;
+    const subLabel = (k) => (SUB_OPTS[k].items.find(([v]) => v === subPref(k)) || [, subPref(k)])[1];
+
+    function applyCueStyle() {
+      let tag = document.getElementById('cueStyle');
+      if (!tag) { tag = document.createElement('style'); tag.id = 'cueStyle'; document.head.appendChild(tag); }
+      const alpha = (+subPref('opacity')) / 100;
+      const bg = subPref('bg');
+      tag.textContent = 'video::cue {'
+        + ' color: rgba(' + SUB_COLORS[subPref('color')] + ',' + alpha + ');'
+        + ' background-color: ' + (bg === 'transparent' ? 'transparent' : 'rgba(' + SUB_COLORS[bg] + ',.6)') + ';'
+        + ' font-family: ' + SUB_FAMILIES[subPref('family')] + ';'
+        + ' font-size: ' + subPref('size') + '%;'
+        + ' text-shadow: ' + SUB_EDGES[subPref('edge')] + ';'
+        + ' }';
+    }
+
+    function applyCuePosition() {
+      if (!subTrack) return;
+      const pos = subPref('pos');
+      const hidden = document.getElementById('playerWrap').classList.contains('hide-controls');
+      // 'Above controls' only needs the extra clearance while the bar is on
+      // screen; once it hides there is nothing to clear, so the cue drops back
+      // down a line.
+      const line = (pos === 'above' && hidden) ? -2 : SUB_LINES[pos];
+      for (const c of subTrack.cues || []) { try { c.snapToLines = true; c.line = line; } catch {} }
+    }
+
+    // Watching the class keeps every hide/show path -- idle timeout, mouseleave,
+    // pause -- in sync without having to patch each one separately.
+    new MutationObserver(applyCuePosition).observe(
+      document.getElementById('playerWrap'), { attributes: true, attributeFilter: ['class'] });
+
+    applyCueStyle();
 
     // ---- Volume boost via Web Audio (amplifies beyond the 100% cap) ----
     let audioCtx = null, gainNode = null, boost = 1;
@@ -408,51 +522,93 @@
     }
 
     // ---- Tabbed settings menu: Captions / Speed / Volume Boost (+ Quality) ----
-    let menuTab = 'cc';
+    // The panel renders one of three views. `menuView` picks: the tab view, the
+    // Subtitle Settings list, or the value list for a single setting.
+    let menuTab = 'cc', menuView = 'main', subOptKey = null;
+
+    const menuHead = (title) => `
+      <div class="v-menu-head">
+        <button class="v-mhead-btn" data-back="1" aria-label="Back">${ICON.back}</button>
+        <span class="v-mhead-title">${title}</span>
+        <button class="v-mhead-btn" data-close="1" aria-label="Close">${ICON.close}</button>
+      </div>`;
+
     function buildMenu() {
       const menu = document.getElementById('vMenu');
       const levels = (hls && hls.levels) || [];
-      const hasSubs = subtitles.length > 0;
-      const tabs = [
-        hasSubs ? ['cc', 'CC'] : null,
-        ['speed', '🕑'],
-        ['vol', '🔊'],
-        levels.length > 1 ? ['quality', 'HD'] : null,
-      ].filter(Boolean);
-      if (!tabs.find(t => t[0] === menuTab)) menuTab = tabs[0][0];
 
-      let panel = '';
-      if (menuTab === 'cc') {
-        panel = `<h5>Captions</h5>
-          <button data-cc="-1" class="${!ccOn ? 'on' : ''}">Off</button>
-          ${subtitles.map((s, i) => `<button data-cc="${i}" class="${ccOn && curSub === i ? 'on' : ''}">${esc(s.label || s.language || 'Track ' + (i + 1))}</button>`).join('')}`;
-      } else if (menuTab === 'speed') {
-        panel = `<h5>Playback speed</h5>` + [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map(s =>
-          `<button data-s="${s}" class="${video.playbackRate === s ? 'on' : ''}">${s === 1 ? 'Normal' : s + '×'}</button>`).join('');
-      } else if (menuTab === 'vol') {
-        const pct = Math.round(boost * 100);
-        panel = `<h5>Volume Boost</h5>
-          <div style="padding:6px 10px">
-            <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--ink);margin-bottom:8px">
-              <span>Level</span><b>${boost <= 1 ? 'Off' : '+' + pct + '%'}</b></div>
-            <input id="boostSlider" type="range" min="1" max="3" step="0.05" value="${boost}" style="width:100%;accent-color:var(--pl-accent)">
-            <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-top:4px"><span>Off</span><span>+150%</span><span>+300%</span></div>
-          </div>`;
-      } else if (menuTab === 'quality') {
-        panel = `<h5>Quality</h5>
-          <button data-q="-1" class="${hls.autoLevelEnabled ? 'on' : ''}">Auto</button>` +
-          levels.map((l, i) => `<button data-q="${i}" class="${!hls.autoLevelEnabled && hls.currentLevel === i ? 'on' : ''}">${l.height ? l.height + 'p' : (l.bitrate/1000|0)+'k'}</button>`).join('');
+      if (menuView === 'subs') {
+        // Every subtitle setting, each showing its current value.
+        menu.innerHTML = menuHead('Subtitle Settings') + `<div class="v-menu-panel">` +
+          Object.keys(SUB_OPTS).map(k => `
+            <button class="v-row" data-subopt="${k}">
+              <span class="v-row-label">${SUB_OPTS[k].label}</span>
+              <span class="v-row-val">${esc(String(subLabel(k)))}${ICON.chevron}</span>
+            </button>`).join('') + `</div>`;
+
+      } else if (menuView === 'subopt' && SUB_OPTS[subOptKey]) {
+        // The values available for the setting the viewer drilled into.
+        menu.innerHTML = menuHead(SUB_OPTS[subOptKey].label) + `<div class="v-menu-panel">` +
+          SUB_OPTS[subOptKey].items.map(([v, lbl]) =>
+            `<button data-subval="${v}" class="${subPref(subOptKey) === v ? 'on' : ''}">${esc(lbl)}</button>`
+          ).join('') + `</div>`;
+
+      } else {
+        const tabs = [
+          levels.length > 1 ? ['quality', ICON.quality] : null,
+          ['cc', ICON.cc],
+          ['speed', ICON.speed],
+          ['vol', ICON.volHigh],
+        ].filter(Boolean);
+        if (!tabs.find(t => t[0] === menuTab)) menuTab = tabs[0][0];
+
+        let panel = '';
+        if (menuTab === 'cc') {
+          panel = `<button class="v-sub-link" data-subs="1">Settings</button>
+            <button data-cc="-1" class="${!ccOn ? 'on' : ''}">Off</button>
+            ${subtitles.map((s, i) => `<button data-cc="${i}" class="${ccOn && curSub === i ? 'on' : ''}">${esc(s.label || s.language || 'Track ' + (i + 1))}</button>`).join('')}`;
+        } else if (menuTab === 'speed') {
+          panel = `<h5>Playback speed</h5>` + [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map(s =>
+            `<button data-s="${s}" class="${video.playbackRate === s ? 'on' : ''}">${s === 1 ? 'Normal' : s + '×'}</button>`).join('');
+        } else if (menuTab === 'vol') {
+          const pct = Math.round(boost * 100);
+          panel = `<h5>Volume Boost</h5>
+            <div style="padding:6px 18px">
+              <div style="display:flex;justify-content:space-between;font-size:.82rem;color:#fff;margin-bottom:8px">
+                <span>Level</span><b>${boost <= 1 ? 'Off' : '+' + pct + '%'}</b></div>
+              <input id="boostSlider" type="range" min="1" max="3" step="0.05" value="${boost}" style="width:100%;accent-color:var(--pl-accent)">
+              <div style="display:flex;justify-content:space-between;font-size:.7rem;color:rgba(255,255,255,.6);margin-top:4px"><span>Off</span><span>+150%</span><span>+300%</span></div>
+            </div>`;
+        } else if (menuTab === 'quality') {
+          panel = `<h5>Quality</h5>
+            <button data-q="-1" class="${hls.autoLevelEnabled ? 'on' : ''}">Auto</button>` +
+            levels.map((l, i) => `<button data-q="${i}" class="${!hls.autoLevelEnabled && hls.currentLevel === i ? 'on' : ''}">${l.height ? l.height + 'p' : (l.bitrate/1000|0)+'k'}</button>`).join('');
+        }
+
+        menu.innerHTML = `
+          <div class="v-menu-tabs">
+            ${tabs.map(([id, lbl]) => `<button class="v-mtab${id === menuTab ? ' on' : ''}" data-tab="${id}">${lbl}</button>`).join('')}
+            <button class="v-mtab close" data-close="1" aria-label="Close">${ICON.close}</button>
+          </div>
+          <div class="v-menu-panel">${panel}</div>`;
       }
 
-      menu.innerHTML = `
-        <div class="v-menu-tabs">
-          ${tabs.map(([id, lbl]) => `<button class="v-mtab${id === menuTab ? ' on' : ''}" data-tab="${id}">${lbl}</button>`).join('')}
-          <button class="v-mtab close" data-close="1">✕</button>
-        </div>
-        <div class="v-menu-panel">${panel}</div>`;
-
+      // ---- Handlers. Each closes over its own button, so a click landing on an
+      //      inner <svg> still resolves the right dataset. ----
+      menu.querySelectorAll('[data-close]').forEach(b => b.onclick = () => menu.classList.remove('open'));
+      menu.querySelectorAll('[data-back]').forEach(b => b.onclick = () => {
+        menuView = (menuView === 'subopt') ? 'subs' : 'main'; buildMenu();
+      });
+      menu.querySelectorAll('[data-subs]').forEach(b => b.onclick = () => { menuView = 'subs'; buildMenu(); });
+      menu.querySelectorAll('[data-subopt]').forEach(b => b.onclick = () => {
+        subOptKey = b.dataset.subopt; menuView = 'subopt'; buildMenu();
+      });
+      menu.querySelectorAll('[data-subval]').forEach(b => b.onclick = () => {
+        prefs['sub_' + subOptKey] = b.dataset.subval; savePrefs();
+        applyCueStyle(); applyCuePosition();
+        menuView = 'subs'; buildMenu();
+      });
       menu.querySelectorAll('.v-mtab[data-tab]').forEach(b => b.onclick = () => { menuTab = b.dataset.tab; buildMenu(); });
-      menu.querySelector('[data-close]').onclick = () => menu.classList.remove('open');
       menu.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { video.playbackRate = +b.dataset.s; buildMenu(); });
       menu.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const q = +b.dataset.q; hls.currentLevel = q; hls.loadLevel = q; buildMenu(); });
       menu.querySelectorAll('[data-cc]').forEach(b => b.onclick = async () => {
@@ -478,6 +634,13 @@
         return (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(s).padStart(2,'0'); };
       const setPlayIcons = () => { const p = video.paused; playBtn.innerHTML = p ? ICON.play : ICON.pause; wrap.classList.toggle('paused', p); };
       const setVolIcon = () => { muteBtn.innerHTML = (video.muted || video.volume === 0) ? ICON.volMute : ICON.volHigh; };
+
+      // Static control-bar icons. Prepended rather than assigned so each
+      // button keeps the .v-tooltip span that already lives inside it.
+      for (const [id, svg] of Object.entries({
+        vBack10: ICON.back10, vFwd10: ICON.fwd10, vCC: ICON.cc,
+        vSettings: ICON.gear, vPip: ICON.pip, vFull: ICON.expand,
+      })) document.getElementById(id).insertAdjacentHTML('afterbegin', svg);
 
       const toggle = () => { video.paused ? video.play().catch(()=>{}) : video.pause(); };
       playBtn.onclick = toggle;
@@ -535,8 +698,17 @@
       }
 
       // Settings menu
-      document.getElementById('vSettings').onclick = (e) => { e.stopPropagation(); menu.classList.toggle('open'); };
-      document.addEventListener('click', (e) => { if (!e.target.closest('#vMenu') && !e.target.closest('#vSettings')) menu.classList.remove('open'); });
+      document.getElementById('vSettings').onclick = (e) => { e.stopPropagation(); menuView = 'main'; buildMenu(); menu.classList.toggle('open'); };
+      // Close only on clicks that started outside the menu.
+      // NOTE: every click inside the menu rebuilds it, which detaches the clicked
+      // node before this listener runs -- closest() would then walk a detached
+      // tree and wrongly report the click as 'outside', closing the menu on the
+      // viewer mid-navigation. composedPath() is captured when the event is
+      // dispatched, so it still shows where the click actually began.
+      document.addEventListener('click', (e) => {
+        const startedInside = e.composedPath().some(n => n.id === 'vMenu' || n.id === 'vSettings');
+        if (!startedInside) menu.classList.remove('open');
+      });
 
       // PiP
       const pipBtn = document.getElementById('vPip');
@@ -549,7 +721,9 @@
       // Auto-hide controls
       let hideT = null;
       const show = () => { wrap.classList.remove('hide-controls', 'hide-cursor'); clearTimeout(hideT);
-        hideT = setTimeout(() => { if (!video.paused) { wrap.classList.add('hide-controls', 'hide-cursor'); menu.classList.remove('open'); } }, 2600); };
+        // Do not idle-hide while the settings menu is open -- reading it without
+        // moving the mouse used to make it vanish mid-navigation.
+        hideT = setTimeout(() => { if (!video.paused && !menu.classList.contains('open')) { wrap.classList.add('hide-controls', 'hide-cursor'); menu.classList.remove('open'); } }, 2600); };
       wrap.addEventListener('mousemove', show);
       wrap.addEventListener('mouseleave', () => { if (!video.paused) wrap.classList.add('hide-controls'); });
       show();

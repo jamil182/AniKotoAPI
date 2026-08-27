@@ -253,51 +253,72 @@ img { display: block; max-width: 100%; }
 @keyframes vspin { to { transform: rotate(360deg); } }
 
 /* Skip Intro */
-.skip-intro { position: absolute; right: 24px; bottom: 76px; z-index: 6; padding: 11px 20px; border-radius: 8px; border: none; background: rgba(20,24,33,.92); color: #fff; font-family: var(--font-body); font-size: .9rem; font-weight: 600; cursor: pointer; display: none; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+.skip-intro { position: absolute; right: 24px; bottom: 84px; z-index: 6; padding: 11px 20px; border-radius: 8px; border: none; background: rgba(20,24,33,.92); color: #fff; font-family: var(--font-body); font-size: .9rem; font-weight: 600; cursor: pointer; display: none; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
 .skip-intro.show { display: block; }
 .skip-intro:hover { background: var(--pl-accent); color: #111; }
 
 /* Controls */
-.v-controls { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; padding: 0 12px 8px; background: linear-gradient(0deg, rgba(0,0,0,.75), transparent); opacity: 1; transition: opacity .25s; }
+.v-controls { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; padding: 0; background: linear-gradient(0deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.42) 46%, transparent 100%); opacity: 1; transition: opacity .25s; }
 .player-wrap.hide-controls .v-controls { opacity: 0; pointer-events: none; }
 
-.v-seek { position: relative; height: 16px; display: flex; align-items: center; cursor: pointer; }
-.v-seek-track { position: relative; width: 100%; height: 4px; background: rgba(255,255,255,.25); border-radius: 3px; }
-.v-buffered { position: absolute; left: 0; top: 0; height: 100%; background: rgba(255,255,255,.35); border-radius: 3px; width: 0; }
-.v-progress { position: absolute; left: 0; top: 0; height: 100%; background: var(--pl-accent); border-radius: 3px; width: 0; }
+.v-seek { position: relative; height: 15px; display: flex; align-items: center; cursor: pointer; }
+.v-seek-track { position: relative; width: 100%; height: 4px; background: rgba(255,255,255,.3); border-radius: 0; }
+.v-buffered { position: absolute; left: 0; top: 0; height: 100%; background: rgba(255,255,255,.45); border-radius: 0; width: 0; }
+.v-progress { position: absolute; left: 0; top: 0; height: 100%; background: var(--pl-accent); border-radius: 0; width: 0; }
 .v-thumb { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: var(--pl-accent); transform: translate(-50%,-50%); left: 0; opacity: 0; transition: opacity .12s; }
 .v-seek:hover .v-thumb { opacity: 1; }
 .v-seek:hover .v-seek-track { height: 6px; }
 
-.v-bar { display: flex; align-items: center; gap: 4px; padding-top: 6px; }
-.v-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 34px; padding: 0 7px; border: none; background: transparent; color: #fff; cursor: pointer; border-radius: 6px; font-size: .95rem; font-family: var(--font-body); position: relative; }
+.v-bar { display: flex; align-items: center; gap: 6px; height: 52px; padding: 0 12px; background: transparent; }
+.v-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; height: 38px; padding: 0 7px; border: none; background: transparent; color: #fff; cursor: pointer; border-radius: 6px; font-size: .95rem; font-family: var(--font-body); position: relative; }
 .v-btn:hover { background: rgba(255,255,255,.14); }
-.v-btn svg { width: 20px; height: 20px; fill: currentColor; }
+.v-btn svg { width: 22px; height: 22px; fill: currentColor; }
 .v-btn.on { color: var(--pl-accent); }
 .v-btn[disabled] { opacity: .4; cursor: default; }
-.v-time { color: #fff; font-size: .78rem; font-variant-numeric: tabular-nums; padding: 0 8px; white-space: nowrap; }
+.v-time { color: #fff; font-size: .82rem; font-variant-numeric: tabular-nums; padding: 0 10px; white-space: nowrap; }
 .v-spacer { margin-left: auto; }
 .v-vol-wrap { display: flex; align-items: center; }
 .v-vol { width: 0; opacity: 0; transition: width .2s, opacity .2s; height: 4px; accent-color: var(--pl-accent); cursor: pointer; }
 .v-vol-wrap:hover .v-vol, .v-vol:focus { width: 72px; opacity: 1; margin: 0 6px; }
 
 /* Settings menu */
-.v-menu { position: absolute; right: 12px; bottom: 58px; z-index: 7; background: rgba(20,24,33,.97); border: 1px solid var(--border-hi); border-radius: 10px; padding: 8px; min-width: 180px; display: none; box-shadow: var(--shadow); }
+.v-menu { position: absolute; right: 12px; bottom: 68px; z-index: 7; background: rgba(38,38,41,.98); border: none; border-radius: 6px; padding: 0; min-width: 300px; display: none; box-shadow: var(--shadow); overflow: hidden; }
 .v-menu.open { display: block; }
-.v-menu-tabs { display: flex; align-items: center; gap: 2px; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 6px; }
-.v-mtab { min-width: 38px; height: 32px; border: none; background: transparent; color: var(--muted); font-size: .82rem; font-family: var(--font-body); cursor: pointer; border-radius: 6px; border-bottom: 2px solid transparent; }
-.v-mtab:hover { color: var(--ink); }
-.v-mtab.on { color: var(--ink); border-bottom-color: var(--pl-accent); }
-.v-mtab.close { margin-left: auto; min-width: 30px; }
-.v-menu-panel { max-height: 240px; overflow-y: auto; }
-.v-menu h5 { margin: 6px 8px 4px; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-.v-menu button { display: block; width: 100%; text-align: left; padding: 7px 10px; border: none; background: transparent; color: var(--body); font-family: var(--font-body); font-size: .82rem; border-radius: 6px; cursor: pointer; }
-.v-menu button:hover { background: var(--surface-hi); color: var(--ink); }
-.v-menu button.on { color: var(--accent-hi); }
-.v-tooltip { position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); background: rgba(20,24,33,.95); color: #fff; font-size: .7rem; padding: 4px 8px; border-radius: 5px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .12s; }
+.v-menu-tabs { display: flex; align-items: center; gap: 4px; border-bottom: none; padding: 4px 10px 0; margin-bottom: 0; }
+.v-mtab { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 42px; border: none; background: transparent; color: rgba(255,255,255,.7); font-size: .82rem; font-family: var(--font-body); cursor: pointer; border-radius: 0; border-bottom: 2px solid transparent; }
+.v-mtab svg { width: 20px; height: 20px; fill: currentColor; }
+.v-mtab:hover { color: #fff; }
+.v-mtab.on { color: #fff; border-bottom-color: var(--pl-accent); }
+.v-mtab.close { margin-left: auto; min-width: 38px; }
+.v-menu-panel { max-height: 214px; overflow-y: auto; padding: 6px 0; }
+.v-menu-panel::-webkit-scrollbar { width: 8px; }
+.v-menu-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,.28); border-radius: 4px; }
+.v-menu h5 { margin: 4px 18px 4px; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.v-menu button { display: block; width: 100%; text-align: left; padding: 9px 18px 9px 30px; border: none; background: transparent; color: rgba(255,255,255,.82); font-family: var(--font-body); font-size: .88rem; border-radius: 0; cursor: pointer; position: relative; }
+.v-menu button:hover { background: rgba(255,255,255,.09); color: #fff; }
+/* Selected row is marked with a leading dot, the way the reference player does. */
+.v-menu button.on { color: #fff; font-weight: 600; }
+.v-menu button.on::before { content: "•"; position: absolute; left: 14px; color: var(--pl-accent); }
+/* Subtitle Settings sub-views: header, drill-down rows, and the entry link */
+.v-menu-head { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.v-mhead-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 38px; border: none; background: transparent; color: rgba(255,255,255,.8); cursor: pointer; border-radius: 6px; padding: 0; }
+.v-mhead-btn:hover { color: #fff; background: rgba(255,255,255,.1); }
+.v-mhead-btn svg { width: 20px; height: 20px; fill: currentColor; }
+.v-mhead-btn:last-child { margin-left: auto; }
+.v-mhead-title { color: #fff; font-size: .9rem; font-weight: 600; font-family: var(--font-body); }
+/* Row shows the setting on the left and its current value on the right. */
+.v-menu button.v-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px 10px 18px; }
+.v-row-label { color: rgba(255,255,255,.9); }
+.v-row-val { display: inline-flex; align-items: center; gap: 2px; color: rgba(255,255,255,.62); white-space: nowrap; }
+.v-row-val svg { width: 15px; height: 15px; fill: none; }
+/* "Settings" entry point sits above the caption list, right aligned. */
+.v-menu button.v-sub-link { text-align: right; padding: 8px 18px; color: rgba(255,255,255,.9); text-decoration: underline; font-size: .84rem; }
+
+.v-tooltip { position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%); background: rgba(20,24,33,.95); color: #fff; font-size: .7rem; padding: 4px 8px; border-radius: 5px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .12s; }
 .v-btn:hover .v-tooltip { opacity: 1; }
 
-video::cue { background: rgba(0,0,0,.7); color: #fff; font-family: var(--font-body); }
+/* video::cue is written at runtime by applyCueStyle() in watch.html, so the
+   viewer's Subtitle Settings stay the single source of truth. */
 
 /* ---- Watch page: enriched layout ---- */
 .watch2 { display: grid; grid-template-columns: 1fr 300px; gap: 24px; padding: 24px 0 60px; align-items: start; }
