@@ -106,6 +106,9 @@
     let hls = null, episodes = [], skipData = null, curIndex = -1;
     let serverBtns = [], serverMap = new Map(), tried = new Set();
     let subtitles = [], ccOn = false;
+    // What to do when hls fatally errors — set per render path (server chain
+    // fallback for Anikoto scrapes, a plain message for the embed path).
+    let onPlaybackFail = () => { showMsg('This server failed — trying another…'); fallbackToNext(); };
 
     // ---- SVG icons ----
     const ICON = {
@@ -144,7 +147,7 @@
         hls.loadSource(src); hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => { buildMenu(); applySubtitle(); if (pref('autoplay', true)) video.play().catch(() => {}); });
         hls.on(Hls.Events.ERROR, (_e, d) => {
-          if (d.fatal) { destroyHls(); showMsg('This server failed — trying another…'); fallbackToNext(); }
+          if (d.fatal) { destroyHls(); onPlaybackFail(); }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = src; applySubtitle(); if (pref('autoplay', true)) video.play().catch(() => {});
@@ -170,6 +173,7 @@
     }
 
     function renderServers(servers) {
+      onPlaybackFail = () => { showMsg('This server failed — trying another…'); fallbackToNext(); };
       const box = document.getElementById('servers');
       if (!servers.length) { box.innerHTML = '<div class="state">No servers.</div>'; showMsg('No servers available.'); return; }
       const groups = {};
@@ -197,6 +201,7 @@
     // Every episode carries embed URLs as JSON {sub?, dub?} (Anikoto s-2 or
     // MAL/AniList), so playback is one uniform path.
     function renderLangServers(embeds) {
+      onPlaybackFail = () => showMsg('This stream failed to play. Try the other language or another episode.');
       const box = document.getElementById('servers');
       const langs = [];
       if (embeds.sub) langs.push(['SUB', embeds.sub]);

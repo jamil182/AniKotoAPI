@@ -125,12 +125,38 @@ const assertProxyableUrl = (rawUrl) => {
     return { ok: false, status: 403, message: "Domain not allowed for proxy" };
   }
 
-  const isAllowed = PROXY_DOMAINS.some(d => hostname === d || hostname.endsWith(`.${d}`));
+  const isAllowed =
+    PROXY_DOMAINS.some(d => hostname === d || hostname.endsWith(`.${d}`)) ||
+    resolvedHosts.has(hostname);
   if (!isAllowed) {
     return { ok: false, status: 403, message: "Domain not allowed for proxy" };
   }
 
   return { ok: true, url };
+};
+
+// ══════════════════════════════════════════════════════════════
+// DYNAMIC HOST TRUST
+// ══════════════════════════════════════════════════════════════
+
+// Stream CDNs rotate hostnames (megap.norami.top, megap.shiora.top, …). Rather
+// than chase them in the static list, we trust a host once it appears in a
+// stream our OWN server resolved, or in a playlist we fetched from an already-
+// trusted origin. The private-address guard in assertProxyableUrl still runs
+// first, so a resolver can never make an internal host proxyable.
+const resolvedHosts = new Set();
+
+/**
+ * Remember a hostname that our resolver/playlist produced, so the proxy may
+ * fetch from it. Ignores private/loopback hosts. Capped to bound memory.
+ * @param {string} hostname
+ */
+const rememberResolvedHost = (hostname) => {
+  if (!hostname) return;
+  const h = hostname.toLowerCase();
+  if (isPrivateAddress(h)) return;
+  resolvedHosts.add(h);
+  if (resolvedHosts.size > 1000) resolvedHosts.clear();
 };
 
 // ---- FEATURE: CDN Request Headers ----
@@ -175,6 +201,6 @@ const stripToTsSync = (buf) => {
   return buf;
 };
 
-export { assertProxyableUrl, streamRefererHeaders, stripToTsSync };
+export { assertProxyableUrl, streamRefererHeaders, stripToTsSync, rememberResolvedHost };
 
 // ══════════════════════════════════════════════════════════════ END: streamProxy.helper.js

@@ -50,7 +50,7 @@ import { getCompletedAnime } from "../controllers/completedAnime.controller.js";
 import { categoryRoutes } from "./category.route.js";
 import { getMirrorStatus, resetMirrorCache, getProxyStatus } from "../helper/mirror.helper.js";
 import { getCacheStats } from "../helper/cache.helper.js";
-import { assertProxyableUrl, streamRefererHeaders, stripToTsSync } from "../helper/streamProxy.helper.js";
+import { assertProxyableUrl, streamRefererHeaders, stripToTsSync, rememberResolvedHost } from "../helper/streamProxy.helper.js";
 import { adminAuth } from "../middleware/adminAuth.js";
 import { getDb } from "../db/index.js";
 import { ingestAnikoto, ingestMalEpisode, malEmbedUrl } from "../services/adminIngest.js";
@@ -274,6 +274,9 @@ app.use((req, res, next) => {
         const t = line.trim();
         if (!t || t.startsWith("#")) return line;   // tags and comments unchanged
         const abs = t.startsWith("http") ? t : new URL(t, baseUrl).href;
+        // This playlist came from an already-trusted origin, so the hosts it
+        // references (rotating CDNs) are trusted for the follow-up requests.
+        try { rememberResolvedHost(new URL(abs).hostname); } catch { /* skip */ }
         // Sub-playlists stay on the m3u8 proxy; any other URI is a segment.
         const ep = t.includes(".m3u8") ? "/api/stream/proxy" : "/api/stream/ts-proxy";
         return `${ep}?url=${encodeURIComponent(abs)}`;
@@ -839,6 +842,7 @@ app.get("/api/openapi", (req, res) => {
     if (!check.ok) return res.status(check.status).json({ success: false, message: check.message });
     const r = await resolveStreamUrl(url);
     if (!r.url) return res.status(502).json({ success: false, message: r.error || "no stream" });
+    try { rememberResolvedHost(new URL(r.url).hostname); } catch { /* skip */ }
     res.json({ success: true, results: r });
   });
 };
