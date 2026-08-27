@@ -14,21 +14,42 @@
   <header id="nav"></header>
 
   <div class="wrap">
-    <div class="watch">
+    <div class="watch2">
       <div>
-        <div class="player-wrap">
+        <div class="player-wrap" id="playerWrap">
           <video id="video" controls playsinline></video>
           <div class="player-msg" id="playerMsg"><div class="box">Loading…</div></div>
         </div>
-        <h1 class="watch-title" id="title">Loading…</h1>
-        <div class="watch-sub" id="sub"></div>
-        <div class="servers-box" id="servers"></div>
-      </div>
-      <aside>
-        <div class="watch-eps">
-          <h4>Episodes</h4>
-          <div id="epList"></div>
+        <div class="player-toolbar" id="toolbar">
+          <button class="tbtn" id="tbPrev" title="Previous episode">‹ Prev</button>
+          <button class="tbtn" id="tbNext" title="Next episode">Next ›</button>
+          <button class="tbtn" id="tbAutoPlay"><span class="dot"></span>Auto Play</button>
+          <button class="tbtn" id="tbAutoNext"><span class="dot"></span>Auto Next</button>
+          <button class="tbtn" id="tbAutoSkip"><span class="dot"></span>Auto Skip</button>
+          <button class="tbtn spacer" id="tbLight"><span class="dot"></span>Light</button>
+          <button class="tbtn" id="tbExpand" title="Fullscreen">⤢ Expand</button>
         </div>
+
+        <div id="countdown"></div>
+
+        <div class="watch-row">
+          <div class="now-watching" id="nowWatching">Loading…</div>
+          <div class="servers-inner" id="servers"></div>
+        </div>
+
+        <div class="ep-block">
+          <div class="ep-block-head">
+            <h3>Episodes</h3>
+            <select class="ep-range" id="epRange"></select>
+          </div>
+          <div class="ep-nums" id="epNums"></div>
+        </div>
+
+        <div id="infoPanel"></div>
+      </div>
+
+      <aside>
+        <div class="related" id="related"><h3>Related</h3><div class="state">—</div></div>
       </aside>
     </div>
   </div>
@@ -46,64 +67,71 @@
   <script>
     mountNav();
 
-    // Path: /watch/<slug>/<ep>
     const parts = location.pathname.replace(/^\/watch\//, '').split('/');
     const slug = decodeURIComponent(parts[0] || '');
     const epNo = decodeURIComponent(parts[1] || '1');
 
     const video = document.getElementById('video');
     const msg = document.getElementById('playerMsg');
-    let hls = null;
-    let episodes = [];
+    let hls = null, episodes = [], skipData = null, curIndex = -1;
+    let serverBtns = [], serverMap = new Map(), tried = new Set();
 
-    const showMsg = (html) => { msg.innerHTML = `<div class="box">${html}</div>`; msg.style.display = 'flex'; };
+    const showMsg = (h) => { msg.innerHTML = `<div class="box">${h}</div>`; msg.style.display = 'flex'; };
     const hideMsg = () => { msg.style.display = 'none'; };
+    const epUrl = (n) => `/watch/${encodeURIComponent(slug)}/${encodeURIComponent(n)}`;
 
+    // ---- Persisted toggles ----
+    const prefs = (() => { try { return JSON.parse(localStorage.getItem('anijs_watch') || '{}'); } catch { return {}; } })();
+    const savePrefs = () => { try { localStorage.setItem('anijs_watch', JSON.stringify(prefs)); } catch {} };
+    const pref = (k, def) => (k in prefs ? prefs[k] : def);
+
+    // ---- HLS playback ----
     function destroyHls() { if (hls) { hls.destroy(); hls = null; } }
+    // Move to the next server that hasn't been tried yet. Returns false if none.
+    // Selects directly (not via .click()) so it does NOT reset the tried set —
+    // only a user's manual pick clears it.
+    function fallbackToNext() {
+      const next = serverBtns.find(b => !tried.has(serverMap.get(b).link_id));
+      if (!next) { showMsg('All servers failed for this episode. Try another episode.'); return false; }
+      selectServer(serverMap.get(next), next);
+      return true;
+    }
 
-    // Play a resolved master m3u8 through the same-origin proxy (which applies
-    // the CDN Referer and de-obfuscates segments server-side).
     function play(masterUrl) {
       const src = '/api/stream/proxy?url=' + encodeURIComponent(masterUrl);
-      destroyHls();
-      hideMsg();
+      destroyHls(); hideMsg();
       if (window.Hls && Hls.isSupported()) {
         hls = new Hls({ maxBufferLength: 30 });
-        hls.loadSource(src);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
-        hls.on(Hls.Events.ERROR, (_e, data) => {
-          if (data.fatal) {
-            destroyHls();
-            showMsg(`Playback failed on this server.<br><button id="tryAnother">Try another server</button>`);
-            document.getElementById('tryAnother').onclick = () => document.querySelector('.server-btn:not(.on)')?.click();
-          }
+        hls.loadSource(src); hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => { if (pref('autoplay', true)) video.play().catch(() => {}); });
+        hls.on(Hls.Events.ERROR, (_e, d) => {
+          if (d.fatal) { destroyHls(); showMsg('This server failed — trying another…'); fallbackToNext(); }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = src; // Safari native HLS
-        video.play().catch(() => {});
-      } else {
-        showMsg('This browser cannot play HLS.');
-      }
+        video.src = src; if (pref('autoplay', true)) video.play().catch(() => {});
+      } else { showMsg('This browser cannot play HLS.'); }
     }
 
     async function selectServer(server, btn) {
+      tried.add(server.link_id);
       document.querySelectorAll('.server-btn').forEach(b => b.classList.toggle('on', b === btn));
       showMsg('Resolving stream…');
       try {
         const r = await apiGet('/stream/resolve?id=' + encodeURIComponent(server.link_id));
         if (!r.url) throw new Error(r.error || 'No stream URL');
+        skipData = r.skipData || null;
         play(r.url);
       } catch (e) {
-        showMsg(`Couldn't resolve this server (${esc(e.message)}).<br><button id="retryS">Retry</button>`);
-        document.getElementById('retryS').onclick = () => selectServer(server, btn);
+        // Resolve failed — fall through to the next server automatically.
+        if (!fallbackToNext()) {
+          showMsg(`Couldn't resolve any server (${esc(e.message)}).`);
+        }
       }
     }
 
     function renderServers(servers) {
       const box = document.getElementById('servers');
-      if (!servers.length) { box.innerHTML = '<div class="state">No servers for this episode.</div>'; showMsg('No servers available.'); return; }
-      // group by type (sub / dub / …)
+      if (!servers.length) { box.innerHTML = '<div class="state">No servers.</div>'; showMsg('No servers available.'); return; }
       const groups = {};
       servers.forEach(s => { (groups[s.type] = groups[s.type] || []).push(s); });
       box.innerHTML = Object.entries(groups).map(([type, list]) => `
@@ -113,52 +141,156 @@
             ${list.map((s, i) => `<button class="server-btn" data-type="${esc(type)}" data-i="${i}">${esc(s.name)}</button>`).join('')}
           </div>
         </div>`).join('');
-      // wire buttons
-      box.querySelectorAll('.server-btn').forEach(btn => {
+      serverBtns = [...box.querySelectorAll('.server-btn')];
+      serverMap = new Map();
+      serverBtns.forEach(btn => {
         const s = groups[btn.dataset.type][+btn.dataset.i];
-        btn.onclick = () => selectServer(s, btn);
+        serverMap.set(btn, s);
+        // A manual pick starts a fresh fallback chain from that server.
+        btn.onclick = () => { tried.clear(); selectServer(s, btn); };
       });
-      // auto-select the first server
-      box.querySelector('.server-btn')?.click();
+      // Auto-start the first server directly (fresh chain; tried already empty).
+      if (serverBtns[0]) selectServer(serverMap.get(serverBtns[0]), serverBtns[0]);
     }
 
-    function renderEpList() {
-      const el = document.getElementById('epList');
-      if (!episodes.length) { el.innerHTML = '<div class="state">—</div>'; return; }
-      el.innerHTML = episodes.map(e => `
-        <button class="watch-ep${String(e.episode_no) === String(epNo) ? ' on' : ''}"
-                onclick="location.href='/watch/${encodeURIComponent(slug)}/${encodeURIComponent(e.episode_no)}'">
-          Episode ${esc(e.episode_no)}${e.title ? ' — ' + esc(e.title) : ''}
-        </button>`).join('');
+    // ---- Episode grid with 100-episode ranges ----
+    function renderEpisodeGrid() {
+      const range = document.getElementById('epRange');
+      const nums = document.getElementById('epNums');
+      const total = episodes.length;
+      const size = 100;
+      const ranges = [];
+      for (let s = 0; s < total; s += size) ranges.push([s, Math.min(s + size, total)]);
+      // which range holds the current episode?
+      curIndex = episodes.findIndex(e => String(e.episode_no) === String(epNo));
+      const activeRange = Math.max(0, Math.floor((curIndex < 0 ? 0 : curIndex) / size));
+
+      range.innerHTML = ranges.map(([a, b], i) =>
+        `<option value="${i}"${i === activeRange ? ' selected' : ''}>${episodes[a].episode_no}-${episodes[b - 1].episode_no}</option>`).join('');
+
+      const drawRange = (ri) => {
+        const [a, b] = ranges[ri];
+        nums.innerHTML = episodes.slice(a, b).map(e =>
+          `<a class="ep-num${String(e.episode_no) === String(epNo) ? ' on' : ''}" href="${epUrl(e.episode_no)}" title="${e.title ? esc(e.title) : 'Episode ' + esc(e.episode_no)}">${esc(e.episode_no)}</a>`).join('');
+      };
+      range.onchange = () => drawRange(+range.value);
+      drawRange(activeRange);
+    }
+
+    function renderRelated(items) {
+      const el = document.getElementById('related');
+      const list = (items || []).slice(0, 12);
+      el.innerHTML = `<h3>Related</h3>` + (list.length
+        ? list.map(it => `
+            <div class="related-row" data-slug="${esc(animeSlug(it.slug))}">
+              <img loading="lazy" src="${esc(it.poster)}" alt="" onerror="this.style.visibility='hidden'">
+              <div><div class="t">${esc(it.title)}</div><div class="m">${esc(it.type || 'Anime')}</div></div>
+            </div>`).join('')
+        : '<div class="state">No related titles.</div>');
+    }
+
+    function renderInfo(w) {
+      const jp = w.japaneseTitle && w.japaneseTitle !== w.title ? w.japaneseTitle : '';
+      document.getElementById('infoPanel').innerHTML = `
+        <div class="watch-info">
+          <img src="${esc(w.poster)}" alt="${esc(w.title)}" onerror="this.style.visibility='hidden'">
+          <div>
+            <h2>${esc(w.title)}</h2>
+            ${jp ? `<div class="alt">${esc(jp)}</div>` : ''}
+            <div class="detail-meta" style="margin-bottom:10px">
+              ${w.type ? `<span class="badge">${esc(w.type)}</span>` : ''}
+              ${w.status ? `<span class="badge">${esc(w.status)}</span>` : ''}
+              ${w.rating ? `<span class="badge q">★ ${esc(String(w.rating).replace(/\s+/g,' ').trim())}</span>` : ''}
+            </div>
+            ${w.synopsis ? `<p class="syn">${esc(w.synopsis)}</p>` : ''}
+            <div style="margin-top:10px"><a href="/anime/${encodeURIComponent(slug)}" style="color:var(--accent-hi);font-size:.85rem">Full details →</a></div>
+          </div>
+        </div>`;
+    }
+
+    function renderCountdown(ts) {
+      const el = document.getElementById('countdown');
+      if (!ts) { el.innerHTML = ''; return; }
+      const target = Number(ts) * 1000;
+      const tick = () => {
+        const diff = target - Date.now();
+        if (diff <= 0) { el.innerHTML = ''; return; }
+        const d = Math.floor(diff / 86400000), h = Math.floor(diff % 86400000 / 3600000),
+              m = Math.floor(diff % 3600000 / 60000), s = Math.floor(diff % 60000 / 1000);
+        el.innerHTML = `<div class="countdown">🔔 Next episode in <b>${d}d ${h}h ${m}m ${s}s</b></div>`;
+        setTimeout(tick, 1000);
+      };
+      tick();
+    }
+
+    // ---- Toolbar ----
+    function setToggle(btn, key, def, onChange) {
+      let val = pref(key, def);
+      const apply = () => { btn.classList.toggle('on', val); if (onChange) onChange(val); };
+      btn.onclick = () => { val = !val; prefs[key] = val; savePrefs(); apply(); };
+      apply();
+    }
+
+    function wireToolbar() {
+      const goto = (n) => { location.href = epUrl(n); };
+      const prevBtn = document.getElementById('tbPrev'), nextBtn = document.getElementById('tbNext');
+      prevBtn.disabled = curIndex <= 0;
+      nextBtn.disabled = curIndex < 0 || curIndex >= episodes.length - 1;
+      prevBtn.onclick = () => { if (curIndex > 0) goto(episodes[curIndex - 1].episode_no); };
+      nextBtn.onclick = () => { if (curIndex >= 0 && curIndex < episodes.length - 1) goto(episodes[curIndex + 1].episode_no); };
+
+      setToggle(document.getElementById('tbAutoPlay'), 'autoplay', true);
+      setToggle(document.getElementById('tbAutoNext'), 'autonext', false);
+      setToggle(document.getElementById('tbAutoSkip'), 'autoskip', true);
+      setToggle(document.getElementById('tbLight'), 'light', false, (on) => document.body.classList.toggle('dimmed', on));
+
+      document.getElementById('tbExpand').onclick = () => {
+        const wrap = document.getElementById('playerWrap');
+        if (!document.fullscreenElement) wrap.requestFullscreen?.(); else document.exitFullscreen?.();
+      };
+
+      // Auto Skip: jump past intro/outro when enabled
+      video.addEventListener('timeupdate', () => {
+        if (!pref('autoskip', true) || !skipData) return;
+        const t = video.currentTime;
+        for (const seg of [skipData.intro, skipData.outro]) {
+          if (Array.isArray(seg) && seg[1] > seg[0] && t >= seg[0] && t < seg[1] - 0.5) { video.currentTime = seg[1]; break; }
+        }
+      });
+      // Auto Next: advance when the episode ends
+      video.addEventListener('ended', () => {
+        if (pref('autonext', false) && curIndex >= 0 && curIndex < episodes.length - 1) goto(episodes[curIndex + 1].episode_no);
+      });
     }
 
     async function boot() {
       if (!slug) { showMsg('No anime specified.'); return; }
       showMsg('Loading episode…');
       try {
-        // Episodes drive playback; info is fetched alongside just for the title
-        // (the episodes payload has no title), and must not block playback.
-        const [eps, info] = await Promise.all([
+        // /episodes drives the grid + switching; /watch gives rich metadata,
+        // related titles and the next-episode time in one call.
+        const [eps, w] = await Promise.all([
           apiGet('/episodes/' + encodeURIComponent(slug)),
-          apiGet('/info?id=' + encodeURIComponent(slug)).catch(() => null),
+          apiGet(`/watch?slug=${encodeURIComponent(slug)}&ep=${encodeURIComponent(epNo)}`).catch(() => null),
         ]);
         episodes = eps.episodes || [];
         const ep = episodes.find(e => String(e.episode_no) === String(epNo)) || episodes[0];
         if (!ep) throw new Error('Episode not found');
 
-        const animeTitle = (info && info.title) || eps.title || slug;
-        document.getElementById('title').textContent = animeTitle;
-        document.getElementById('sub').innerHTML =
-          `Episode ${esc(ep.episode_no)} · <a href="/anime/${encodeURIComponent(slug)}" style="color:var(--accent-hi)">details</a>`;
-        document.title = `${animeTitle} — Ep ${ep.episode_no} — AniJs`;
+        const title = (w && w.title) || eps.title || slug;
+        document.title = `${title} — Ep ${ep.episode_no} — AniJs`;
+        document.getElementById('nowWatching').innerHTML =
+          `You're watching<br><b>Episode ${esc(ep.episode_no)}</b><br><span style="font-size:.78rem">If a server doesn't work, try another.</span>`;
 
-        renderEpList();
+        renderEpisodeGrid();
+        wireToolbar();
+        if (w) { renderInfo(w); renderRelated(w.recommended); renderCountdown(w.nextEpisodeTimestamp); }
 
         const servers = await apiGet('/servers?ids=' + encodeURIComponent(ep.server_ids));
         renderServers(servers);
       } catch (e) {
-        showMsg(`Couldn't load this episode (${esc(e.message)}).<br><button id="retryB">Retry</button>`);
-        document.getElementById('retryB').onclick = boot;
+        showMsg(`Couldn't load this episode (${esc(e.message)}).<br><button id="rb">Retry</button>`);
+        document.getElementById('rb').onclick = boot;
       }
     }
 
