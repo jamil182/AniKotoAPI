@@ -148,7 +148,7 @@ function buildUrl(path, baseUrl = workingMirror) {
  * Fetch with automatic mirror fallback and proxy support
  * @param {string} path - URL path to fetch
  * @param {object} options - Additional options
- * @returns {Promise<{data: string, mirror: string, proxy: string}>}
+ * @returns {Promise<{data: string, mirror: string, proxy: string, finalUrl: string}>}
  */
 async function fetchWithMirror(path, options = {}) {
   const { 
@@ -222,10 +222,17 @@ async function fetchWithMirror(path, options = {}) {
             setCache(MIRROR_CACHE_KEY, mirror, MIRROR_CACHE_TTL);
             console.log(`[MIRROR] Switched to: ${mirror}`);
           }
-          return { 
+          return {
             data: response.data,
             mirror,
-            proxy: "direct"
+            proxy: "direct",
+            // NOTE: URL after redirects. Under Node this lives on request.res,
+            // not on request.responseURL — that field is XHR-only and is always
+            // undefined here. Callers that derive a slug from the landing page
+            // (e.g. /random) need this.
+            finalUrl: response.request?.res?.responseUrl
+              || response.request?._redirectable?._currentUrl
+              || url,
           };
         }
 
@@ -267,6 +274,9 @@ async function fetchWithMirror(path, options = {}) {
           data: proxyResult.data,
           mirror: mirrorsToTry[0],
           proxy: proxyResult.proxy,
+          // NOTE: The proxy backends do not report a post-redirect URL,
+          // so the requested URL is the best available answer.
+          finalUrl: buildUrl(path, mirrorsToTry[0]),
         };
       } catch (proxyError) {
         console.log(`[MIRROR] Proxy also failed: ${proxyError.message}`);

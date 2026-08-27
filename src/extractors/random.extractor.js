@@ -17,9 +17,6 @@
  */
 
 import * as cheerio from "cheerio";
-import axios from "axios";
-import { headers } from "../configs/header.config.js";
-import { URLS } from "../configs/dataUrl.js";
 import { fetchWithMirror } from "../helper/mirror.helper.js";
 
 // ══════════════════════════════════════════════════════════════
@@ -28,9 +25,9 @@ import { fetchWithMirror } from "../helper/mirror.helper.js";
 
 // ---- FEATURE: Fetch a random anime and extract its detail metadata ----
 /**
- * Hits the random endpoint on anikototv.to which redirects to a random
- * anime page. Follows up to 5 redirects, extracts the final URL to get
- * the slug, then parses the full anime detail page for metadata.
+ * Hits the /random endpoint, which redirects to a random anime page.
+ * Reads the post-redirect URL to get the slug, then parses the full
+ * anime detail page for metadata.
  *
  * @returns {Promise<Object>} Random anime data with slug, title, poster, synopsis, etc.
  *
@@ -41,17 +38,14 @@ import { fetchWithMirror } from "../helper/mirror.helper.js";
  */
 const extractRandom = async () => {
   try {
-    const { data, request } = await axios.get(URLS.random, {
-      headers,
-      // NOTE: maxRedirects=5 allows following the redirect chain from /random to the final anime page
-      maxRedirects: 5,
-      // NOTE: validateStatus < 400 prevents axios from throwing on redirects (3xx)
-      validateStatus: (status) => status < 400
-    });
+    // NOTE: Goes through the mirror rotation like every other extractor.
+    // It previously hit URLS.random directly, pinning it to the primary
+    // domain — so this endpoint broke whenever that one domain did.
+    const { data, finalUrl } = await fetchWithMirror("/random");
 
-    // NOTE: request.responseURL contains the final URL after all redirects
-    const finalUrl = request?.responseURL || URLS.random;
-    const slug = finalUrl.split("/watch/").pop() || "";
+    // NOTE: A non-redirecting response leaves finalUrl on /random, which has
+    // no slug to take. Guard so a bad fetch yields "" rather than a URL.
+    const slug = finalUrl?.includes("/watch/") ? finalUrl.split("/watch/").pop() : "";
 
     const $ = cheerio.load(data);
 
