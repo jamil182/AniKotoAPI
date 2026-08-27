@@ -78,16 +78,17 @@
       box.innerHTML = '<div class="state">Searching…</div>';
       const r = await adminGet('/search?keyword=' + encodeURIComponent(document.getElementById('aSearch').value.trim()));
       const items = r.results || [];
-      // NOTE: use data-aslug (not data-slug) — api.js installs a global
-      // [data-slug] click listener that would navigate away from this page.
+      // NOTE: use data-aslug / data-anid (NOT data-slug / data-id) — api.js
+      // installs global [data-id] and [data-slug] click listeners that would
+      // navigate away from this page.
       box.innerHTML = items.length ? items.slice(0, 8).map(a =>
-        `<div class="admin-hit" data-aslug="${esc(a.slug)}" data-id="${esc(a.animeId)}">
+        `<div class="admin-hit" data-aslug="${esc(a.slug)}" data-anid="${esc(a.animeId)}">
            <img src="${esc(a.poster)}" onerror="this.style.display='none'">
            <div><b>${esc(a.title)}</b><div class="admin-hit-m">ID ${esc(a.animeId)} · ${esc(a.type || '')} · SUB ${a.sub || 0} DUB ${a.dub || 0}</div></div>
            <button class="btn">Select</button>
          </div>`).join('') : '<div class="state">No results (or wrong token).</div>';
       box.querySelectorAll('.admin-hit').forEach(el => el.querySelector('button').onclick = () => {
-        document.getElementById('aSeriesId').value = el.dataset.id;
+        document.getElementById('aSeriesId').value = el.dataset.anid;
         const fetchBtn = document.getElementById('aFetch');
         fetchBtn.disabled = false;
         fetchBtn.dataset.aslug = el.dataset.aslug;
