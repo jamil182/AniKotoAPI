@@ -18,25 +18,34 @@ test("malEmbedUrl builds the megaplay pattern", () => {
   assert.equal(malEmbedUrl({ source: "anilist", id: 5, episode: 1, dub: true }), "https://megaplay.buzz/stream/ani/5/1/dub");
 });
 
-test("ingestAnikoto stores anime and episodes", () => {
+test("ingestAnikoto stores catalog anime and episodes with embed JSON", () => {
   const { db, cleanup } = tmpDb();
-  const info = { animeId: 1498, slug: "naruto", title: "Naruto", genres: ["Action"], studios: ["Pierrot"] };
-  const episodes = [{ episode_no: 1, title: "A", server_ids: "TOK1" }, { episode_no: 2, server_ids: "TOK2" }];
-  const r = ingestAnikoto(db, { info, episodes, sub: true, dub: false, autoUpdate: true });
+  const series = {
+    anime: { title: "Naruto", genres: ["Action"], malId: 20, poster: "p" },
+    episodes: [
+      { number: 1, title: "A", embed: { sub: "https://megaplay.buzz/stream/s-2/1/sub" } },
+      { number: 2, title: null, embed: { sub: "https://megaplay.buzz/stream/s-2/2/sub", dub: "https://megaplay.buzz/stream/s-2/2/dub" } },
+    ],
+  };
+  const r = ingestAnikoto(db, { series, anikotoId: 1498, sub: true, dub: true, autoUpdate: true });
   assert.equal(r.episodeCount, 2);
   const row = getAnimeByAny(db, { anikotoId: 1498 });
   assert.equal(row.auto_update, 1);
-  assert.equal(getEpisodes(db, r.animeId)[0].server_ids, "TOK1");
+  assert.equal(row.mal_id, 20, "catalog mal_id stored for later merge");
+  const eps = getEpisodes(db, r.animeId);
+  assert.deepEqual(JSON.parse(eps[0].embed_url), { sub: "https://megaplay.buzz/stream/s-2/1/sub" });
+  assert.equal(eps[1].dub, 1, "dub flag set when dub embed present");
   cleanup();
 });
 
-test("ingestMalEpisode merges one episode by mal id", () => {
+test("ingestMalEpisode stores embed as language JSON, keeping the id", () => {
   const { db, cleanup } = tmpDb();
   const r = ingestMalEpisode(db, { source: "mal", id: 61316, episode: 1, sub: true, dub: false, embedUrl: "https://megaplay.buzz/stream/mal/61316/1/sub" });
   const eps = getEpisodes(db, r.animeId);
   assert.equal(eps.length, 1);
-  assert.equal(eps[0].embed_url, "https://megaplay.buzz/stream/mal/61316/1/sub");
+  assert.deepEqual(JSON.parse(eps[0].embed_url), { sub: "https://megaplay.buzz/stream/mal/61316/1/sub" });
   assert.equal(eps[0].source, "mal");
+  assert.equal(getAnimeByAny(db, { malId: 61316 }).mal_id, 61316, "MAL id kept as identity");
   cleanup();
 });
 

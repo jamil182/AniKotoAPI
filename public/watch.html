@@ -193,16 +193,21 @@
       if (serverBtns[0]) selectServer(serverMap.get(serverBtns[0]), serverBtns[0]);
     }
 
-    // ---- MAL/AniList episode: one synthetic server resolving the stored embed ----
-    function renderEmbedServer(embedUrl) {
+    // ---- Language servers: resolve the stored MegaPlay embed per language ----
+    // Every episode carries embed URLs as JSON {sub?, dub?} (Anikoto s-2 or
+    // MAL/AniList), so playback is one uniform path.
+    function renderLangServers(embeds) {
       const box = document.getElementById('servers');
-      box.innerHTML = `<div class="servers-group"><h4>SUB</h4><div class="server-btns"><button class="server-btn on" id="embedBtn">MegaPlay</button></div></div>`;
-      const btn = document.getElementById('embedBtn');
-      serverBtns = [btn];
-      serverMap = new Map([[btn, { embedUrl }]]);
-      tried = new Set();
-      btn.onclick = () => selectEmbed(embedUrl);
-      selectEmbed(embedUrl);
+      const langs = [];
+      if (embeds.sub) langs.push(['SUB', embeds.sub]);
+      if (embeds.dub) langs.push(['DUB', embeds.dub]);
+      if (!langs.length) { box.innerHTML = '<div class="state">No stream stored.</div>'; showMsg('No playable source.'); return; }
+      box.innerHTML = `<div class="servers-group"><h4>Language</h4><div class="server-btns">${
+        langs.map(([l], i) => `<button class="server-btn${i === 0 ? ' on' : ''}" data-i="${i}">${l} · MegaPlay</button>`).join('')
+      }</div></div>`;
+      const btns = [...box.querySelectorAll('.server-btn')];
+      btns.forEach((btn, i) => btn.onclick = () => { btns.forEach(b => b.classList.toggle('on', b === btn)); selectEmbed(langs[i][1]); });
+      selectEmbed(langs[0][1]);
     }
     async function selectEmbed(embedUrl) {
       showMsg('Resolving stream…');
@@ -570,6 +575,7 @@
         episodes = rows.map(e => ({
           episode_no: e.number, title: e.title,
           server_ids: e.server_ids, embed_url: e.embed_url, source: e.source,
+          embeds: (() => { try { return JSON.parse(e.embed_url || '{}'); } catch { return {}; } })(),
         }));
         const ep = episodes.find(e => String(e.episode_no) === String(epNo)) || episodes[0];
         if (!ep) throw new Error('Episode not found');
@@ -585,12 +591,13 @@
         renderRelated(info.recommended || []);
         renderCountdown(null);
 
-        // Stream source branches on the episode's origin.
-        if (ep.source === 'anikoto' && ep.server_ids) {
+        // Uniform playback: every episode stores embed URLs by language.
+        // Legacy episodes (stored before the redesign) may only have server_ids.
+        if (ep.embeds.sub || ep.embeds.dub) {
+          renderLangServers(ep.embeds);
+        } else if (ep.server_ids) {
           const servers = await apiGet('/servers?ids=' + encodeURIComponent(ep.server_ids));
           renderServers(servers);
-        } else if (ep.embed_url) {
-          renderEmbedServer(ep.embed_url);
         } else {
           showMsg('No playable source stored for this episode.');
         }

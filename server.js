@@ -299,8 +299,8 @@ const server = app.listen(PORT, () => {
 if (process.env.ADMIN_TOKEN && process.env.NODE_ENV !== "test") {
   const { startScheduler } = await import("./src/services/autoUpdate.js");
   const { getDb } = await import("./src/db/index.js");
-  const { extractEpisodeList } = await import("./src/extractors/episodeList.extractor.js");
-  startScheduler(getDb(), (anime) => extractEpisodeList(anime.slug).then(d => d.episodes || []));
+  const { fetchCatalogSeries } = await import("./src/services/catalogMeta.js");
+  startScheduler(getDb(), (anime) => fetchCatalogSeries(anime.anikoto_id).then(s => s?.episodes || []));
   console.info("[AUTO-UPDATE] hourly scheduler started");
 }
 

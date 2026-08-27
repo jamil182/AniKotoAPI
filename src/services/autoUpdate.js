@@ -12,7 +12,8 @@ import { animeForAutoUpdate, getEpisodes, upsertEpisode } from "../db/library.re
 /**
  * For each auto-update anime, add episode numbers not already stored.
  * @param {import('better-sqlite3').Database} db
- * @param {(anime) => Promise<Array>} fetchEpisodes - returns [{episode_no, title?, server_ids?}]
+ * @param {(anime) => Promise<Array>} fetchEpisodes - returns catalog episodes
+ *   `[{number, title?, embed:{sub?,dub?}}]`
  * @returns {Promise<{checked: number, added: number}>}
  */
 export async function runAutoUpdate(db, fetchEpisodes) {
@@ -23,11 +24,18 @@ export async function runAutoUpdate(db, fetchEpisodes) {
     let eps = [];
     try { eps = await fetchEpisodes(anime); } catch { continue; }
     for (const e of eps) {
-      const n = Number(e.episode_no);
-      if (!have.has(n)) {
-        upsertEpisode(db, anime.id, { number: n, title: e.title || null, sub: 1, serverIds: e.server_ids || null, source: "anikoto" });
-        added++;
-      }
+      const n = Number(e.number);
+      if (have.has(n)) continue;
+      const embed = {};
+      if (e.embed?.sub) embed.sub = e.embed.sub;
+      if (e.embed?.dub) embed.dub = e.embed.dub;
+      if (!embed.sub && !embed.dub) continue;
+      upsertEpisode(db, anime.id, {
+        number: n, title: e.title || null,
+        sub: !!embed.sub, dub: !!embed.dub,
+        embedUrl: JSON.stringify(embed), source: "anikoto",
+      });
+      added++;
     }
   }
   return { checked: list.length, added };

@@ -55,8 +55,6 @@ import { adminAuth } from "../middleware/adminAuth.js";
 import { getDb } from "../db/index.js";
 import { ingestAnikoto, ingestMalEpisode, malEmbedUrl } from "../services/adminIngest.js";
 import { listAnime, deleteAnime, getAnimeById, getEpisodes, homeSections, searchAnime, parseAnime } from "../db/library.repo.js";
-import { extractAnimeInfo } from "../extractors/animeInfo.extractor.js";
-import { extractEpisodeList } from "../extractors/episodeList.extractor.js";
 import { extractSearchResults } from "../extractors/search.extractor.js";
 import { resolveStreamUrl } from "../extractors/streamResolver.extractor.js";
 
@@ -768,12 +766,13 @@ app.get("/api/openapi", (req, res) => {
   // ---- FEATURE: Fetch a full Anikoto series into the library ----
   app.post("/api/admin/fetch-anikoto", async (req, res) => {
     try {
-      const { slug, sub = true, dub = false, autoUpdate = false } = req.body || {};
-      if (!slug) return res.status(400).json({ success: false, message: "slug is required" });
-      const info = await extractAnimeInfo(slug);
-      const epData = await extractEpisodeList(slug);
-      const result = ingestAnikoto(getDb(), { info: { ...info, slug }, episodes: epData.episodes || [], sub, dub, autoUpdate });
-      res.json({ success: true, results: result });
+      const { seriesId, sub = true, dub = false, autoUpdate = false } = req.body || {};
+      if (!seriesId) return res.status(400).json({ success: false, message: "seriesId is required" });
+      const { fetchCatalogSeries } = await import("../services/catalogMeta.js");
+      const series = await fetchCatalogSeries(seriesId);
+      if (!series) return res.status(502).json({ success: false, message: "Series not found in the catalog" });
+      const result = ingestAnikoto(getDb(), { series, anikotoId: Number(seriesId), sub, dub, autoUpdate });
+      res.json({ success: true, results: { ...result, title: series.anime.title } });
     } catch (e) { res.status(502).json({ success: false, message: e.message }); }
   });
 
@@ -807,7 +806,8 @@ app.get("/api/openapi", (req, res) => {
   // ---- FEATURE: Manual trigger for the auto-update job (also for external cron) ----
   app.post("/api/admin/run-updates", async (req, res) => {
     const { runAutoUpdate } = await import("../services/autoUpdate.js");
-    const r = await runAutoUpdate(getDb(), (anime) => extractEpisodeList(anime.slug).then(d => d.episodes || []));
+    const { fetchCatalogSeries } = await import("../services/catalogMeta.js");
+    const r = await runAutoUpdate(getDb(), (anime) => fetchCatalogSeries(anime.anikoto_id).then(s => s?.episodes || []));
     res.json({ success: true, results: r });
   });
 

@@ -91,14 +91,14 @@
         document.getElementById('aSeriesId').value = el.dataset.anid;
         const fetchBtn = document.getElementById('aFetch');
         fetchBtn.disabled = false;
-        fetchBtn.dataset.aslug = el.dataset.aslug;
+        fetchBtn.dataset.anid = el.dataset.anid;
       });
     };
 
     document.getElementById('aFetch').onclick = async (e) => {
       const out = document.getElementById('aOut'); out.textContent = 'Fetching…';
       const r = await adminPost('/fetch-anikoto', {
-        slug: e.target.dataset.aslug,
+        seriesId: e.target.dataset.anid,
         sub: document.getElementById('aSub').checked,
         dub: document.getElementById('aDub').checked,
         autoUpdate: document.getElementById('aAuto').checked,
