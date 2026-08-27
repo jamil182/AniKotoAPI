@@ -54,7 +54,7 @@ import { assertProxyableUrl, streamRefererHeaders, stripToTsSync } from "../help
 import { adminAuth } from "../middleware/adminAuth.js";
 import { getDb } from "../db/index.js";
 import { ingestAnikoto, ingestMalEpisode, malEmbedUrl } from "../services/adminIngest.js";
-import { listAnime, deleteAnime } from "../db/library.repo.js";
+import { listAnime, deleteAnime, getAnimeById, getEpisodes, homeSections, searchAnime, parseAnime } from "../db/library.repo.js";
 import { extractAnimeInfo } from "../extractors/animeInfo.extractor.js";
 import { extractEpisodeList } from "../extractors/episodeList.extractor.js";
 import { extractSearchResults } from "../extractors/search.extractor.js";
@@ -805,6 +805,37 @@ app.get("/api/openapi", (req, res) => {
   app.post("/api/admin/run-updates", async (req, res) => {
     const { runAutoUpdate } = await import("../services/autoUpdate.js");
     const r = await runAutoUpdate(getDb(), (anime) => extractEpisodeList(anime.slug).then(d => d.episodes || []));
+    res.json({ success: true, results: r });
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // LIBRARY SERVING (reads the CMS store — public, no auth)
+  // ══════════════════════════════════════════════════════════════
+
+  app.get("/api/library/home", (req, res) => {
+    res.json({ success: true, results: homeSections(getDb()) });
+  });
+  app.get("/api/library/search", (req, res) => {
+    const kw = (req.query.keyword || "").toString();
+    res.json({ success: true, results: { data: searchAnime(getDb(), kw) } });
+  });
+  app.get("/api/library/anime/:id", (req, res) => {
+    const a = parseAnime(getAnimeById(getDb(), Number(req.params.id)));
+    if (!a) return res.status(404).json({ success: false, message: "Not in library" });
+    res.json({ success: true, results: a });
+  });
+  app.get("/api/library/episodes/:id", (req, res) => {
+    res.json({ success: true, results: getEpisodes(getDb(), Number(req.params.id)) });
+  });
+
+  // ---- FEATURE: Resolve a stored embed URL (MAL/AniList episodes) ----
+  app.get("/api/stream/resolve-url", async (req, res) => {
+    const { url } = req.query;
+    if (!url) return res.status(400).json({ success: false, message: "url is required" });
+    const check = assertProxyableUrl(url);
+    if (!check.ok) return res.status(check.status).json({ success: false, message: check.message });
+    const r = await resolveStreamUrl(url);
+    if (!r.url) return res.status(502).json({ success: false, message: r.error || "no stream" });
     res.json({ success: true, results: r });
   });
 };

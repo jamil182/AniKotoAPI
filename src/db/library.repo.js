@@ -100,3 +100,28 @@ export const listAnime = (db, { limit = 50, offset = 0 } = {}) =>
 export const getAnimeById = (db, id) => db.prepare("SELECT * FROM anime WHERE id = ?").get(id);
 export const deleteAnime = (db, id) => db.prepare("DELETE FROM anime WHERE id = ?").run(id);
 export const animeForAutoUpdate = (db) => db.prepare("SELECT * FROM anime WHERE auto_update = 1").all();
+
+// ---- FEATURE: Library serving reads (Phase E) ----
+/** Parse the JSON columns of an anime row into arrays. */
+export function parseAnime(row) {
+  if (!row) return row;
+  const p = (s) => { try { return JSON.parse(s); } catch { return []; } };
+  return { ...row, genres: p(row.genres), studios: p(row.studios) };
+}
+
+/** Home sections derived from the stored library. */
+export function homeSections(db) {
+  const latest = listAnime(db, { limit: 24 }).map(parseAnime);
+  const top = db.prepare(
+    "SELECT * FROM anime WHERE rating IS NOT NULL ORDER BY CAST(rating AS REAL) DESC LIMIT 10"
+  ).all().map(parseAnime);
+  const spotlights = latest.slice(0, 6);
+  const genres = [...new Set(latest.flatMap((a) => a.genres))].sort();
+  return { spotlights, latest, top, genres };
+}
+
+/** Title search across the library. */
+export function searchAnime(db, keyword, limit = 24) {
+  return db.prepare("SELECT * FROM anime WHERE title LIKE ? ORDER BY updated_at DESC LIMIT ?")
+    .all(`%${keyword}%`, limit).map(parseAnime);
+}
