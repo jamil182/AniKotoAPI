@@ -94,7 +94,11 @@ app.use((req, res, next) => {
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'");
+  // NOTE: Google Fonts is allowed explicitly — the stylesheet loads from
+  // fonts.googleapis.com and pulls font files from fonts.gstatic.com. Both the
+  // docs page and the frontend use it; without these the pages fell back to
+  // system fonts. Everything else stays same-origin.
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'");
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
   next();
@@ -112,6 +116,12 @@ app.use(express.static(publicDir, { redirect: false }));
 // ══════════════════════════════════════════════════════════════
 
 // Serve HTML files without .html extension
+// NOTE: The streaming frontend now lives at "/" (public/index.html); the API
+// documentation page moved here so both can coexist.
+app.get("/docs", (req, res) => {
+  res.sendFile(path.join(publicDir, "docs.html"));
+});
+
 app.get("/tos", (req, res) => {
   res.sendFile(path.join(publicDir, "tos.html"));
 });
