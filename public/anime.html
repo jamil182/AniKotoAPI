@@ -29,8 +29,8 @@
   <script>
     mountNav();
 
-    // Slug comes from the path: /anime/<slug>
-    const slug = decodeURIComponent(location.pathname.replace(/^\/anime\//, '').replace(/\/$/, ''));
+    // Library id from the path: /anime/<id>
+    const id = decodeURIComponent(location.pathname.replace(/^\/anime\//, '').replace(/\/$/, ''));
     const page = document.getElementById('page');
 
     // Rating field is sometimes noisy ("6   0 /10"); collapse whitespace and
@@ -62,7 +62,7 @@
       const epList = (eps && eps.episodes) || [];
       const epsHTML = epList.length
         ? `<div class="eps-grid">${epList.map(e => `
-             <a class="ep${e.active ? ' active' : ''}" href="/watch/${encodeURIComponent(slug)}/${encodeURIComponent(e.episode_no)}" title="Episode ${esc(e.episode_no)}${e.title ? ' — ' + esc(e.title) : ''}" style="text-decoration:none">${esc(e.episode_no)}</a>`).join('')}</div>`
+             <a class="ep${e.active ? ' active' : ''}" href="/watch/${encodeURIComponent(id)}/${encodeURIComponent(e.episode_no)}" title="Episode ${esc(e.episode_no)}${e.title ? ' — ' + esc(e.title) : ''}" style="text-decoration:none">${esc(e.episode_no)}</a>`).join('')}</div>`
         : `<div class="state">No episodes listed.</div>`;
 
       page.innerHTML = `
@@ -96,15 +96,18 @@
     }
 
     async function boot() {
-      if (!slug) { page.innerHTML = '<div class="wrap" style="padding:60px 24px"><div class="state">No anime specified.</div></div>'; return; }
+      if (!id) { page.innerHTML = '<div class="wrap" style="padding:60px 24px"><div class="state">No anime specified.</div></div>'; return; }
       page.innerHTML = '<div class="wrap" style="padding:60px 24px"><div class="state">Loading…</div></div>';
       try {
-        // info is required; episodes is best-effort so a listing hiccup still
-        // shows the detail page.
-        const [info, eps] = await Promise.all([
-          apiGet('/info?id=' + encodeURIComponent(slug)),
-          apiGet('/episodes/' + encodeURIComponent(slug)).catch(() => null),
+        // Read the stored anime + its episodes from the library.
+        const [info, epRows] = await Promise.all([
+          apiGet('/library/anime/' + encodeURIComponent(id)),
+          apiGet('/library/episodes/' + encodeURIComponent(id)).catch(() => []),
         ]);
+        const eps = {
+          totalEpisodes: epRows.length,
+          episodes: epRows.map(e => ({ episode_no: e.number, title: e.title, active: false })),
+        };
         renderDetail(info, eps);
       } catch (e) {
         page.innerHTML = `<div class="wrap" style="padding:60px 24px"><div class="state">Couldn't load this anime (${esc(e.message)}).<br><button>Retry</button></div></div>`;
