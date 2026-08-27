@@ -62,7 +62,7 @@
       const epList = (eps && eps.episodes) || [];
       const epsHTML = epList.length
         ? `<div class="eps-grid">${epList.map(e => `
-             <div class="ep${e.active ? ' active' : ''}" data-ep="${esc(e.episode_no)}" title="Episode ${esc(e.episode_no)}${e.title ? ' — ' + esc(e.title) : ''}">${esc(e.episode_no)}</div>`).join('')}</div>`
+             <a class="ep${e.active ? ' active' : ''}" href="/watch/${encodeURIComponent(slug)}/${encodeURIComponent(e.episode_no)}" title="Episode ${esc(e.episode_no)}${e.title ? ' — ' + esc(e.title) : ''}" style="text-decoration:none">${esc(e.episode_no)}</a>`).join('')}</div>`
         : `<div class="state">No episodes listed.</div>`;
 
       page.innerHTML = `

@@ -98,7 +98,10 @@ app.use((req, res, next) => {
   // fonts.googleapis.com and pulls font files from fonts.gstatic.com. Both the
   // docs page and the frontend use it; without these the pages fell back to
   // system fonts. Everything else stays same-origin.
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'");
+  // NOTE: cdn.jsdelivr.net is allowed for hls.js on the watch page. Media and
+  // segments are fetched same-origin through the stream proxy, so connect-src
+  // stays 'self'; media-src allows blob: for the MediaSource buffers hls.js uses.
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; media-src 'self' blob:; connect-src 'self'");
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
   next();
@@ -126,6 +129,11 @@ app.get("/docs", (req, res) => {
 // /anime/<slug> serves the same shell.
 app.get("/anime/:slug", (req, res) => {
   res.sendFile(path.join(publicDir, "anime.html"));
+});
+
+// NOTE: Watch page. Slug and episode are read client-side from the path.
+app.get(["/watch/:slug/:ep", "/watch/:slug"], (req, res) => {
+  res.sendFile(path.join(publicDir, "watch.html"));
 });
 
 app.get("/tos", (req, res) => {

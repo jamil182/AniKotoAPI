@@ -50,7 +50,7 @@ import { getCompletedAnime } from "../controllers/completedAnime.controller.js";
 import { categoryRoutes } from "./category.route.js";
 import { getMirrorStatus, resetMirrorCache, getProxyStatus } from "../helper/mirror.helper.js";
 import { getCacheStats } from "../helper/cache.helper.js";
-import { assertProxyableUrl, streamRefererHeaders } from "../helper/streamProxy.helper.js";
+import { assertProxyableUrl, streamRefererHeaders, stripToTsSync } from "../helper/streamProxy.helper.js";
 
 // ══════════════════════════════════════════════════════════════
 // ROUTE REGISTRATION
@@ -257,19 +257,21 @@ app.use((req, res, next) => {
         responseType: "text",
       });
 
-      // NOTE: Rewrite relative URLs in M3U8 to proxy URLs
+      // NOTE: Rewrite every URI in the playlist to go back through the proxy,
+      // so the CDN Referer is applied server-side. Segments must be matched by
+      // being non-tag lines, NOT by extension — this source serves .ts segments
+      // as .jpg/.image to dodge ad blockers, and an extension check misses them.
       let content = typeof response.data === "string" ? response.data : String(response.data);
       const baseUrl = url.substring(0, url.lastIndexOf("/") + 1);
 
-      content = content.replace(/(^(?!#).+\.m3u8.*$)/gm, (match) => {
-        const absoluteUrl = match.startsWith("http") ? match : new URL(match, baseUrl).href;
-        return `/api/stream/proxy?url=${encodeURIComponent(absoluteUrl)}`;
-      });
-
-      content = content.replace(/(^(?!#).+\.ts.*$)/gm, (match) => {
-        const absoluteUrl = match.startsWith("http") ? match : new URL(match, baseUrl).href;
-        return `/api/stream/ts-proxy?url=${encodeURIComponent(absoluteUrl)}`;
-      });
+      content = content.split(/\r?\n/).map((line) => {
+        const t = line.trim();
+        if (!t || t.startsWith("#")) return line;   // tags and comments unchanged
+        const abs = t.startsWith("http") ? t : new URL(t, baseUrl).href;
+        // Sub-playlists stay on the m3u8 proxy; any other URI is a segment.
+        const ep = t.includes(".m3u8") ? "/api/stream/proxy" : "/api/stream/ts-proxy";
+        return `${ep}?url=${encodeURIComponent(abs)}`;
+      }).join("\n");
 
       res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
       res.setHeader("Access-Control-Allow-Origin", "*");
@@ -307,10 +309,13 @@ app.use((req, res, next) => {
         responseType: "arraybuffer",
       });
 
+      // NOTE: Strip any fake-header wrapper so the player gets clean MPEG-TS.
+      const clean = stripToTsSync(Buffer.from(response.data));
+
       res.setHeader("Content-Type", "video/mp2t");
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Cache-Control", "public, max-age=3600");
-      res.send(Buffer.from(response.data));
+      res.send(clean);
     } catch (error) {
       jsonError(res, error.message);
     }

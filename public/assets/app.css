@@ -204,11 +204,38 @@ img { display: block; max-width: 100%; }
 .ep {
   aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
   border-radius: 9px; background: var(--surface); border: 1px solid var(--border);
-  color: var(--body); font-size: .9rem; font-weight: 600; cursor: default;
+  color: var(--body); font-size: .9rem; font-weight: 600; cursor: pointer;
   transition: all .15s; position: relative;
 }
 .ep:hover { border-color: var(--accent); color: var(--ink); }
 .ep.active { background: rgba(93,184,166,.14); border-color: var(--accent); color: var(--accent-hi); }
+
+/* ---- Watch page ---- */
+.watch { display: grid; grid-template-columns: 1fr 320px; gap: 28px; padding: 28px 0 60px; align-items: start; }
+@media (max-width: 980px) { .watch { grid-template-columns: 1fr; } }
+.player-wrap { background: #000; border-radius: 14px; overflow: hidden; aspect-ratio: 16/9; position: relative; box-shadow: var(--shadow); }
+.player-wrap video { width: 100%; height: 100%; display: block; background: #000; }
+.player-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--body); font-size: .9rem; padding: 24px; }
+.player-msg .box { max-width: 380px; }
+.player-msg button { margin-top: 14px; padding: 9px 18px; border-radius: 8px; border: 1px solid var(--border-hi); background: var(--surface); color: var(--body); font-family: var(--font-body); font-size: .82rem; cursor: pointer; }
+
+.watch-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; color: var(--ink); margin: 18px 0 4px; }
+.watch-sub { color: var(--muted); font-size: .85rem; margin-bottom: 18px; }
+
+.servers-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; }
+.servers-group { margin-bottom: 14px; }
+.servers-group:last-child { margin-bottom: 0; }
+.servers-group h4 { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 8px; }
+.server-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.server-btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-soft); color: var(--body); font-size: .8rem; font-weight: 500; font-family: var(--font-body); cursor: pointer; transition: all .15s; }
+.server-btn:hover { border-color: var(--border-hi); color: var(--ink); }
+.server-btn.on { background: rgba(93,184,166,.16); border-color: var(--accent); color: var(--accent-hi); }
+
+.watch-eps { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; position: sticky; top: 84px; max-height: 70vh; overflow-y: auto; }
+.watch-eps h4 { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 12px; }
+.watch-ep { display: block; width: 100%; text-align: left; padding: 9px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--body); font-size: .84rem; font-family: var(--font-body); cursor: pointer; margin-bottom: 4px; transition: all .12s; }
+.watch-ep:hover { background: var(--bg-soft); color: var(--ink); }
+.watch-ep.on { background: rgba(93,184,166,.14); color: var(--accent-hi); border-color: var(--accent); }
 
 /* ---- Footer ---- */
 .foot { border-top: 1px solid var(--border); padding: 30px 0; color: var(--muted); font-size: .82rem; }

@@ -34,6 +34,12 @@ const DEFAULT_PROXY_DOMAINS = [
   "norami.top",
   "kryntal.top",
   "akirax.buzz",
+  // Some servers host their TS segments here behind a fake image header
+  // (p16-/p19-ad-site-sign-sg.tiktokcdn.com). This is a large shared CDN; it
+  // is allowed only so those segments can be fetched and de-obfuscated. The
+  // private-address guard still runs first, so this does not expose internal
+  // hosts. Drop it from STREAM_PROXY_DOMAINS if you do not need those servers.
+  "tiktokcdn.com",
 ];
 
 // Parse the allowlist from env or use defaults
@@ -137,6 +143,37 @@ const streamRefererHeaders = () => ({
   "Origin": new URL(STREAM_REFERER).origin,
 });
 
-export { assertProxyableUrl, streamRefererHeaders };
+// ══════════════════════════════════════════════════════════════
+// SEGMENT DE-OBFUSCATION
+// ══════════════════════════════════════════════════════════════
+
+// ---- FEATURE: MPEG-TS Prefix Stripping ----
+/**
+ * Some servers wrap each MPEG-TS segment behind a fake file header (e.g. a
+ * small PNG) so the CDN and ad blockers see an image, not video. The real
+ * bytes are plain TS further in. Players strip this client-side; we do it here
+ * so a standard HLS player receives clean TS.
+ *
+ * A TS stream is 188-byte packets each starting with sync byte 0x47, so the
+ * true start is the first 0x47 that also has 0x47 at +188 and +376. Segments
+ * that are already clean TS pass through untouched; if no sync is found the
+ * buffer is returned as-is rather than corrupted.
+ *
+ * @param {Buffer} buf - The raw segment bytes
+ * @returns {Buffer} Clean TS, sliced to the first packet boundary
+ */
+const stripToTsSync = (buf) => {
+  if (!buf || !buf.length || buf[0] === 0x47) return buf;
+  // The wrapper is small; cap the scan so a genuinely non-TS body is cheap.
+  const limit = Math.min(buf.length - 376, 65536);
+  for (let i = 1; i < limit; i++) {
+    if (buf[i] === 0x47 && buf[i + 188] === 0x47 && buf[i + 376] === 0x47) {
+      return buf.subarray(i);
+    }
+  }
+  return buf;
+};
+
+export { assertProxyableUrl, streamRefererHeaders, stripToTsSync };
 
 // ══════════════════════════════════════════════════════════════ END: streamProxy.helper.js

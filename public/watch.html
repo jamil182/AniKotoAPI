@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AniJs — Watch</title>
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body>
+  <header id="nav"></header>
+
+  <div class="wrap">
+    <div class="watch">
+      <div>
+        <div class="player-wrap">
+          <video id="video" controls playsinline></video>
+          <div class="player-msg" id="playerMsg"><div class="box">Loading…</div></div>
+        </div>
+        <h1 class="watch-title" id="title">Loading…</h1>
+        <div class="watch-sub" id="sub"></div>
+        <div class="servers-box" id="servers"></div>
+      </div>
+      <aside>
+        <div class="watch-eps">
+          <h4>Episodes</h4>
+          <div id="epList"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <div class="wrap foot-inner">
+      <span>AniJs — a frontend for the <a href="/docs">AniKoto API</a>.</span>
+      <a class="sp" href="/">Home</a>
+      <a href="https://github.com/Shineii86/AniKotoAPI" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+  <script src="/assets/api.js"></script>
+  <script>
+    mountNav();
+
+    // Path: /watch/<slug>/<ep>
+    const parts = location.pathname.replace(/^\/watch\//, '').split('/');
+    const slug = decodeURIComponent(parts[0] || '');
+    const epNo = decodeURIComponent(parts[1] || '1');
+
+    const video = document.getElementById('video');
+    const msg = document.getElementById('playerMsg');
+    let hls = null;
+    let episodes = [];
+
+    const showMsg = (html) => { msg.innerHTML = `<div class="box">${html}</div>`; msg.style.display = 'flex'; };
+    const hideMsg = () => { msg.style.display = 'none'; };
+
+    function destroyHls() { if (hls) { hls.destroy(); hls = null; } }
+
+    // Play a resolved master m3u8 through the same-origin proxy (which applies
+    // the CDN Referer and de-obfuscates segments server-side).
+    function play(masterUrl) {
+      const src = '/api/stream/proxy?url=' + encodeURIComponent(masterUrl);
+      destroyHls();
+      hideMsg();
+      if (window.Hls && Hls.isSupported()) {
+        hls = new Hls({ maxBufferLength: 30 });
+        hls.loadSource(src);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
+        hls.on(Hls.Events.ERROR, (_e, data) => {
+          if (data.fatal) {
+            destroyHls();
+            showMsg(`Playback failed on this server.<br><button id="tryAnother">Try another server</button>`);
+            document.getElementById('tryAnother').onclick = () => document.querySelector('.server-btn:not(.on)')?.click();
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = src; // Safari native HLS
+        video.play().catch(() => {});
+      } else {
+        showMsg('This browser cannot play HLS.');
+      }
+    }
+
+    async function selectServer(server, btn) {
+      document.querySelectorAll('.server-btn').forEach(b => b.classList.toggle('on', b === btn));
+      showMsg('Resolving stream…');
+      try {
+        const r = await apiGet('/stream/resolve?id=' + encodeURIComponent(server.link_id));
+        if (!r.url) throw new Error(r.error || 'No stream URL');
+        play(r.url);
+      } catch (e) {
+        showMsg(`Couldn't resolve this server (${esc(e.message)}).<br><button id="retryS">Retry</button>`);
+        document.getElementById('retryS').onclick = () => selectServer(server, btn);
+      }
+    }
+
+    function renderServers(servers) {
+      const box = document.getElementById('servers');
+      if (!servers.length) { box.innerHTML = '<div class="state">No servers for this episode.</div>'; showMsg('No servers available.'); return; }
+      // group by type (sub / dub / …)
+      const groups = {};
+      servers.forEach(s => { (groups[s.type] = groups[s.type] || []).push(s); });
+      box.innerHTML = Object.entries(groups).map(([type, list]) => `
+        <div class="servers-group">
+          <h4>${esc((type || 'sub').toUpperCase())}</h4>
+          <div class="server-btns">
+            ${list.map((s, i) => `<button class="server-btn" data-type="${esc(type)}" data-i="${i}">${esc(s.name)}</button>`).join('')}
+          </div>
+        </div>`).join('');
+      // wire buttons
+      box.querySelectorAll('.server-btn').forEach(btn => {
+        const s = groups[btn.dataset.type][+btn.dataset.i];
+        btn.onclick = () => selectServer(s, btn);
+      });
+      // auto-select the first server
+      box.querySelector('.server-btn')?.click();
+    }
+
+    function renderEpList() {
+      const el = document.getElementById('epList');
+      if (!episodes.length) { el.innerHTML = '<div class="state">—</div>'; return; }
+      el.innerHTML = episodes.map(e => `
+        <button class="watch-ep${String(e.episode_no) === String(epNo) ? ' on' : ''}"
+                onclick="location.href='/watch/${encodeURIComponent(slug)}/${encodeURIComponent(e.episode_no)}'">
+          Episode ${esc(e.episode_no)}${e.title ? ' — ' + esc(e.title) : ''}
+        </button>`).join('');
+    }
+
+    async function boot() {
+      if (!slug) { showMsg('No anime specified.'); return; }
+      showMsg('Loading episode…');
+      try {
+        // Episodes drive playback; info is fetched alongside just for the title
+        // (the episodes payload has no title), and must not block playback.
+        const [eps, info] = await Promise.all([
+          apiGet('/episodes/' + encodeURIComponent(slug)),
+          apiGet('/info?id=' + encodeURIComponent(slug)).catch(() => null),
+        ]);
+        episodes = eps.episodes || [];
+        const ep = episodes.find(e => String(e.episode_no) === String(epNo)) || episodes[0];
+        if (!ep) throw new Error('Episode not found');
+
+        const animeTitle = (info && info.title) || eps.title || slug;
+        document.getElementById('title').textContent = animeTitle;
+        document.getElementById('sub').innerHTML =
+          `Episode ${esc(ep.episode_no)} · <a href="/anime/${encodeURIComponent(slug)}" style="color:var(--accent-hi)">details</a>`;
+        document.title = `${animeTitle} — Ep ${ep.episode_no} — AniJs`;
+
+        renderEpList();
+
+        const servers = await apiGet('/servers?ids=' + encodeURIComponent(ep.server_ids));
+        renderServers(servers);
+      } catch (e) {
+        showMsg(`Couldn't load this episode (${esc(e.message)}).<br><button id="retryB">Retry</button>`);
+        document.getElementById('retryB').onclick = boot;
+      }
+    }
+
+    boot();
+  </script>
+</body>
+</html>
