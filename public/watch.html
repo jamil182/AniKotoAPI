@@ -322,22 +322,28 @@
       return cues;
     }
 
-    let subTrack = null;
-    async function applySubtitle() {
+    let subTrack = null, curSub = -1;
+
+    // Load subtitle track `idx` from the subtitles[] list (-1 = none picked
+    // yet → use the default track or the first). A stream can carry several
+    // languages; the CC menu lists them all and calls this to switch.
+    async function applySubtitle(idx) {
       const ccBtn = document.getElementById('vCC');
-      const sub = subtitles[0];
-      // remove any prior programmatic track's cues
       if (subTrack) { try { [...(subTrack.cues || [])].forEach(c => subTrack.removeCue(c)); } catch {} subTrack.mode = 'disabled'; subTrack = null; }
-      if (!sub) { ccBtn.style.display = 'none'; return; }
+      if (!subtitles.length) { ccBtn.style.display = 'none'; curSub = -1; return; }
       ccBtn.style.display = '';
+      if (idx == null) { idx = subtitles.findIndex(s => s.default); if (idx < 0) idx = 0; }
+      curSub = idx;
+      const sub = subtitles[idx];
+      if (!sub) return;
       try {
         // Fetch + parse ourselves: a dynamically-created <track src> fails to
         // load in this setup, so we add cues via addTextTrack instead.
         const vtt = await (await fetch('/api/stream/sub-proxy?url=' + encodeURIComponent(sub.url || sub.file))).text();
-        subTrack = video.addTextTrack('subtitles', sub.label || 'English', 'en');
+        subTrack = video.addTextTrack('subtitles', sub.label || sub.language || 'Subtitle', 'sub');
         for (const c of parseVTT(vtt)) subTrack.addCue(new VTTCue(c.start, c.end, c.text));
         subTrack.mode = ccOn ? 'showing' : 'hidden';
-      } catch { ccBtn.style.display = 'none'; }
+      } catch { /* leave off */ }
     }
 
     // ---- Volume boost via Web Audio (amplifies beyond the 100% cap) ----
@@ -362,7 +368,8 @@
     function setCC(on) {
       ccOn = on; prefs.cc = on; savePrefs();
       document.getElementById('vCC').classList.toggle('on', on);
-      if (subTrack) subTrack.mode = on ? 'showing' : 'hidden';
+      if (on) { if (subTrack) subTrack.mode = 'showing'; else if (subtitles.length) applySubtitle(curSub >= 0 ? curSub : null); }
+      else if (subTrack) subTrack.mode = 'hidden';
     }
 
     // ---- Tabbed settings menu: Captions / Speed / Volume Boost (+ Quality) ----
@@ -382,8 +389,8 @@
       let panel = '';
       if (menuTab === 'cc') {
         panel = `<h5>Captions</h5>
-          <button data-cc="off" class="${!ccOn ? 'on' : ''}">Off</button>
-          <button data-cc="on" class="${ccOn ? 'on' : ''}">${esc(subtitles[0]?.label || 'English')}</button>`;
+          <button data-cc="-1" class="${!ccOn ? 'on' : ''}">Off</button>
+          ${subtitles.map((s, i) => `<button data-cc="${i}" class="${ccOn && curSub === i ? 'on' : ''}">${esc(s.label || s.language || 'Track ' + (i + 1))}</button>`).join('')}`;
       } else if (menuTab === 'speed') {
         panel = `<h5>Playback speed</h5>` + [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map(s =>
           `<button data-s="${s}" class="${video.playbackRate === s ? 'on' : ''}">${s === 1 ? 'Normal' : s + '×'}</button>`).join('');
@@ -413,7 +420,13 @@
       menu.querySelector('[data-close]').onclick = () => menu.classList.remove('open');
       menu.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { video.playbackRate = +b.dataset.s; buildMenu(); });
       menu.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const q = +b.dataset.q; hls.currentLevel = q; hls.loadLevel = q; buildMenu(); });
-      menu.querySelectorAll('[data-cc]').forEach(b => b.onclick = () => { setCC(b.dataset.cc === 'on'); buildMenu(); });
+      menu.querySelectorAll('[data-cc]').forEach(b => b.onclick = async () => {
+        const i = +b.dataset.cc;
+        if (i < 0) { setCC(false); }                       // Off
+        else { ccOn = true; prefs.cc = true; prefs.subLang = subtitles[i]?.label || ''; savePrefs();
+               document.getElementById('vCC').classList.add('on'); await applySubtitle(i); }
+        buildMenu();
+      });
       const bs = menu.querySelector('#boostSlider');
       if (bs) bs.oninput = () => { setBoost(+bs.value); prefs.boost = +bs.value; savePrefs(); buildMenu(); };
     }
