@@ -293,6 +293,17 @@ const server = app.listen(PORT, () => {
   console.info(`AniKotoAPI listening at ${PORT}`);
 });
 
+// ---- FEATURE: Hourly CMS auto-update scheduler ----
+// NOTE: In-process timer for localhost/long-running hosts. Serverless deploys
+// should instead call POST /api/admin/run-updates from an external cron.
+if (process.env.ADMIN_TOKEN && process.env.NODE_ENV !== "test") {
+  const { startScheduler } = await import("./src/services/autoUpdate.js");
+  const { getDb } = await import("./src/db/index.js");
+  const { extractEpisodeList } = await import("./src/extractors/episodeList.extractor.js");
+  startScheduler(getDb(), (anime) => extractEpisodeList(anime.slug).then(d => d.episodes || []));
+  console.info("[AUTO-UPDATE] hourly scheduler started");
+}
+
 // ══════════════════════════════════════════════════════════════
 // GRACEFUL SHUTDOWN
 // ══════════════════════════════════════════════════════════════

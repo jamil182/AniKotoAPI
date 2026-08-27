@@ -800,6 +800,13 @@ app.get("/api/openapi", (req, res) => {
     deleteAnime(getDb(), Number(req.params.id));
     res.json({ success: true, results: { deleted: Number(req.params.id) } });
   });
+
+  // ---- FEATURE: Manual trigger for the auto-update job (also for external cron) ----
+  app.post("/api/admin/run-updates", async (req, res) => {
+    const { runAutoUpdate } = await import("../services/autoUpdate.js");
+    const r = await runAutoUpdate(getDb(), (anime) => extractEpisodeList(anime.slug).then(d => d.episodes || []));
+    res.json({ success: true, results: r });
+  });
 };
 
 export { createApiRoutes };
