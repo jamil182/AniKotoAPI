@@ -89,7 +89,10 @@
       // NOTE: use data-aslug / data-anid (NOT data-slug / data-id) — api.js
       // installs global [data-id] and [data-slug] click listeners that would
       // navigate away from this page.
-      box.innerHTML = items.length ? items.slice(0, 8).map(a =>
+      // NOTE: no cap here. The search returns one page holding up to 30 hits
+      // (26 for "naruto"), and slicing to 8 silently discarded the rest. The
+      // list scrolls inside its own box, so showing them all costs no layout.
+      box.innerHTML = items.length ? items.map(a =>
         `<div class="admin-hit" data-aslug="${esc(a.slug)}" data-anid="${esc(a.animeId)}">
            <img src="${esc(a.poster)}" onerror="this.style.display='none'">
            <div><b>${esc(a.title)}</b><div class="admin-hit-m">ID ${esc(a.animeId)} · ${esc(a.type || '')} · SUB ${a.sub || 0} DUB ${a.dub || 0}</div></div>
