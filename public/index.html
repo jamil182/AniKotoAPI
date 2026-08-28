@@ -70,11 +70,6 @@
           <span class="sched-now" id="schedNow"></span>
         </div>
         <div class="sched">
-          <div class="sched-head">
-            <button class="sched-arrow" id="schedPrev" aria-label="Previous week">&lsaquo;</button>
-            <div class="sched-tabs" id="schedTabs"></div>
-            <button class="sched-arrow" id="schedNext" aria-label="Next week">&rsaquo;</button>
-          </div>
           <div class="sched-list" id="schedList"></div>
         </div>
       </section>
@@ -191,88 +186,43 @@
     }
 
     // ---- Estimated schedule ------------------------------------------------
-    // Airing times come from the upstream catalogue, not from the library, so
-    // most rows are titles that were never stored here. Only the ones that are
-    // in the library become links; the rest stay plain text rather than
-    // offering a click that lands on a page which does not exist.
-    const SCHED_DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-    const SCHED_MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-    const schedCache = new Map();     // "YYYY-MM-DD" -> rows, so a revisited tab costs nothing
+    // One list, not seven. The upstream `date` parameter turns out to have no
+    // effect -- every date, including ones never requested before, comes back
+    // with byte-identical data -- so a day strip would have been a row of
+    // controls that changed nothing.
+    //
+    // Airing times come from the upstream catalogue, not the library, so most
+    // rows are titles that were never stored here. Only the ones the library
+    // holds become links; the rest stay plain text rather than offering a click
+    // that lands on a page which does not exist.
     const libIndex = new Map();       // normalised title -> library id
-    let weekOffset = 0;
-    let schedActive = null;
-
+    const normTitle = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
     const ymd = (d) => d.getFullYear() + '-' +
       String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const normTitle = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
-    // Monday of the week containing d, so the strip always starts on a Monday.
-    const mondayOf = (d) => {
-      const x = new Date(d);
-      x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-      x.setHours(0, 0, 0, 0);
-      return x;
-    };
-
-    function weekDays() {
-      const base = mondayOf(new Date());
-      base.setDate(base.getDate() + weekOffset * 7);
-      return Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(base); d.setDate(d.getDate() + i); return d;
-      });
+    function tickClock() {
+      document.getElementById('schedNow').textContent = 'Now: ' + new Date().toLocaleString();
     }
 
-    async function renderSchedDay(key) {
+    async function loadSchedule() {
       const el = document.getElementById('schedList');
-      if (!schedCache.has(key)) {
-        el.innerHTML = '<div class="state">Loading…</div>';
-        try {
-          const r = await apiGet('/schedule?date=' + encodeURIComponent(key));
-          schedCache.set(key, Array.isArray(r) ? r : (r && r.data) || []);
-        } catch {
-          el.innerHTML = '<div class="state">Schedule unavailable for this day.</div>';
-          return;
-        }
+      el.innerHTML = '<div class="state">Loading…</div>';
+      try {
+        const r = await apiGet('/schedule?date=' + ymd(new Date()));
+        const rows = Array.isArray(r) ? r : (r && r.data) || [];
+        if (!rows.length) { el.innerHTML = '<div class="state">Nothing scheduled.</div>'; return; }
+        el.innerHTML = rows.map(it => {
+          const libId = libIndex.get(normTitle(it.title));
+          const title = libId
+            ? `<a class="sched-title" href="/anime/${encodeURIComponent(libId)}">${esc(it.title)}</a>`
+            : `<span class="sched-title off">${esc(it.title)}</span>`;
+          const ep = it.episode_no ? `<span class="sched-ep">Episode ${esc(it.episode_no)}</span>` : '';
+          return `<div class="sched-row"><span class="sched-time">${esc(it.time || '--:--')}</span>${title}${ep}</div>`;
+        }).join('');
+      } catch {
+        el.innerHTML = '<div class="state">Schedule unavailable right now.</div>';
       }
-      if (key !== schedActive) return;          // a later tab won while we waited
-
-      const rows = schedCache.get(key) || [];
-      if (!rows.length) { el.innerHTML = '<div class="state">Nothing scheduled.</div>'; return; }
-      el.innerHTML = rows.map(it => {
-        const libId = libIndex.get(normTitle(it.title));
-        const title = libId
-          ? `<a class="sched-title" href="/anime/${encodeURIComponent(libId)}">${esc(it.title)}</a>`
-          : `<span class="sched-title off">${esc(it.title)}</span>`;
-        const ep = it.episode_no ? `<span class="sched-ep">Episode ${esc(it.episode_no)}</span>` : '';
-        return `<div class="sched-row"><span class="sched-time">${esc(it.time || '--:--')}</span>${title}${ep}</div>`;
-      }).join('');
     }
-
-    function renderSchedTabs() {
-      const tabs = document.getElementById('schedTabs');
-      const days = weekDays();
-      const today = ymd(new Date());
-      // Land on today when it is in view, otherwise on the Monday.
-      if (!days.some(d => ymd(d) === schedActive)) {
-        schedActive = days.some(d => ymd(d) === today) ? today : ymd(days[0]);
-      }
-      tabs.innerHTML = days.map(d => {
-        const key = ymd(d);
-        return `<button class="sched-day${key === schedActive ? ' on' : ''}" data-day="${key}">
-            <span class="d">${SCHED_MONTHS[d.getMonth()]} ${d.getDate()}</span>
-            <span class="w">${SCHED_DAYS[(d.getDay() + 6) % 7]}</span>
-          </button>`;
-      }).join('');
-      renderSchedDay(schedActive);
-    }
-
-    document.getElementById('schedTabs').onclick = (e) => {
-      const b = e.target.closest('.sched-day'); if (!b) return;
-      schedActive = b.dataset.day;
-      renderSchedTabs();
-    };
-    document.getElementById('schedPrev').onclick = () => { weekOffset--; schedActive = null; renderSchedTabs(); };
-    document.getElementById('schedNext').onclick = () => { weekOffset++; schedActive = null; renderSchedTabs(); };
 
     // ---- Paging -----------------------------------------------------------
     // Pages the list that is actually on screen: the active tab narrowed by the
@@ -367,9 +317,9 @@
 
       // Titles the library holds, so the schedule knows which rows to link.
       for (const a of homeCache.latest || []) libIndex.set(normTitle(a.title), a.id);
-      document.getElementById('schedNow').textContent =
-        'Now: ' + new Date().toLocaleString();
-      renderSchedTabs();
+      tickClock();
+      setInterval(tickClock, 1000);   // it was written once and then stood still
+      loadSchedule();
     }
 
     // ---- Tabs ----
