@@ -166,7 +166,9 @@ async function libretranslate(texts, target, source) {
 
   const res = await axios.post(LIBRE_URL + "/translate", body, {
     headers: { "Content-Type": "application/json" },
-    timeout: 30000,
+    // Generous on purpose: a self-hosted instance translates on the CPU, and
+    // a batch of 25 lines takes seconds even before batches contend for cores.
+    timeout: Number(process.env.LIBRETRANSLATE_TIMEOUT_MS) || 180000,
     validateStatus: () => true,
   });
   if (res.status !== 200) {
