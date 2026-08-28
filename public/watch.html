@@ -106,6 +106,24 @@
     let hls = null, episodes = [], skipData = null, curIndex = -1;
     let serverBtns = [], serverMap = new Map(), tried = new Set();
     let subtitles = [], ccOn = false;
+
+    // Offer a machine-translated Indonesian track alongside the real ones.
+    // It is built from the English source when the stream ships one, since
+    // translating from English reads far better than from whichever track
+    // happens to be listed first.
+    const TRANSLATE_TO = 'id';
+    const TRANSLATE_LABEL = 'Indonesian (auto-translate)';
+    function withTranslation(list) {
+      const tracks = Array.isArray(list) ? list.slice() : [];
+      if (!tracks.length) return tracks;
+      // Nothing to add when the stream already carries a real Indonesian track.
+      if (tracks.some(s => /indonesian|bahasa/i.test(s.label || s.language || ''))) return tracks;
+      const src = tracks.find(s => /english/i.test(s.label || s.language || '')) || tracks[0];
+      const url = src && (src.url || src.file);
+      if (!url) return tracks;
+      tracks.push({ label: TRANSLATE_LABEL, language: TRANSLATE_TO, url, translated: true });
+      return tracks;
+    }
     // What to do when hls fatally errors — set per render path (server chain
     // fallback for Anikoto scrapes, a plain message for the embed path).
     let onPlaybackFail = () => { showMsg('This server failed — trying another…'); fallbackToNext(); };
@@ -197,7 +215,7 @@
         const r = await apiGet('/stream/resolve?id=' + encodeURIComponent(server.link_id));
         if (!r.url) throw new Error(r.error || 'No stream URL');
         skipData = r.skipData || null;
-        subtitles = r.subtitles || [];
+        subtitles = withTranslation(r.subtitles);
         play(r.url);
       } catch (e) {
         // Resolve failed — fall through to the next server automatically.
@@ -254,7 +272,7 @@
       try {
         const r = await apiGet('/stream/resolve-url?url=' + encodeURIComponent(embedUrl));
         if (!r.url) throw new Error(r.error || 'no stream');
-        skipData = r.skipData || null; subtitles = r.subtitles || [];
+        skipData = r.skipData || null; subtitles = withTranslation(r.subtitles);
         play(r.url);
       } catch (e) {
         showMsg(`Couldn't resolve this stream (${esc(e.message)}).`);
@@ -392,12 +410,17 @@
       return cues;
     }
 
-    let subTrack = null, curSub = -1;
+    let subTrack = null, curSub = -1, subReq = 0;
 
     // Load subtitle track `idx` from the subtitles[] list (-1 = none picked
     // yet → use the default track or the first). A stream can carry several
     // languages; the CC menu lists them all and calls this to switch.
     async function applySubtitle(idx) {
+      // Each call takes a ticket. Building a translated track can take many
+      // seconds, and MANIFEST_PARSED fires applySubtitle again during that
+      // wait, so a stale call must not install its track over a newer one --
+      // that race left the player holding an empty, disabled track.
+      const myReq = ++subReq;
       const ccBtn = document.getElementById('vCC');
       if (subTrack) { try { [...(subTrack.cues || [])].forEach(c => subTrack.removeCue(c)); } catch {} subTrack.mode = 'disabled'; subTrack = null; }
       if (!subtitles.length) { ccBtn.style.display = 'none'; curSub = -1; return; }
@@ -417,12 +440,22 @@
       try {
         // Fetch + parse ourselves: a dynamically-created <track src> fails to
         // load in this setup, so we add cues via addTextTrack instead.
-        const vtt = await (await fetch('/api/stream/sub-proxy?url=' + encodeURIComponent(sub.url || sub.file))).text();
+        // A translated track goes through the translating endpoint instead,
+        // which serves from its cache once anyone has watched this episode.
+        const endpoint = sub.translated
+          ? '/api/stream/sub-translate?to=' + encodeURIComponent(sub.language || TRANSLATE_TO) +
+            '&url=' + encodeURIComponent(sub.url)
+          : '/api/stream/sub-proxy?url=' + encodeURIComponent(sub.url || sub.file);
+        if (sub.translated) showMsg('Translating subtitles, this can take a moment...');
+        const vtt = await (await fetch(endpoint)).text();
+        // Superseded while we waited: leave the UI to whoever came after us.
+        if (myReq !== subReq) return;
         subTrack = video.addTextTrack('subtitles', sub.label || sub.language || 'Subtitle', 'sub');
         for (const c of parseVTT(vtt)) subTrack.addCue(new VTTCue(c.start, c.end, c.text));
         applyCuePosition();
         subTrack.mode = ccOn ? 'showing' : 'hidden';
-      } catch { /* leave off */ }
+        if (sub.translated) hideMsg();
+      } catch { if (sub.translated) hideMsg(); }
     }
 
     // ---- Subtitle appearance ----------------------------------------------

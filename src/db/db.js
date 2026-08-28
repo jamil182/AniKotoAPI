@@ -50,6 +50,18 @@ export function migrate(db) {
       created_at TEXT, updated_at TEXT,
       UNIQUE(anime_id, number)
     );
+    -- Machine-translated subtitle tracks, keyed on the source VTT and target
+    -- language. Translating an episode costs real API quota, so a hit here is
+    -- what keeps every viewer after the first one free.
+    CREATE TABLE IF NOT EXISTS subtitle_translation (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_url TEXT NOT NULL,
+      target_lang TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      vtt TEXT NOT NULL,
+      created_at TEXT,
+      UNIQUE(source_url, target_lang)
+    );
   `);
 }
 

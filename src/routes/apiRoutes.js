@@ -53,6 +53,8 @@ import { getCacheStats } from "../helper/cache.helper.js";
 import { assertProxyableUrl, streamRefererHeaders, stripToTsSync, rememberResolvedHost } from "../helper/streamProxy.helper.js";
 import { adminAuth } from "../middleware/adminAuth.js";
 import { getDb } from "../db/index.js";
+import { getTranslation, putTranslation } from "../db/translation.repo.js";
+import { translateVtt } from "../helper/translate.helper.js";
 import { ingestAnikoto, ingestMalEpisode, malEmbedUrl } from "../services/adminIngest.js";
 import { listAnime, deleteAnime, getAnimeById, getEpisodes, homeSections, searchAnime, parseAnime } from "../db/library.repo.js";
 import { extractSearchResults } from "../extractors/search.extractor.js";
@@ -367,6 +369,68 @@ app.use((req, res, next) => {
       jsonError(res, error.message);
     }
   });
+  // ---- FEATURE: Machine-translated subtitle track ----
+  // A translation costs provider quota and takes seconds to build, so the
+  // finished track is cached in SQLite. The in-flight map stops two viewers
+  // who open the same episode together from paying for it twice.
+  const translationsInFlight = new Map();
+
+  app.get("/api/stream/sub-translate", async (req, res, next) => {
+    try {
+      const { url, to } = req.query;
+      if (!url) {
+        return res.status(400).json({ success: false, message: "Subtitle URL is required" });
+      }
+      const target = String(to || "id").toLowerCase();
+      if (!/^[a-z]{2}(-[a-z]{2})?$/.test(target)) {
+        return res.status(400).json({ success: false, message: "Unsupported target language" });
+      }
+
+      // Same destination guard the other stream proxies use.
+      const check = assertProxyableUrl(url);
+      if (!check.ok) {
+        return res.status(check.status).json({ success: false, message: check.message });
+      }
+
+      const sendVtt = (vtt, cached) => {
+        res.setHeader("Content-Type", "text/vtt; charset=utf-8");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        res.setHeader("X-Translation-Cache", cached ? "hit" : "miss");
+        res.send(vtt);
+      };
+
+      const db = getDb();
+      const hit = getTranslation(db, url, target);
+      if (hit) return sendVtt(hit.vtt, true);
+
+      const key = target + " " + url;
+      if (!translationsInFlight.has(key)) {
+        const job = (async () => {
+          const axios = (await import("axios")).default;
+          const { headers: defaultHeaders } = await import("../configs/header.config.js");
+
+          const response = await axios.get(url, {
+            headers: { ...defaultHeaders, ...streamRefererHeaders() },
+            timeout: 15000,
+            responseType: "text",
+          });
+          let src = typeof response.data === "string" ? response.data : String(response.data);
+          if (!src.trimStart().startsWith("WEBVTT")) src = "WEBVTT\n\n" + src;
+
+          const { vtt, provider } = await translateVtt(src, target);
+          putTranslation(db, url, target, provider, vtt);
+          return vtt;
+        })();
+        translationsInFlight.set(key, job.finally(() => translationsInFlight.delete(key)));
+      }
+
+      sendVtt(await translationsInFlight.get(key), false);
+    } catch (error) {
+      jsonError(res, error.message);
+    }
+  });
+
 
   // ══════════════════════════════════════════════════════════════
   // SCHEDULE
