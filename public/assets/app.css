@@ -366,10 +366,10 @@ img { display: block; max-width: 100%; }
 .ep-item.on { background: rgba(93,184,166,.14); border-color: var(--accent); }
 .ep-item.on .n, .ep-item.on .t { color: var(--accent-hi); }
 
-/* Right column holds Related and Trending; the column scrolls, not each panel,
-   so two sticky boxes cannot fight over the same offset. */
-.watch2 > aside { position: sticky; top: 84px; display: flex; flex-direction: column; gap: 18px;
-  max-height: calc(100vh - 108px); overflow-y: auto; }
+/* Right column carries a single panel. It scrolls with the page rather than
+   inside itself, and is not sticky: pinning it would clip whatever fell past
+   the viewport, which is the same scrollbar under another name. */
+.watch2 > aside { display: flex; flex-direction: column; gap: 18px; }
 .watch2 > aside .related { position: static; max-height: none; overflow: visible; }
 
 /* Narrow: drop to player + sidebar, with the episode list folded underneath. */

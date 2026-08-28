@@ -79,7 +79,6 @@
       </div>
 
       <aside>
-        <div class="related" id="related"><h3>Related</h3><div class="state">—</div></div>
         <div class="related" id="trending"><h3>Top Anime</h3><div class="state">—</div></div>
       </aside>
     </div>
@@ -341,18 +340,6 @@
       }
     }
     loadTopPicks();
-
-    function renderRelated(items) {
-      const el = document.getElementById('related');
-      const list = (items || []).slice(0, 12);
-      el.innerHTML = `<h3>Related</h3>` + (list.length
-        ? list.map(it => `
-            <div class="related-row" data-id="${esc(it.id)}">
-              <img loading="lazy" src="${esc(it.poster)}" alt="" onerror="this.style.visibility='hidden'">
-              <div><div class="t">${esc(it.title)}</div><div class="m">${esc(it.type || 'Anime')}</div></div>
-            </div>`).join('')
-        : '<div class="state">No related titles.</div>');
-    }
 
     function renderInfo(w) {
       const jpt = w.japaneseTitle || w.japanese_title;
@@ -839,7 +826,6 @@
         wireToolbar();
         setupPlayer();
         renderInfo(info);
-        renderRelated(info.recommended || []);
         renderCountdown(null);
 
         // Uniform playback: every episode stores embed URLs by language.
