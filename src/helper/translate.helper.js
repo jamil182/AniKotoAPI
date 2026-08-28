@@ -8,9 +8,10 @@
  *   a WebVTT document, leaving the header, cue identifiers and every timestamp
  *   exactly as they were, so the translated track stays in sync with the video.
  *
- *   The provider is chosen from the environment: DeepL when DEEPL_API_KEY is
- *   set, otherwise MyMemory, which needs no key. Swapping providers is a
- *   config change, not a code change.
+ *   The provider comes from the environment. TRANSLATE_PROVIDER names one
+ *   outright; with it unset the first configured service wins -- DeepL if it
+ *   has a key, then LibreTranslate if it has a URL, then MyMemory, which needs
+ *   neither. Swapping providers is a config change, not a code change.
  *
  * @exports
  *   translateVtt, splitVtt, PROVIDER
@@ -27,11 +28,20 @@ import axios from "axios";
 // ══════════════════════════════════════════════════════════════
 
 const DEEPL_KEY = process.env.DEEPL_API_KEY || "";
-// MyMemory raises the anonymous daily allowance substantially when a contact
-// address is supplied, so pass one through if the operator configured it.
+// MyMemory needs no account at all: the anonymous tier works as-is, and a
+// contact address in `de` raises the daily allowance substantially.
 const MYMEMORY_EMAIL = process.env.MYMEMORY_EMAIL || "";
+// LibreTranslate is open source. Point this at the hosted endpoint, or at a
+// self-hosted instance (http://localhost:5000), which has no quota at all.
+const LIBRE_URL = (process.env.LIBRETRANSLATE_URL || "").replace(/[/]+$/, "");
+const LIBRE_KEY = process.env.LIBRETRANSLATE_API_KEY || "";
 
-const PROVIDER = DEEPL_KEY ? "deepl" : "mymemory";
+// An explicit choice wins; otherwise take whichever service is configured.
+const KNOWN_PROVIDERS = ["deepl", "libretranslate", "mymemory"];
+const NAMED = (process.env.TRANSLATE_PROVIDER || "").trim().toLowerCase();
+const PROVIDER = KNOWN_PROVIDERS.includes(NAMED)
+  ? NAMED
+  : DEEPL_KEY ? "deepl" : LIBRE_URL ? "libretranslate" : "mymemory";
 
 // MyMemory rejects a longer `q`, which is what forces the batching below
 // rather than one request for the whole document.
@@ -138,6 +148,36 @@ async function deepl(texts, target, source) {
   return (res.data.translations || []).map((t) => t.text);
 }
 
+// ---- FEATURE: LibreTranslate request ----
+/**
+ * Translates a batch via LibreTranslate, which accepts an array for `q` and
+ * returns the results in the same order -- so unlike the MyMemory path there
+ * is no separator to be mangled and no risk of cues shifting.
+ *
+ * @param {string[]} texts
+ * @param {string} target
+ * @param {string} source
+ * @returns {Promise<string[]>}
+ */
+async function libretranslate(texts, target, source) {
+  const body = { q: texts, source: source || "auto", target, format: "text" };
+  // A self-hosted instance usually runs open, so only send a key if there is one.
+  if (LIBRE_KEY) body.api_key = LIBRE_KEY;
+
+  const res = await axios.post(LIBRE_URL + "/translate", body, {
+    headers: { "Content-Type": "application/json" },
+    timeout: 30000,
+    validateStatus: () => true,
+  });
+  if (res.status !== 200) {
+    const detail = (res.data && (res.data.error || JSON.stringify(res.data))) || res.status;
+    throw new Error("LibreTranslate " + res.status + ": " + String(detail).slice(0, 160));
+  }
+  const out = res.data && res.data.translatedText;
+  // An array `q` gives an array back; a lone string gives a string.
+  return Array.isArray(out) ? out : [out];
+}
+
 // ══════════════════════════════════════════════════════════════
 // BATCHING
 // ══════════════════════════════════════════════════════════════
@@ -152,8 +192,11 @@ async function deepl(texts, target, source) {
  */
 function batch(texts) {
   const out = [];
-  if (PROVIDER === "deepl") {
-    for (let i = 0; i < texts.length; i += 40) out.push(texts.slice(i, i + 40));
+  // Providers that accept an array answer in the same order, so a plain chunk
+  // is safe -- only MyMemory needs the size-limited, separator-joined path.
+  if (PROVIDER === "deepl" || PROVIDER === "libretranslate") {
+    const size = PROVIDER === "deepl" ? 40 : 25;
+    for (let i = 0; i < texts.length; i += size) out.push(texts.slice(i, i + size));
     return out;
   }
   let cur = [];
@@ -184,6 +227,11 @@ function batch(texts) {
 async function translateBatch(items, target, source) {
   if (PROVIDER === "deepl") {
     const out = await deepl(items, target, source);
+    return out.length === items.length ? out : items;
+  }
+
+  if (PROVIDER === "libretranslate") {
+    const out = await libretranslate(items, target, source);
     return out.length === items.length ? out : items;
   }
 
