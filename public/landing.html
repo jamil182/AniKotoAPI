@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AniJs — Your Own Anime Library</title>
+  <meta name="description" content="AniJs is a self-hosted front end for the AniKoto API. It plays the anime you have added to your own library." />
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body class="landing-body">
+
+  <div class="landing-sky" aria-hidden="true"></div>
+
+  <main class="landing">
+    <div class="landing-card">
+
+      <section class="landing-left">
+        <div class="landing-logo">Ani<b>Js</b></div>
+        <p class="landing-tag">A self-hosted front end for the AniKoto API.</p>
+
+        <div class="landing-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.9"/>
+            <path d="M16.5 16.5 21 21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+          </svg>
+          <input id="lSearch" type="search" autocomplete="off" placeholder="Search your library…" aria-label="Search the library">
+        </div>
+        <div class="landing-drop" id="lDrop"></div>
+
+        <p class="landing-popular"><b>In your library:</b> <span id="lPopular">Loading…</span></p>
+
+        <a class="landing-cta" href="/home">Visit Home &rarr;</a>
+      </section>
+
+      <section class="landing-right">
+        <h1>Your own anime library, in a browser</h1>
+        <p>
+          AniJs is a front end you run yourself. It plays what you have chosen to
+          store, so the catalogue is exactly as large as you make it — nothing
+          more, and nothing you did not put there.
+        </p>
+
+        <h2>How it works</h2>
+        <p>
+          You add a series from the admin panel. AniJs keeps its episode list and
+          embed links in a local database, then resolves and proxies the video
+          stream through your own server when you press play.
+        </p>
+
+        <h2>What is inside</h2>
+        <p><b>Library-backed</b> — every title on the site is one you added, so nothing on screen leads to a dead end.</p>
+        <p><b>Subtitles you control</b> — colour, opacity, size, typeface, edge, background and position, all remembered between visits.</p>
+        <p><b>Indonesian machine translation</b> — for episodes whose source has no Indonesian track. Translations are cached, so each episode is only ever translated once.</p>
+        <p><b>Your own stream proxy</b> — playlists and segments pass through your server against a destination allowlist, rather than being fetched straight from a third party.</p>
+        <p><b>Built to be read</b> — genre and A-Z filters, paged listings, an episode sidebar, and a player that behaves on a phone as well as a desktop.</p>
+
+        <p class="landing-foot">
+          Powered by the <a href="/docs">AniKoto API</a>. Source on
+          <a href="https://github.com/Shineii86/AniKotoAPI" target="_blank" rel="noopener">GitHub</a>.
+        </p>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="/assets/api.js"></script>
+  <script>
+    // ---- Library search, mirroring the nav dropdown ----
+    const box = document.getElementById('lSearch');
+    const drop = document.getElementById('lDrop');
+    let timer = null;
+
+    const closeDrop = () => { drop.classList.remove('open'); drop.innerHTML = ''; };
+
+    box.addEventListener('input', () => {
+      clearTimeout(timer);
+      const q = box.value.trim();
+      if (q.length < 2) return closeDrop();
+      timer = setTimeout(async () => {
+        try {
+          const rows = await apiGet('/library/search?keyword=' + encodeURIComponent(q));
+          // The endpoint nests its rows: results is { data: [...] }, not an array.
+          const list = (Array.isArray(rows) ? rows : (rows && rows.data) || []).slice(0, 8);
+          drop.innerHTML = list.length
+            ? list.map(it => `
+                <a class="landing-hit" href="/anime/${encodeURIComponent(it.id)}">
+                  <img loading="lazy" src="${esc(it.poster)}" alt="" onerror="this.style.visibility='hidden'">
+                  <span>${esc(it.title)}</span>
+                </a>`).join('')
+            : `<div class="landing-hit empty">Nothing in the library matches that.</div>`;
+          drop.classList.add('open');
+        } catch {
+          drop.innerHTML = `<div class="landing-hit empty">Search is unavailable.</div>`;
+          drop.classList.add('open');
+        }
+      }, 220);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.landing-search') && !e.target.closest('.landing-drop')) closeDrop();
+    });
+
+    // ---- Titles actually held, rather than a fixed list ----
+    (async () => {
+      const el = document.getElementById('lPopular');
+      try {
+        const home = await apiGet('/library/home');
+        const list = (home.top || home.latest || []).slice(0, 10);
+        el.innerHTML = list.length
+          ? list.map(a => `<a href="/anime/${encodeURIComponent(a.id)}">${esc(a.title)}</a>`).join(', ')
+          : 'nothing stored yet — add a series in <a href="/admin">/admin</a>.';
+      } catch {
+        el.textContent = 'could not be loaded.';
+      }
+    })();
+  </script>
+</body>
+</html>

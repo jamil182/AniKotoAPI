@@ -492,3 +492,74 @@ body.dimmed .player-wrap, body.dimmed .player-toolbar { position: relative; z-in
 .foot-inner { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .foot a:hover { color: var(--accent-hi); }
 .foot .sp { margin-left: auto; }
+
+/* ── Landing page ──────────────────────────────────────────────────────
+   The night sky is drawn in CSS rather than shipped as artwork: layered
+   radial gradients for the glow, a repeating one for the stars. */
+.landing-body { min-height: 100vh; }
+.landing-sky {
+  position: fixed; inset: 0; z-index: -1;
+  background:
+    radial-gradient(1100px 620px at 78% 12%, rgba(120,90,200,.30), transparent 62%),
+    radial-gradient(900px 540px at 12% 82%, rgba(60,140,190,.24), transparent 60%),
+    radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,.75), transparent 60%),
+    radial-gradient(1.6px 1.6px at 68% 22%, rgba(255,255,255,.55), transparent 60%),
+    radial-gradient(1.6px 1.6px at 42% 68%, rgba(255,255,255,.5), transparent 60%),
+    radial-gradient(1.4px 1.4px at 86% 60%, rgba(255,255,255,.45), transparent 60%),
+    radial-gradient(1.4px 1.4px at 30% 88%, rgba(255,255,255,.4), transparent 60%),
+    linear-gradient(160deg, #0b0d18 0%, #121428 45%, #0d1020 100%);
+}
+
+.landing { display: flex; align-items: center; justify-content: center; padding: 48px 24px; min-height: 100vh; }
+.landing-card {
+  width: 100%; max-width: 1180px; display: grid; grid-template-columns: 400px minmax(0, 1fr);
+  background: rgba(16,19,30,.86); border: 1px solid var(--border);
+  border-radius: 16px; box-shadow: 0 24px 70px rgba(0,0,0,.5); overflow: hidden;
+}
+.landing-left { padding: 40px 36px; border-right: 1px solid var(--border); }
+.landing-right { padding: 40px 40px; }
+
+.landing-logo { font-family: var(--font-display); font-size: 2.4rem; font-weight: 700; color: var(--ink); line-height: 1; }
+.landing-logo b { color: var(--accent); }
+.landing-tag { color: var(--muted); font-size: .88rem; margin: 10px 0 26px; }
+
+.landing-search { display: flex; align-items: center; gap: 10px; padding: 0 14px; height: 46px;
+  border-radius: 10px; border: 1px solid var(--border); background: var(--bg-soft); }
+.landing-search:focus-within { border-color: var(--accent); }
+.landing-search svg { width: 18px; height: 18px; color: var(--muted); flex-shrink: 0; }
+.landing-search input { flex: 1; min-width: 0; border: none; background: transparent; outline: none;
+  color: var(--ink); font-family: var(--font-body); font-size: .92rem; }
+.landing-search input::placeholder { color: var(--muted); }
+
+.landing-drop { display: none; margin-top: 8px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); overflow: hidden; max-height: 320px; overflow-y: auto; }
+.landing-drop.open { display: block; }
+.landing-hit { display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  text-decoration: none; color: var(--body); font-size: .85rem; }
+.landing-hit:hover { background: var(--surface-hi); color: var(--ink); }
+.landing-hit img { width: 32px; height: 44px; object-fit: cover; border-radius: 5px; background: var(--bg-soft); flex-shrink: 0; }
+.landing-hit.empty { color: var(--muted); cursor: default; }
+
+.landing-popular { margin: 22px 0 26px; font-size: .84rem; color: var(--muted); line-height: 1.7; }
+.landing-popular b { color: var(--body); }
+.landing-popular a { color: var(--accent-hi); text-decoration: none; }
+.landing-popular a:hover { text-decoration: underline; }
+
+.landing-cta { display: inline-block; padding: 12px 24px; border-radius: 10px; background: var(--accent);
+  color: #08120f; font-weight: 700; font-size: .92rem; text-decoration: none; transition: filter .12s; }
+.landing-cta:hover { filter: brightness(1.08); }
+
+.landing-right h1 { font-family: var(--font-display); font-size: 1.9rem; font-weight: 600; color: var(--ink); margin: 0 0 14px; }
+.landing-right h2 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; color: var(--ink); margin: 26px 0 10px; }
+.landing-right p { color: var(--body); font-size: .9rem; line-height: 1.75; margin: 0 0 10px; }
+.landing-right p b { color: var(--ink); }
+.landing-foot { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--border);
+  color: var(--muted); font-size: .82rem; }
+.landing-foot a { color: var(--accent-hi); text-decoration: none; }
+.landing-foot a:hover { text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .landing-card { grid-template-columns: 1fr; }
+  .landing-left { border-right: none; border-bottom: 1px solid var(--border); }
+  .landing-left, .landing-right { padding: 30px 24px; }
+}

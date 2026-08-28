@@ -101,7 +101,7 @@ function navHTML(active) {
   const on = (k) => active === k ? ' style="color:var(--ink)"' : '';
   return `
     <div class="wrap nav-inner">
-      <a href="/" class="logo">Ani<b>Js</b></a>
+      <a href="/home" class="logo">Ani<b>Js</b></a>
       <div class="nav-search">
         <input id="navSearch" type="text" placeholder="Search anime…" autocomplete="off" />
         <div class="search-drop" id="navSearchDrop"></div>

@@ -111,8 +111,10 @@ app.use((req, res, next) => {
 // STATIC FILES
 // ══════════════════════════════════════════════════════════════
 
-// NOTE: redirect: false prevents automatic redirects to index.html
-app.use(express.static(publicDir, { redirect: false }));
+// NOTE: redirect: false prevents automatic redirects to index.html.
+// index: false stops it answering "/" with index.html, so the landing route
+// below can own the root; the anime home lives at /home.
+app.use(express.static(publicDir, { redirect: false, index: false }));
 
 // ══════════════════════════════════════════════════════════════
 // CLEAN URL ROUTES
@@ -125,8 +127,11 @@ app.get("/docs", (req, res) => {
   res.sendFile(path.join(publicDir, "docs.html"));
 });
 
-// NOTE: The home page answers on both / (static index.html) and /home, which is
-// the path the upstream site uses.
+// NOTE: "/" is the landing page; the anime home lives at /home.
+app.get("/", (req, res) => {
+  res.sendFile(path.join(publicDir, "landing.html"));
+});
+
 app.get("/home", (req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
 });
