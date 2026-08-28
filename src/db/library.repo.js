@@ -113,7 +113,9 @@ export function parseAnime(row) {
 export function homeSections(db) {
   const latest = listAnime(db, { limit: 24 }).map(parseAnime);
   const top = db.prepare(
-    "SELECT * FROM anime WHERE rating IS NOT NULL ORDER BY CAST(rating AS REAL) DESC LIMIT 10"
+    // 12 so the home grid fills two rows of six. The Top Anime rail slices
+    // this back to 10 itself.
+    "SELECT * FROM anime WHERE rating IS NOT NULL ORDER BY CAST(rating AS REAL) DESC LIMIT 12"
   ).all().map(parseAnime);
   const spotlights = latest.slice(0, 6);
   const genres = [...new Set(latest.flatMap((a) => a.genres))].sort();
