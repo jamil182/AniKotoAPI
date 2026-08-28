@@ -113,7 +113,18 @@ export function parseAnime(row) {
 export function homeSections(db) {
   // 60 rather than 24: the home grid pages this anyway, and the schedule
   // matches its rows against the full list to decide what is clickable.
-  const latest = listAnime(db, { limit: 60 }).map(parseAnime);
+  // Ordered by the newest episode stored, not by when the anime row was last
+  // touched. Re-fetching a series that gained an episode lifts it to the top,
+  // which is the point of the section; re-fetching one that gained nothing
+  // leaves it exactly where it was. upsertEpisode only rewrites updated_at on
+  // an existing episode, so created_at marks genuinely new arrivals.
+  const latest = db.prepare(`
+    SELECT a.* FROM anime a
+    LEFT JOIN (SELECT anime_id, MAX(created_at) AS last_ep FROM episode GROUP BY anime_id) e
+      ON e.anime_id = a.id
+    ORDER BY COALESCE(e.last_ep, a.created_at) DESC
+    LIMIT 60
+  `).all().map(parseAnime);
   const top = db.prepare(
     // 12 so the home grid fills two rows of six. The Top Anime rail slices
     // this back to 10 itself.
