@@ -80,7 +80,7 @@
 
       <aside>
         <div class="related" id="related"><h3>Related</h3><div class="state">—</div></div>
-        <div class="related" id="trending"><h3>Trending</h3><div class="state">—</div></div>
+        <div class="related" id="trending"><h3>Top Anime</h3><div class="state">—</div></div>
       </aside>
     </div>
   </div>
@@ -313,29 +313,34 @@
     }
 
 
-    // ---- Trending sidebar ----
-    // Keeps the right column populated even when a title has no recommendations,
-    // which was leaving a tall empty panel beside the player.
-    async function loadTrending() {
+    // ---- Sidebar: more from the library -----------------------------------
+    // This used to pull the upstream trending list, whose rows carried a slug
+    // and no library id. Nothing in api.js listens for data-slug, and adding a
+    // listener would not have helped either: navigation resolves to
+    // /anime/<library id>, which an upstream title simply does not have. The
+    // panel was inert. Read the library instead, where every row is both
+    // clickable and playable.
+    async function loadTopPicks() {
       const el = document.getElementById('trending');
+      const head = `<h3>Top Anime</h3>`;
       try {
-        const r = await apiGet('/trending');
-        const list = (Array.isArray(r) ? r : (r && r.data) || []).slice(0, 10);
-        if (!list.length) { el.innerHTML = `<h3>Trending</h3><div class="state">Nothing right now.</div>`; return; }
-        // Trending items are keyed by slug, not id -- api.js listens for both.
-        el.innerHTML = `<h3>Trending</h3>` + list.map(it => `
-          <div class="related-row" data-slug="${esc(it.slug)}">
+        const home = await apiGet('/library/home');
+        // Drop whatever is already playing above it.
+        const list = (home.top || []).filter(a => String(a.id) !== String(id)).slice(0, 10);
+        if (!list.length) { el.innerHTML = head + `<div class="state">Nothing else stored yet.</div>`; return; }
+        el.innerHTML = head + list.map(it => `
+          <div class="related-row" data-id="${esc(it.id)}">
             <img loading="lazy" src="${esc(it.poster)}" alt="" onerror="this.style.visibility='hidden'">
             <div>
               <div class="t">${esc(it.title)}</div>
-              <div class="m">${esc(it.type || '')}${it.total ? ' · ' + esc(it.total) + ' eps' : ''}</div>
+              <div class="m">${esc(it.type || '')}${it.total_episodes ? ' · ' + esc(it.total_episodes) + ' eps' : ''}</div>
             </div>
           </div>`).join('');
       } catch {
-        el.innerHTML = `<h3>Trending</h3><div class="state">Couldn't load.</div>`;
+        el.innerHTML = head + `<div class="state">Couldn't load.</div>`;
       }
     }
-    loadTrending();
+    loadTopPicks();
 
     function renderRelated(items) {
       const el = document.getElementById('related');
