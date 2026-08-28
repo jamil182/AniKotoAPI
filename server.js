@@ -125,6 +125,12 @@ app.get("/docs", (req, res) => {
   res.sendFile(path.join(publicDir, "docs.html"));
 });
 
+// NOTE: The home page answers on both / (static index.html) and /home, which is
+// the path the upstream site uses.
+app.get("/home", (req, res) => {
+  res.sendFile(path.join(publicDir, "index.html"));
+});
+
 // NOTE: Anime detail page. The slug is read client-side from the path, so every
 // /anime/<slug> serves the same shell.
 app.get("/anime/:slug", (req, res) => {

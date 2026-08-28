@@ -17,14 +17,14 @@
 
   <!-- Hero -->
   <section class="hero" id="hero" aria-label="Featured anime">
-    <div class="wrap hero-content">
+    <div class="wrap wrap-home hero-content">
       <div class="hero-inner" id="heroInner"></div>
       <div class="hero-dots" id="heroDots"></div>
     </div>
   </section>
 
   <!-- Main -->
-  <div class="wrap main">
+  <div class="wrap wrap-home main">
     <div>
       <section class="section">
         <div class="section-head">
@@ -32,6 +32,11 @@
           <div class="tabs" id="latestTabs">
             <button class="tab on" data-src="latest">All</button>
             <button class="tab" data-src="trending">Trending</button>
+          </div>
+          <div class="pager" id="latestPager" hidden>
+            <button class="pager-btn" id="pagePrev" aria-label="Previous page">&lsaquo;</button>
+            <span class="pager-now" id="pageNow">1 / 1</span>
+            <button class="pager-btn" id="pageNext" aria-label="Next page">&rsaquo;</button>
           </div>
         </div>
         <div id="latest"></div>
@@ -42,6 +47,21 @@
           <h2 class="section-title">Most Popular</h2>
         </div>
         <div id="popular"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2 class="section-title">Genres</h2>
+          <button class="tab" id="clearFilter" hidden>Clear filter</button>
+        </div>
+        <div class="chip-row" id="genres"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <h2 class="section-title">A-Z List</h2>
+        </div>
+        <div class="chip-row az" id="azList"></div>
       </section>
     </div>
 
@@ -124,9 +144,9 @@
     function renderTop(list) {
       const el = document.getElementById('topten');
       if (!list || !list.length) { el.innerHTML = '<div class="state">No ranking.</div>'; return; }
-      el.innerHTML = list.slice(0, 10).map(it => `
+      el.innerHTML = list.slice(0, 10).map((it, i) => `
         <div class="rank-row" data-id="${esc(it.id)}">
-          <div class="rank-n">${it.rank ?? ''}</div>
+          <div class="rank-n">${it.rank ?? (i + 1)}</div>
           <img loading="lazy" src="${esc(it.poster)}" alt="" onerror="this.style.visibility='hidden'">
           <div>
             <div class="rank-t">${esc(it.name || it.title)}</div>
@@ -135,11 +155,98 @@
         </div>`).join('');
     }
 
+    // ---- Genre and A-Z filters -------------------------------------------
+    // Both narrow the Latest grid rather than linking away: there is no /search
+    // page, and every title here already lives in the local library.
+    const filter = { genre: null, letter: null };
+    const firstLetter = (t) => {
+      const c = String(t || '').trim().charAt(0).toUpperCase();
+      return /[A-Z]/.test(c) ? c : '#';
+    };
+    const applyFilter = (list) => (list || []).filter(a =>
+      (!filter.genre || (a.genres || []).includes(filter.genre)) &&
+      (!filter.letter || firstLetter(a.title) === filter.letter));
+
+    function paintChips() {
+      document.querySelectorAll('#genres .chip').forEach(c =>
+        c.classList.toggle('on', c.dataset.genre === filter.genre));
+      document.querySelectorAll('#azList .chip').forEach(c =>
+        c.classList.toggle('on', c.dataset.letter === filter.letter));
+      document.getElementById('clearFilter').hidden = !filter.genre && !filter.letter;
+    }
+
+    // ---- Paging -----------------------------------------------------------
+    // Pages the list that is actually on screen: the active tab narrowed by the
+    // genre and letter filters. Anything else and choosing a filter while on
+    // page 2 would leave the grid empty.
+    const PAGE_SIZE = 12;
+    let activeSrc = 'latest';
+    let page = 1;
+
+    const sourceList = () =>
+      applyFilter(activeSrc === 'trending' ? (homeCache?.top || []) : (homeCache?.latest || []));
+    const pageCount = () => Math.max(1, Math.ceil(sourceList().length / PAGE_SIZE));
+
+    function renderPager() {
+      const total = pageCount();
+      document.getElementById('latestPager').hidden = total <= 1;
+      document.getElementById('pagePrev').disabled = page <= 1;
+      document.getElementById('pageNext').disabled = page >= total;
+      document.getElementById('pageNow').textContent = page + ' / ' + total;
+    }
+
+    function refreshLatest() {
+      // A filter can shrink the list under the current page.
+      const total = pageCount();
+      if (page > total) page = total;
+      paintChips();
+      renderPager();
+      renderCards(document.getElementById('latest'),
+        () => Promise.resolve(sourceList().slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)),
+        { count: PAGE_SIZE, empty: 'Nothing matches that filter.' });
+    }
+
+    // Any change of source or filter starts again from the first page.
+    const resetAndRefresh = () => { page = 1; refreshLatest(); };
+
+    document.getElementById('pagePrev').onclick = () => { if (page > 1) { page--; refreshLatest(); } };
+    document.getElementById('pageNext').onclick = () => { if (page < pageCount()) { page++; refreshLatest(); } };
+
+    function renderGenres(list) {
+      const el = document.getElementById('genres');
+      const g = (list || []).filter(Boolean);
+      if (!g.length) { el.innerHTML = '<div class="state">No genres in the library yet.</div>'; return; }
+      el.innerHTML = g.map(n => `<button class="chip" data-genre="${esc(n)}">${esc(n)}</button>`).join('');
+      el.onclick = (e) => {
+        const c = e.target.closest('.chip'); if (!c) return;
+        filter.genre = filter.genre === c.dataset.genre ? null : c.dataset.genre;
+        resetAndRefresh();
+      };
+    }
+
+    function renderAz(list) {
+      const el = document.getElementById('azList');
+      // Only letters the library actually has, so no dead buttons.
+      const have = new Set((list || []).map(a => firstLetter(a.title)));
+      const letters = [...have].sort();
+      if (!letters.length) { el.innerHTML = '<div class="state">Library is empty.</div>'; return; }
+      el.innerHTML = letters.map(l => `<button class="chip" data-letter="${esc(l)}">${esc(l)}</button>`).join('');
+      el.onclick = (e) => {
+        const c = e.target.closest('.chip'); if (!c) return;
+        filter.letter = filter.letter === c.dataset.letter ? null : c.dataset.letter;
+        resetAndRefresh();
+      };
+    }
+
+    document.getElementById('clearFilter').onclick = () => {
+      filter.genre = null; filter.letter = null; resetAndRefresh();
+    };
+
     // ---- Loaders (from the stored library) ----
     let homeCache = null;
+    // Latest and Trending now go through sourceList(), which applies the tab,
+    // the filters and the page together; only Most Popular still loads flat.
     const loaders = {
-      latest: () => Promise.resolve(homeCache?.latest || []),
-      trending: () => Promise.resolve(homeCache?.top || []),
       popular: () => Promise.resolve(homeCache?.top || []),
     };
 
@@ -150,19 +257,22 @@
       } catch { return heroError(); }
 
       renderHero(homeCache.spotlights || []);
-      renderCards(document.getElementById('latest'), loaders.latest, { count: 12, empty: 'Library is empty — add anime in /admin.' });
+      refreshLatest();
       renderCards(document.getElementById('popular'), loaders.popular, { count: 12, empty: 'Nothing here yet.' });
 
       // Top-ten rail (library top, shown under every tab)
       topData = { today: homeCache.top, week: homeCache.top, month: homeCache.top };
       renderTop(homeCache.top);
+      renderGenres(homeCache.genres || []);
+      renderAz(homeCache.latest || []);
     }
 
     // ---- Tabs ----
     document.getElementById('latestTabs').onclick = (e) => {
       const b = e.target.closest('.tab'); if (!b) return;
       document.querySelectorAll('#latestTabs .tab').forEach(t => t.classList.toggle('on', t === b));
-      renderCards(document.getElementById('latest'), loaders[b.dataset.src], { count: 12 });
+      activeSrc = b.dataset.src;
+      resetAndRefresh();
     };
     document.getElementById('topTabs').onclick = (e) => {
       const b = e.target.closest('.tab'); if (!b || !topData) return;
