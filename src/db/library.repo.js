@@ -48,6 +48,7 @@ export function upsertAnime(db, rec) {
     poster: rec.poster ?? null, banner: rec.banner ?? null, synopsis: rec.synopsis ?? null,
     type: rec.type ?? null, status: rec.status ?? null, genres: jarr(rec.genres), studios: jarr(rec.studios),
     rating: rec.rating ?? null, total_episodes: rec.totalEpisodes ?? null,
+    year: rec.year ?? null, duration: rec.duration ?? null,
     auto_update: rec.autoUpdate ? 1 : 0,
   };
   if (existing) {

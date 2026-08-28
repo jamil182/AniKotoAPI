@@ -27,10 +27,17 @@ function normalizeAnime(a) {
     // countdown depends on keeping it.
     slug: a.slug || null,
     title: a.title || null,
+    // Another field the catalogue sends and this dropped: the hover card
+    // shows it as "Other names". Prefer the native title, fall back to the
+    // romanised one.
+    japaneseTitle: a.native || a.alternative || null,
     poster: a.poster || null,
     banner: a.background_image || null,
     synopsis: a.description || null,
     status: a.status || null,
+    // Shown in the poster hover card; the catalogue has always sent both.
+    year: a.year ? Number(a.year) : null,
+    duration: a.duration || null,
     type,
     genres: genresOf(a),
     rating: a.score || a.rating || null,

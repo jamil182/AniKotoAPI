@@ -47,6 +47,57 @@ function subDubChips(item) {
 
 // Poster card. Non-navigating in this phase: it carries the slug on a data
 // attribute so a later phase can turn it into a link without markup changes.
+// Durations arrive as "25m", "24 min" or a bare "12". Normalise to one form
+// so the hover card does not read like three different fields.
+function fmtDuration(v) {
+  if (!v) return '';
+  const n = String(v).match(/[0-9]+/);
+  return n ? esc(n[0] + ' min') : esc(String(v));
+}
+// ---- Poster hover card ----
+// Every field here is already in memory from /library/home, so hovering costs
+// no request. Rows whose data is missing are dropped rather than printed
+// empty: duration in particular is absent for a third of the catalogue.
+function cardTipHTML(item) {
+  const row = (label, value) =>
+    value ? `<div class="tip-row"><span class="tip-k">${label}:</span> ${value}</div>` : '';
+  const list = Array.isArray(item.genres)
+    ? item.genres
+    : (item.genres ? String(item.genres).split(',') : []);
+  const genres = list.slice(0, 6)
+    .map((g) => `<span class="tip-genre">${esc(String(g).trim())}</span>`).join('');
+
+  return `
+    <div class="card-tip">
+      <div class="tip-title">${esc(item.title || item.name || 'Untitled')}</div>
+      <div class="tip-badges">${subDubChips(item)}${item.type ? `<span class="card-type tip-type">${esc(item.type)}</span>` : ''}</div>
+      ${item.synopsis ? `<p class="tip-syn">${esc(item.synopsis)}</p>` : ''}
+      ${row('Other names', item.japanese_title ? esc(item.japanese_title) : '')}
+      ${row('Scores', item.rating ? esc(item.rating) : '')}
+      ${row('Year', item.year ? esc(item.year) : '')}
+      ${row('Duration', fmtDuration(item.duration))}
+      ${row('Status', item.status ? esc(item.status) : '')}
+      ${genres ? `<div class="tip-row"><span class="tip-k">Genre:</span> ${genres}</div>` : ''}
+      <a class="tip-watch" href="/watch/${encodeURIComponent(item.id)}/1"
+         onclick="event.stopPropagation()">&#9654; Watch</a>
+    </div>`;
+}
+
+// Flip the card away from whichever edge it would otherwise run past. Measured
+// on hover because the grid reflows with the window.
+document.addEventListener('mouseover', (e) => {
+  const card = e.target.closest && e.target.closest('.card');
+  if (!card) return;
+  const tip = card.querySelector('.card-tip');
+  if (!tip) return;
+  const r = card.getBoundingClientRect();
+  const w = tip.offsetWidth || 300;
+  tip.classList.toggle('flip', r.right + w + 14 > window.innerWidth);
+  // Keep it on screen vertically too, without letting it cover the poster.
+  const over = r.top + tip.offsetHeight - (window.innerHeight - 12);
+  tip.style.top = over > 0 ? (-Math.min(over, r.top - 12)) + 'px' : '0px';
+});
+
 function cardHTML(item) {
   const title = item.title || item.name || 'Untitled';
   const type = item.type || '';
@@ -60,6 +111,7 @@ function cardHTML(item) {
       </div>
       <div class="card-title">${esc(title)}</div>
       ${item.rating ? `<div class="card-sub">★ ${esc(item.rating)}</div>` : ''}
+      ${cardTipHTML(item)}
     </div>`;
 }
 

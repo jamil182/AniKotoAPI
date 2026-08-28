@@ -63,6 +63,12 @@ export function migrate(db) {
       UNIQUE(source_url, target_lang)
     );
   `);
+
+  // Added after the table first shipped. SQLite has no ADD COLUMN IF NOT
+  // EXISTS, so check what is already there rather than catching an error.
+  const cols = new Set(db.prepare("PRAGMA table_info(anime)").all().map((c) => c.name));
+  if (!cols.has("year")) db.exec("ALTER TABLE anime ADD COLUMN year INTEGER");
+  if (!cols.has("duration")) db.exec("ALTER TABLE anime ADD COLUMN duration TEXT");
 }
 
 // ---- FEATURE: Connection ----
