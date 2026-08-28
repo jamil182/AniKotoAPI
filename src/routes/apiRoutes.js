@@ -418,7 +418,13 @@ app.use((req, res, next) => {
           let src = typeof response.data === "string" ? response.data : String(response.data);
           if (!src.trimStart().startsWith("WEBVTT")) src = "WEBVTT\n\n" + src;
 
-          const { vtt, provider } = await translateVtt(src, target);
+          const { vtt, provider, failed } = await translateVtt(src, target);
+          // Never store a half-translated document. The cache is keyed on the
+          // source URL alone, so one bad write would serve the source language
+          // for that episode permanently -- long after the quota came back.
+          if (failed > 0) {
+            throw new Error(failed + " lines could not be translated; not caching");
+          }
           putTranslation(db, url, target, provider, vtt);
           return vtt;
         })();

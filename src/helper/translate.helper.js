@@ -113,7 +113,15 @@ async function mymemory(text, target, source) {
   const data = res.data || {};
   const status = Number(data.responseStatus);
   if (res.status !== 200 || (status && status !== 200)) {
-    throw new Error("MyMemory: " + (data.responseDetails || res.status));
+    const detail = String(data.responseDetails || res.status);
+    const err = new Error("MyMemory: " + detail);
+    // A spent daily allowance answers 429. Flagging it lets the caller give
+    // up at once: retrying line by line only fires hundreds of doomed calls
+    // and keeps the address pinned at the limit.
+    if (res.status === 429 || status === 429 || /ALL AVAILABLE FREE TRANSLATIONS/i.test(detail)) {
+      err.quota = true;
+    }
+    throw err;
   }
   const out = data.responseData && data.responseData.translatedText;
   if (!out) throw new Error("MyMemory returned no text");
@@ -224,33 +232,41 @@ function batch(texts) {
  * @param {string[]} items
  * @param {string} target
  * @param {string} source
- * @returns {Promise<string[]>} same length as items
+ * @returns {Promise<{out: string[], failed: number}>} out matches items in
+ *   length; failed counts the ones that came back untranslated
+ * @throws when the provider reports a spent quota -- the run cannot continue
  */
 async function translateBatch(items, target, source) {
   if (PROVIDER === "deepl") {
     const out = await deepl(items, target, source);
-    return out.length === items.length ? out : items;
+    return out.length === items.length ? { out, failed: 0 } : { out: items, failed: items.length };
   }
 
   if (PROVIDER === "libretranslate") {
     const out = await libretranslate(items, target, source);
-    return out.length === items.length ? out : items;
+    return out.length === items.length ? { out, failed: 0 } : { out: items, failed: items.length };
   }
 
-  if (items.length === 1) return [await mymemory(items[0], target, source)];
+  if (items.length === 1) return { out: [await mymemory(items[0], target, source)], failed: 0 };
 
   try {
     const joined = await mymemory(items.join(JOINER), target, source);
     const parts = joined.split(JOINER_RE);
-    if (parts.length === items.length) return parts.map((p) => p.trim());
-  } catch { /* fall through to the per-item path */ }
+    if (parts.length === items.length) return { out: parts.map((p) => p.trim()), failed: 0 };
+  } catch (e) {
+    if (e && e.quota) throw e;          // no point retrying into a spent quota
+  }
 
   const one = [];
+  let failed = 0;
   for (const it of items) {
     try { one.push(await mymemory(it, target, source)); }
-    catch { one.push(it); }                       // keep the original on failure
+    catch (e) {
+      if (e && e.quota) throw e;
+      one.push(it); failed++;           // keep the original, but say so
+    }
   }
-  return one;
+  return { out: one, failed };
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -284,10 +300,12 @@ async function translateVtt(vtt, target, opts = {}) {
   // Small worker pool: these providers throttle aggressively, and firing a
   // whole episode at once earns a 429 rather than a faster result.
   let cursor = 0;
+  let failedLines = 0;
   const worker = async () => {
     while (cursor < batches.length) {
       const items = batches[cursor++];
-      const out = await translateBatch(items, target, source);
+      const { out, failed } = await translateBatch(items, target, source);
+      failedLines += failed;
       items.forEach((it, k) => map.set(it, out[k] ?? it));
     }
   };
@@ -297,7 +315,7 @@ async function translateVtt(vtt, target, opts = {}) {
 
   for (const i of translatable) lines[i] = map.get(lines[i]) ?? lines[i];
 
-  return { vtt: lines.join("\n"), provider: PROVIDER, translated: unique.length };
+  return { vtt: lines.join("\n"), provider: PROVIDER, translated: unique.length, failed: failedLines };
 }
 
 export { translateVtt, splitVtt, PROVIDER };
