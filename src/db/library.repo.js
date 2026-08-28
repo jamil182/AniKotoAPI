@@ -111,7 +111,9 @@ export function parseAnime(row) {
 
 /** Home sections derived from the stored library. */
 export function homeSections(db) {
-  const latest = listAnime(db, { limit: 24 }).map(parseAnime);
+  // 60 rather than 24: the home grid pages this anyway, and the schedule
+  // matches its rows against the full list to decide what is clickable.
+  const latest = listAnime(db, { limit: 60 }).map(parseAnime);
   const top = db.prepare(
     // 12 so the home grid fills two rows of six. The Top Anime rail slices
     // this back to 10 itself.
