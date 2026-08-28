@@ -135,7 +135,13 @@
         sub: document.getElementById('mSub').checked,
         dub: document.getElementById('mDub').checked,
       });
-      out.textContent = r.success ? 'Stored episode.' : 'Error: ' + r.message;
+      // The route already returns the internal library id and the resolved
+      // title, so surface both -- that id is how the row is found in the
+      // Library table below, and in the anime/episode tables.
+      out.textContent = r.success
+        ? 'Stored episode — library ID ' + r.results.animeId +
+          (r.results.title ? ' · ' + r.results.title : '') + '.'
+        : 'Error: ' + r.message;
       loadLibrary();
     };
 
