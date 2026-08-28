@@ -57,7 +57,14 @@
       </section>
     </div>
 
-    <h2 style="font-family:var(--font-display);color:var(--ink);margin-top:32px">Library</h2>
+    <div class="admin-libhead">
+      <h2>Library</h2>
+    </div>
+    <div class="lib-search">
+      <svg class="lib-search-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16.5 16.5 21 21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+      <input id="libSearch" type="search" placeholder="Search Anime .." autocomplete="off" aria-label="Search the library">
+      <kbd class="lib-search-kbd">/</kbd>
+    </div>
     <div id="library"></div>
   </div>
 
@@ -146,17 +153,48 @@
     };
 
     // ---- Library ----
-    async function loadLibrary() {
-      const r = await adminGet('/library');
-      const rows = r.results || [];
-      document.getElementById('library').innerHTML = rows.length ? rows.map(a =>
-        `<div class="admin-libitem"><b>${esc(a.title)}</b> <span class="admin-hit-m">${a.total_episodes || 0} ep${a.auto_update ? ' · auto' : ''}</span> <button class="btn" data-del="${a.id}">Delete</button></div>`).join('')
-        : '<div class="state">Empty — fetch something above.</div>';
-      document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    // The endpoint hands back every row at once, so the filter runs here
+    // rather than making a round trip on each keystroke.
+    let libraryRows = [];
+
+    function renderLibrary() {
+      const q = document.getElementById('libSearch').value.trim().toLowerCase();
+      const box = document.getElementById('library');
+      const rows = q
+        ? libraryRows.filter(a => String(a.title || '').toLowerCase().includes(q))
+        : libraryRows;
+
+      box.innerHTML = rows.length
+        ? rows.map(a =>
+            `<div class="admin-libitem"><b>${esc(a.title)}</b> <span class="admin-hit-m">${a.total_episodes || 0} ep${a.auto_update ? ' · auto' : ''}</span> <button class="btn" data-del="${a.id}">Delete</button></div>`).join('')
+        : libraryRows.length
+          // Distinguish "nothing stored" from "nothing matched", so an empty
+          // list never looks like the library was wiped.
+          ? `<div class="state">No stored title matches “${esc(q)}”.</div>`
+          : '<div class="state">Empty — fetch something above.</div>';
+
+      box.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
         await fetch('/api/admin/anime/' + b.dataset.del, { method: 'DELETE', headers: H });
         loadLibrary();
       });
     }
+
+    async function loadLibrary() {
+      const r = await adminGet('/library');
+      libraryRows = r.results || [];
+      renderLibrary();
+    }
+
+    const libSearchEl = document.getElementById('libSearch');
+    libSearchEl.addEventListener('input', renderLibrary);
+    // "/" jumps to the box, but not while the caret is already in a field.
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      e.preventDefault();
+      libSearchEl.focus();
+    });
     loadLibrary();
   </script>
 </body>

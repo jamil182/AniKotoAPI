@@ -400,6 +400,20 @@ body.dimmed .player-wrap, body.dimmed .player-toolbar { position: relative; z-in
 .admin-hit b { color: var(--ink); font-size: .85rem; }
 .admin-hit-m { color: var(--muted); font-size: .72rem; margin-top: 2px; }
 .admin-hit button { margin-left: auto; flex-shrink: 0; }
+/* Library heading shares its row with the filter box. */
+.admin-libhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 32px 0 12px; }
+.admin-libhead h2 { font-family: var(--font-display); color: var(--ink); margin: 0; }
+/* Full-width search bar: magnifier, field, and the shortcut hint. */
+.lib-search { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 0 14px;
+  height: 48px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-soft); }
+.lib-search:focus-within { border-color: var(--accent); }
+.lib-search-ico { width: 20px; height: 20px; color: var(--muted); flex-shrink: 0; }
+.lib-search input { flex: 1; min-width: 0; border: none; background: transparent; outline: none;
+  color: var(--ink); font-family: var(--font-body); font-size: .95rem; padding: 0; }
+.lib-search input::placeholder { color: var(--muted); }
+.lib-search input::-webkit-search-cancel-button { filter: invert(.6); cursor: pointer; }
+.lib-search-kbd { flex-shrink: 0; color: var(--muted); font-family: var(--font-body); font-size: .78rem;
+  border: 1px solid var(--border-hi); border-radius: 5px; padding: 2px 7px; }
 /* Search hits scroll inside the card instead of growing it without limit. */
 #aResults { max-height: 320px; overflow-y: auto; overscroll-behavior: contain; }
 #aResults:not(:empty) { margin-top: 8px; padding-right: 4px; }
