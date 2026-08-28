@@ -24,6 +24,16 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
 ));
 
+// Some catalogue fields arrive already HTML-encoded (episode titles carry
+// &#39; for an apostrophe). Escaping those again renders the entity as
+// literal text, so decode first. A detached textarea decodes text only --
+// nothing in it is parsed as markup or executed.
+const decodeEntities = (s) => {
+  const t = document.createElement('textarea');
+  t.innerHTML = String(s ?? '');
+  return t.value;
+};
+
 // The API returns some slugs with an episode suffix (".../ep-1"). Trim it so a
 // slug reads as the anime, ready for the detail route wired up in a later phase.
 const animeSlug = (slug) => String(slug || '').split('/')[0];

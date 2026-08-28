@@ -321,8 +321,45 @@ img { display: block; max-width: 100%; }
    viewer's Subtitle Settings stay the single source of truth. */
 
 /* ---- Watch page: enriched layout ---- */
-.watch2 { display: grid; grid-template-columns: 1fr 300px; gap: 24px; padding: 24px 0 60px; align-items: start; }
-@media (max-width: 980px) { .watch2 { grid-template-columns: 1fr; } }
+/* Watch page runs wider than the rest of the site. Three columns -- episodes,
+   player, sidebar -- so a large display has no dead margin either side. */
+.wrap-watch { max-width: 1800px; }
+.watch2 { display: grid; grid-template-columns: 280px minmax(0, 1fr) 340px; gap: 20px; padding: 24px 0 60px; align-items: start; }
+
+/* Left column: episode list, scrolling inside its own sticky panel. */
+.ep-col { position: sticky; top: 84px; }
+.ep-col .ep-block { margin-bottom: 0; display: flex; flex-direction: column; max-height: calc(100vh - 108px); }
+.ep-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; min-height: 0; }
+.ep-list::-webkit-scrollbar { width: 8px; }
+.ep-list::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 4px; }
+.ep-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
+  text-decoration: none; color: var(--body); border: 1px solid transparent; transition: all .12s; }
+.ep-item:hover { background: var(--bg-soft); color: var(--ink); }
+.ep-item .n { flex-shrink: 0; min-width: 22px; text-align: right; font-size: .78rem; font-weight: 600; color: var(--muted); }
+.ep-item .t { font-size: .84rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ep-item.on { background: rgba(93,184,166,.14); border-color: var(--accent); }
+.ep-item.on .n, .ep-item.on .t { color: var(--accent-hi); }
+
+/* Right column holds Related and Trending; the column scrolls, not each panel,
+   so two sticky boxes cannot fight over the same offset. */
+.watch2 > aside { position: sticky; top: 84px; display: flex; flex-direction: column; gap: 18px;
+  max-height: calc(100vh - 108px); overflow-y: auto; }
+.watch2 > aside .related { position: static; max-height: none; overflow: visible; }
+
+/* Narrow: drop to player + sidebar, with the episode list folded underneath. */
+@media (max-width: 1400px) {
+  .watch2 { grid-template-columns: minmax(0, 1fr) 320px; }
+  /* Sidebar stays beside the player; only the episode list drops below it. */
+  .watch2 > aside:not(.ep-col) { order: 1; }
+  .ep-col { position: static; grid-column: 1 / -1; order: 2; }
+  .ep-col .ep-block { max-height: 420px; }
+}
+@media (max-width: 980px) {
+  .watch2 { grid-template-columns: 1fr; }
+  /* Stacked in one column the episode list matters more than the sidebar. */
+  .ep-col { order: 1; }
+  .watch2 > aside:not(.ep-col) { order: 2; }
+}
 
 /* Player toolbar */
 .player-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-top: none; border-radius: 0 0 12px 12px; padding: 8px 12px; }

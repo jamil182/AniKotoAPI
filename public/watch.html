@@ -13,8 +13,17 @@
 <body>
   <header id="nav"></header>
 
-  <div class="wrap">
+  <div class="wrap wrap-watch">
     <div class="watch2">
+      <aside class="ep-col">
+        <div class="ep-block">
+          <div class="ep-block-head">
+            <h3>Episodes</h3>
+            <select class="ep-range" id="epRange"></select>
+          </div>
+          <div class="ep-list" id="epNums"></div>
+        </div>
+      </aside>
       <div>
         <div class="player-wrap paused" id="playerWrap">
           <video id="video" playsinline></video>
@@ -66,19 +75,12 @@
           <div class="servers-inner" id="servers"></div>
         </div>
 
-        <div class="ep-block">
-          <div class="ep-block-head">
-            <h3>Episodes</h3>
-            <select class="ep-range" id="epRange"></select>
-          </div>
-          <div class="ep-nums" id="epNums"></div>
-        </div>
-
         <div id="infoPanel"></div>
       </div>
 
       <aside>
         <div class="related" id="related"><h3>Related</h3><div class="state">—</div></div>
+        <div class="related" id="trending"><h3>Trending</h3><div class="state">—</div></div>
       </aside>
     </div>
   </div>
@@ -296,12 +298,44 @@
 
       const drawRange = (ri) => {
         const [a, b] = ranges[ri];
-        nums.innerHTML = episodes.slice(a, b).map(e =>
-          `<a class="ep-num${String(e.episode_no) === String(epNo) ? ' on' : ''}" href="${epUrl(e.episode_no)}" title="${e.title ? esc(e.title) : 'Episode ' + esc(e.episode_no)}">${esc(e.episode_no)}</a>`).join('');
+        // Vertical list in the left column: number plus title, so the sidebar
+        // reads like a table of contents rather than a grid of bare numbers.
+        nums.innerHTML = episodes.slice(a, b).map(e => {
+          const label = e.title ? decodeEntities(e.title) : 'Episode ' + e.episode_no;
+          const on = String(e.episode_no) === String(epNo) ? ' on' : '';
+          return `<a class="ep-item${on}" href="${epUrl(e.episode_no)}" title="${esc(label)}">` +
+                 `<span class="n">${esc(e.episode_no)}</span>` +
+                 `<span class="t">${esc(label)}</span></a>`;
+        }).join('');
       };
       range.onchange = () => drawRange(+range.value);
       drawRange(activeRange);
     }
+
+
+    // ---- Trending sidebar ----
+    // Keeps the right column populated even when a title has no recommendations,
+    // which was leaving a tall empty panel beside the player.
+    async function loadTrending() {
+      const el = document.getElementById('trending');
+      try {
+        const r = await apiGet('/trending');
+        const list = (Array.isArray(r) ? r : (r && r.data) || []).slice(0, 10);
+        if (!list.length) { el.innerHTML = `<h3>Trending</h3><div class="state">Nothing right now.</div>`; return; }
+        // Trending items are keyed by slug, not id -- api.js listens for both.
+        el.innerHTML = `<h3>Trending</h3>` + list.map(it => `
+          <div class="related-row" data-slug="${esc(it.slug)}">
+            <img loading="lazy" src="${esc(it.poster)}" alt="" onerror="this.style.visibility='hidden'">
+            <div>
+              <div class="t">${esc(it.title)}</div>
+              <div class="m">${esc(it.type || '')}${it.total ? ' · ' + esc(it.total) + ' eps' : ''}</div>
+            </div>
+          </div>`).join('');
+      } catch {
+        el.innerHTML = `<h3>Trending</h3><div class="state">Couldn't load.</div>`;
+      }
+    }
+    loadTrending();
 
     function renderRelated(items) {
       const el = document.getElementById('related');
