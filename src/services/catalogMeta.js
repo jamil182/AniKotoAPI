@@ -22,6 +22,10 @@ function genresOf(anime) {
 function normalizeAnime(a) {
   const type = Array.isArray(a.terms_by_type?.type) ? a.terms_by_type.type[0] : (a.source || null);
   return {
+    // The catalogue supplies a slug and it was being dropped here. It is the
+    // only handle the upstream watch page accepts, so the next-episode
+    // countdown depends on keeping it.
+    slug: a.slug || null,
     title: a.title || null,
     poster: a.poster || null,
     banner: a.background_image || null,

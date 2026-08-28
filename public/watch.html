@@ -361,19 +361,44 @@
         </div>`;
     }
 
+    // Renders the upstream's own phrasing: the arrival time in GMT, followed by
+    // a countdown that ticks down to it. Finished series have no next episode,
+    // so a missing timestamp correctly leaves the line empty.
     function renderCountdown(ts) {
       const el = document.getElementById('countdown');
       if (!ts) { el.innerHTML = ''; return; }
       const target = Number(ts) * 1000;
+      const at = new Date(target);
+      const p = (n) => String(n).padStart(2, '0');
+      let hour12 = at.getUTCHours();
+      const ampm = hour12 >= 12 ? 'PM' : 'AM';
+      hour12 = hour12 % 12 || 12;
+      const when = at.getUTCFullYear() + '/' + p(at.getUTCMonth() + 1) + '/' + p(at.getUTCDate()) +
+        ' ' + p(hour12) + ':' + p(at.getUTCMinutes()) + ' ' + ampm + ' GMT';
+      const unit = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+
       const tick = () => {
         const diff = target - Date.now();
         if (diff <= 0) { el.innerHTML = ''; return; }
         const d = Math.floor(diff / 86400000), h = Math.floor(diff % 86400000 / 3600000),
               m = Math.floor(diff % 3600000 / 60000), s = Math.floor(diff % 60000 / 1000);
-        el.innerHTML = `<div class="countdown">🔔 Next episode in <b>${d}d ${h}h ${m}m ${s}s</b></div>`;
+        el.innerHTML = `<div class="countdown">🔔 The next episode is predicted to arrive on ` +
+          `<b>${when}</b> (${unit(d, 'day')}, ${unit(h, 'hour')}, ${unit(m, 'minute')}, ${unit(s, 'second')})</div>`;
         setTimeout(tick, 1000);
       };
       tick();
+    }
+
+    // The arrival time lives on the upstream watch page, which is addressed by
+    // slug -- the field the catalogue supplies and the library now stores.
+    // Fetched after the player is running so it never delays playback, and
+    // quietly skipped when there is no slug or no next episode.
+    async function loadCountdown(slug, epNo) {
+      if (!slug) return;
+      try {
+        const w = await apiGet('/watch?slug=' + encodeURIComponent(slug) + '&ep=' + encodeURIComponent(epNo));
+        renderCountdown(w && w.nextEpisodeTimestamp ? w.nextEpisodeTimestamp : null);
+      } catch { /* no countdown is an acceptable outcome */ }
     }
 
     // ---- Toolbar ----
@@ -827,6 +852,7 @@
         setupPlayer();
         renderInfo(info);
         renderCountdown(null);
+        loadCountdown(info.slug, ep.episode_no);
 
         // Uniform playback: every episode stores embed URLs by language.
         // Legacy episodes (stored before the redesign) may only have server_ids.
