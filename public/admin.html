@@ -26,7 +26,7 @@
         </div>
         <div id="aResults"></div>
         <label>Anikoto Series ID</label>
-        <input id="aSeriesId" type="text" placeholder="—" readonly>
+        <input id="aSeriesId" type="text" placeholder="e.g. 7174" inputmode="numeric" autocomplete="off">
         <div class="admin-langs">
           <label><input type="checkbox" id="aSub" checked> SUB</label>
           <label><input type="checkbox" id="aDub"> DUB</label>
@@ -73,6 +73,14 @@
     const adminPost = async (p, body) => (await fetch('/api/admin' + p, { method: 'POST', headers: H, body: JSON.stringify(body) })).json();
 
     // ---- Panel 1: Fetch Anikoto ----
+    // The Series ID can be typed as well as picked, so the field itself is the
+    // single source of truth. The fetch used to read a dataset value that only
+    // the Select button ever set, which left a typed ID inert.
+    const seriesIdEl = document.getElementById('aSeriesId');
+    const syncSeriesId = () => {
+      document.getElementById('aFetch').disabled = !/^[0-9]+$/.test(seriesIdEl.value.trim());
+    };
+    seriesIdEl.addEventListener('input', syncSeriesId);
     document.getElementById('aSearchBtn').onclick = async () => {
       const box = document.getElementById('aResults');
       box.innerHTML = '<div class="state">Searching…</div>';
@@ -88,17 +96,15 @@
            <button class="btn">Select</button>
          </div>`).join('') : '<div class="state">No results (or wrong token).</div>';
       box.querySelectorAll('.admin-hit').forEach(el => el.querySelector('button').onclick = () => {
-        document.getElementById('aSeriesId').value = el.dataset.anid;
-        const fetchBtn = document.getElementById('aFetch');
-        fetchBtn.disabled = false;
-        fetchBtn.dataset.anid = el.dataset.anid;
+        seriesIdEl.value = el.dataset.anid;
+        syncSeriesId();
       });
     };
 
-    document.getElementById('aFetch').onclick = async (e) => {
+    document.getElementById('aFetch').onclick = async () => {
       const out = document.getElementById('aOut'); out.textContent = 'Fetching…';
       const r = await adminPost('/fetch-anikoto', {
-        seriesId: e.target.dataset.anid,
+        seriesId: seriesIdEl.value.trim(),
         sub: document.getElementById('aSub').checked,
         dub: document.getElementById('aDub').checked,
         autoUpdate: document.getElementById('aAuto').checked,

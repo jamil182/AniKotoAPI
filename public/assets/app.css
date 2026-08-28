@@ -400,6 +400,11 @@ body.dimmed .player-wrap, body.dimmed .player-toolbar { position: relative; z-in
 .admin-hit b { color: var(--ink); font-size: .85rem; }
 .admin-hit-m { color: var(--muted); font-size: .72rem; margin-top: 2px; }
 .admin-hit button { margin-left: auto; flex-shrink: 0; }
+/* Search hits scroll inside the card instead of growing it without limit. */
+#aResults { max-height: 320px; overflow-y: auto; overscroll-behavior: contain; }
+#aResults:not(:empty) { margin-top: 8px; padding-right: 4px; }
+#aResults::-webkit-scrollbar { width: 8px; }
+#aResults::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 4px; }
 .admin-out { margin-top: 10px; font-family: var(--font-code, monospace); font-size: .76rem; color: var(--body); word-break: break-all; }
 .admin-libitem { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .admin-libitem b { color: var(--ink); font-size: .9rem; }
