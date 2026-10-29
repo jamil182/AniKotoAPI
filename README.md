@@ -2632,6 +2632,13 @@ Free to use, modify, and distribute — see the [LICENSE](LICENSE) file for deta
 
 ## AniJs: automatic catalog and live episode updates
 
+### Admin visitor statistics
+
+The admin dashboard includes IP/location estimates, online visitors, daily visitor
+counts, visit sessions and pageview counters. Statistics persist in SQLite and
+refresh automatically. See [Visitor statistics](docs/VISITOR_STATS.md) for metric
+definitions, retention, geolocation configuration and reverse proxy requirements.
+
 ### User accounts
 
 The shared top navigation links to `/login` and `/register`. Registration signs

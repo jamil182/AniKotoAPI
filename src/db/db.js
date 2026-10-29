@@ -19,6 +19,7 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import { migrateVisitors } from './visitors.schema.js';
 
 const DEFAULT_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "anikoto.db");
 
@@ -28,6 +29,7 @@ const DEFAULT_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data
  * @param {import('better-sqlite3').Database} db
  */
 export function migrate(db) {
+  migrateVisitors(db);
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_accounts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

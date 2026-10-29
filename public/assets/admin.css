@@ -1,4 +1,16 @@
 [hidden] { display: none !important; }
+.cms-visitors { margin-block: 30px 44px; }
+.cms-visitors h2 { color: var(--ink); font-family: var(--font-display); }
+.cms-visitors h3 { color: var(--ink); font-size: 1rem; margin-top: 24px; }
+.visitor-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.visitor-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .78rem; }
+.visitor-table th,.visitor-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.visitor-table th { color: var(--muted); white-space: nowrap; }
+.visitor-table td { color: var(--ink); max-width: 300px; overflow-wrap: anywhere; }
+.visitor-table tbody tr:last-child td { border-bottom: 0; }
+.visitor-table td.visitor-online { color: var(--accent-hi); white-space: nowrap; }
+.visitor-history summary { color: var(--accent-hi); cursor: pointer; margin-bottom: 14px; }
+#visitorsError { color: #f3a398; }
 .cms-nav { display: flex; align-items: center; gap: 16px; min-height: 68px; }
 .cms-nav > span { color: var(--muted); font-size: .85rem; flex: 1; }
 .cms-main { padding-top: 38px; padding-bottom: 70px; }

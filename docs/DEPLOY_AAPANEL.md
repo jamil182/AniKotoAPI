@@ -86,6 +86,11 @@ halaman akun atau respons dengan session cookie.
 
 ## Pemeriksaan dan pembaruan
 
+Panel `/admin` juga menampilkan statistik pengunjung: IP/lokasi, jumlah online,
+counter kunjungan dan tampilan halaman. Migrasi SQLite berjalan otomatis; backup
+database sebelum update. Statistik dimulai saat fitur dipasang. Pengaturan lokasi,
+retensi dan batasan counter dijelaskan di [Statistik pengunjung](VISITOR_STATS.md).
+
 Periksa `http://127.0.0.1:4455/api/health` dari server, kemudian kunjungi
 `https://anime.jsmovies.my.id/home`. Periksa pencarian, halaman anime, Embed,
 Direct dan halaman akun. `/api/catalog/status` harus melaporkan mode `live`.

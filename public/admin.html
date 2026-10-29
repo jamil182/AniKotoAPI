@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>AniJs — Kelola Anime</title>
-  <link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/assets/app.css"><link rel="stylesheet" href="/assets/admin.css">
+  <link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/assets/app.css"><link rel="stylesheet" href="/assets/admin.css?v=visitors-1">
   <script type="module" src="/assets/branding.js"></script>
 </head>
 <body>
@@ -13,6 +13,16 @@
     <p id="notice" class="cms-notice" role="status" aria-live="polite" hidden></p>
     <section class="admin-card cms-auth" id="authPanel"><h2>Masuk ke admin</h2><p>Gunakan ADMIN_TOKEN yang dikonfigurasi di server.</p><form id="loginForm"><label for="token">Token admin</label><div class="admin-row"><input id="token" type="password" autocomplete="current-password" required><button class="btn primary" type="submit">Masuk</button></div></form><p id="authError" role="alert"></p></section>
     <div id="workspace" hidden>
+      <section class="cms-visitors" aria-labelledby="visitorsHeading">
+        <div class="cms-library-head"><h2 id="visitorsHeading">Statistik pengunjung</h2><button class="btn" id="visitorsRefresh" type="button">Perbarui statistik</button></div>
+        <p class="cms-muted">Otomatis diperbarui setiap 15 detik. Online = aktif dalam 90 detik terakhir. Pengunjung diperkirakan dari IP dan browser, termasuk tamu; bukan jumlah akun login.</p>
+        <div class="cms-stats"><div><span>Pengunjung online</span><b id="visitorsOnline">—</b></div><div><span>Pengunjung hari ini</span><b id="visitorsToday">—</b></div><div><span>Total kunjungan</span><b id="visitorsVisits">—</b></div><div><span>Total tampilan halaman</span><b id="visitorsViews">—</b></div></div>
+        <p class="cms-muted" id="visitorsUpdated"></p><p id="visitorsError" role="status"></p>
+        <details class="visitor-history"><summary>Counter harian · 7 hari terakhir (WIB)</summary><div class="visitor-table-wrap"><table class="visitor-table"><thead><tr><th>Tanggal</th><th>Pengunjung</th><th>Kunjungan</th><th>Tampilan halaman</th></tr></thead><tbody id="visitorsDaily"></tbody></table></div></details>
+        <h3>IP dan lokasi pengunjung</h3><p class="cms-muted">Lokasi adalah perkiraan berdasarkan IP, dapat berbeda bila menggunakan VPN. Rincian IP disimpan 30 hari. Kunjungan baru dihitung setelah jeda aktivitas 30 menit; heartbeat tidak menambah tampilan halaman.</p>
+        <div class="visitor-table-wrap"><table class="visitor-table"><thead><tr><th>Status</th><th>Alamat IP</th><th>Perkiraan lokasi</th><th>Halaman terakhir</th><th>Tampilan</th><th>Terakhir aktif</th></tr></thead><tbody id="visitorsRows"><tr><td colspan="6">Memuat statistik…</td></tr></tbody></table></div>
+        <div class="cms-pager"><button class="btn" id="visitorsPrev" type="button" disabled>‹ Sebelumnya</button><span id="visitorsPage"></span><button class="btn" id="visitorsNext" type="button" disabled>Berikutnya ›</button></div>
+      </section>
       <div class="cms-stats"><div><span>Total anime</span><b id="countAll">0</b></div><div><span>Published</span><b id="countPublished">0</b></div><div><span>Draft</span><b id="countDraft">0</b></div><div><span>Sinkron otomatis</span><b id="countAuto">0</b></div></div>
       <div class="admin-grid cms-imports">
         <section class="admin-card"><h2>Impor dari AniKotoAPI</h2><p>Cari judul atau masukkan slug anime dari AniKoto.</p>
@@ -25,6 +35,6 @@
     </div>
   </main>
   <dialog id="editor" class="cms-dialog"><form id="editForm" class="admin-card"><div class="cms-library-head"><h2>Edit anime</h2><button class="btn" type="button" id="closeEditor">Tutup</button></div><p id="editError" role="alert"></p><div class="cms-form-grid"><div><label for="editTitle">Judul</label><input id="editTitle" required maxlength="240"></div><div><label for="editSlug">Slug publik</label><input id="editSlug" maxlength="240" required pattern="[a-zA-Z0-9][a-zA-Z0-9_-]*"></div><div><label for="editJapanese">Judul alternatif</label><input id="editJapanese" maxlength="240"></div><div><label for="editPublication">Publikasi</label><select id="editPublication"><option value="draft">Draft</option><option value="published">Published</option></select></div><div><label for="editPoster">URL poster (HTTPS)</label><input id="editPoster" type="url"></div><div><label for="editBanner">URL banner (HTTPS)</label><input id="editBanner" type="url"></div><div><label for="editType">Tipe</label><input id="editType" maxlength="50" placeholder="TV / Movie / ONA"></div><div><label for="editStatus">Status tayang</label><input id="editStatus" maxlength="80" placeholder="Currently Airing / Finished Airing"></div><div><label for="editRating">Rating</label><input id="editRating" maxlength="30"></div><div><label for="editGenres">Genre (pisahkan dengan koma)</label><input id="editGenres" maxlength="1000"></div></div><label for="editSynopsis">Sinopsis</label><textarea id="editSynopsis" rows="5" maxlength="6000"></textarea><div class="admin-langs"><label><input id="editSub" type="checkbox"> Izinkan SUB</label><label><input id="editDub" type="checkbox"> Izinkan DUB</label></div><label class="cms-checkbox"><input id="editAuto" type="checkbox"> Sinkron episode otomatis setiap jam</label><div class="cms-dialog-footer"><span id="editDetails" class="cms-muted"></span><button class="btn primary" type="submit">Simpan perubahan</button></div></form></dialog>
-  <script type="module" src="/assets/admin.js"></script>
+  <script type="module" src="/assets/admin.js?v=visitors-1"></script>
 </body>
 </html>

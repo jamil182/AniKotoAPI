@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="description" content="Privacy Policy for AniKotoAPI. We do not collect, store, or share personal data." />
+  <meta name="description" content="How this website handles accounts, visitor statistics and IP location estimates." />
   <meta property="og:title" content="Privacy Policy — AniKotoAPI" />
-  <meta property="og:description" content="Privacy Policy for AniKotoAPI. We do not collect, store, or share personal data." />
+  <meta property="og:description" content="How this website handles accounts, visitor statistics and IP location estimates." />
   <meta property="og:image" content="https://anikototvapi.vercel.app/share.png" />
   <meta name="twitter:card" content="summary" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -47,23 +47,24 @@
     footer a{color:var(--primary)}
   </style>
   <script type="module" src="/assets/branding.js"></script>
+  <script type="module" src="/assets/visitors.js"></script>
 </head>
 <body>
   <header><div class="header-inner"><a href="/" class="logo"><span class="logo-mark"><span>*</span> AniKotoAPI</span></a></div></header>
   <div class="content">
     <h1>Privacy Policy</h1>
-    <div class="updated">Last updated: 2026-06-08</div>
+    <div class="updated">Last updated: 2026-10-30</div>
 
     <h2>1. Overview</h2>
     <p>AniKotoAPI ("the Service") is a free, open-source REST API that provides anime data by scraping publicly available information from anikototv.to and related domains. This Privacy Policy explains how we handle data when you use the Service.</p>
 
     <h2>2. Data We Collect</h2>
-    <p>The Service is designed to be <strong>stateless and privacy-preserving</strong>. We do not collect, store, or process any personal data from API consumers.</p>
+    <p>The website stores account information when you register and records first-party visitor statistics when you browse public content pages.</p>
     <ul>
-      <li><strong>No user accounts</strong> — The API requires no authentication, registration, or API keys.</li>
-      <li><strong>No cookies</strong> — We do not set tracking cookies on API responses.</li>
-      <li><strong>No analytics</strong> — We do not use Google Analytics, Mixpanel, or any third-party analytics on API endpoints.</li>
-      <li><strong>No logging of personal data</strong> — Server logs may contain IP addresses and request paths (standard Vercel/Node.js behavior), but these are not stored, sold, or shared.</li>
+      <li><strong>Accounts:</strong> email, display name, a password hash and session records. Login uses an HttpOnly session cookie.</li>
+      <li><strong>Visitor statistics:</strong> IP address, approximate country/region/city, public page path, page views and activity timestamps. Query strings, passwords, admin tokens and account identities are not included in these statistics.</li>
+      <li><strong>Visitor estimates:</strong> a server-side keyed hash of IP address and browser user agent groups activity without a tracking cookie. People sharing the same network and browser may be counted together; changing networks may count separately.</li>
+      <li><strong>Online status:</strong> visible pages send a heartbeat every 30 seconds. A visitor is considered online for 90 seconds after the last recorded activity.</li>
     </ul>
 
     <h2>3. Third-Party Data Sources</h2>
@@ -71,15 +72,15 @@
     <p>If you are a content owner and wish to have your data removed from this API, please open an issue on our <a href="https://github.com/Shineii86/AniKotoAPI" target="_blank" rel="noopener noreferrer">GitHub repository</a>.</p>
 
     <h2>4. Data Storage</h2>
-    <p>The Service uses a simple in-memory cache (5-minute TTL) to reduce repeated scraping. This cache is:</p>
+    <p>Accounts and statistics are stored in the site's SQLite database. Detailed visitor IP/location/activity records are removed after 30 days without activity, during the next statistics request. Anonymous daily and lifetime counters are retained. Statistics begin when this feature is enabled, without importing historical traffic.</p>
     <ul>
-      <li>Purely temporary and reset on every server restart</li>
-      <li>Not persisted to any database</li>
-      <li>Not associated with any user identity</li>
+      <li>Only authenticated administrators can access detailed visitor records.</li>
+      <li>Page paths are recorded without search queries or URL fragments.</li>
+      <li>Server/CDN access logs and operator backups may have separate retention settings.</li>
     </ul>
 
     <h2>5. Data Sharing</h2>
-    <p>We do not sell, trade, or share any data with third parties. The API is provided as-is for educational and development purposes.</p>
+    <p>When IP geolocation is enabled, the server sends public visitor IP addresses to <a href="https://ipwhois.io/privacy-policy" rel="noopener noreferrer">ipwho.is</a> over HTTPS to estimate city, region and country. Results are cached; precise GPS location is not collected. The operator can disable these lookups with <code>VISITOR_GEO_LOOKUP=false</code> while retaining local counters. The hosting/CDN and embedded video providers also process requests under their own policies. We do not sell visitor records.</p>
 
     <h2>6. Children's Privacy</h2>
     <p>The Service is not directed at children under 13. We do not knowingly collect information from children under 13.</p>
