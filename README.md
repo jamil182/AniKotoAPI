@@ -2632,6 +2632,10 @@ Free to use, modify, and distribute — see the [LICENSE](LICENSE) file for deta
 
 ## AniJs: automatic catalog and live episode updates
 
+### Direct subtitle translation
+
+Direct subtitle setup and translation progress: [Subtitle translation](docs/SUBTITLE_TRANSLATION.md).
+
 ### Admin visitor statistics
 
 The admin dashboard includes IP/location estimates, online visitors, daily visitor

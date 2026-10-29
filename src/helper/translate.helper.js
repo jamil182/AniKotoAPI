@@ -51,7 +51,7 @@ const MYMEMORY_MAX_Q = 480;
 // cue at a time instead of silently mis-aligning the subtitles.
 const JOINER = " ||| ";
 const JOINER_RE = /\s*\|\|\|\s*/;
-const CONCURRENCY = 4;
+const CONCURRENCY = PROVIDER === 'libretranslate' ? 1 : 4;
 
 // ══════════════════════════════════════════════════════════════
 // WEBVTT TEXT EXTRACTION
@@ -72,15 +72,14 @@ const CONCURRENCY = 4;
 function splitVtt(vtt) {
   const lines = vtt.split(/\r?\n/);
   const translatable = [];
-
+  let cue = false, metadata = false;
   for (let i = 0; i < lines.length; i++) {
     const t = lines[i].trim();
-    if (!t) continue;                                   // separator
-    if (t.includes("-->")) continue;                    // timestamps
-    if (i === 0 && /^WEBVTT/i.test(t)) continue;        // header
-    if (/^(NOTE|STYLE|REGION)\b/i.test(t)) continue;    // metadata blocks
-    if ((lines[i + 1] || "").includes("-->")) continue; // cue identifier
-    translatable.push(i);
+    if (!t) { cue = false; metadata = false; continue; }
+    if (/^(NOTE|STYLE|REGION)(?:\s|$)/.test(t)) metadata = true;
+    if (metadata) continue;
+    if (/^(?:\d{2,}:)?\d{2}:\d{2}[.,]\d{3}\s+-->/.test(t)) { cue = true; continue; }
+    if (cue) translatable.push(i);
   }
   return { lines, translatable };
 }
@@ -100,13 +99,14 @@ function splitVtt(vtt) {
  * @throws {Error} when the service reports a non-200 responseStatus — quota
  *   exhaustion arrives that way, with the reason in responseDetails
  */
-async function mymemory(text, target, source) {
+async function mymemory(text, target, source, signal) {
   const params = { q: text, langpair: source + "|" + target };
   if (MYMEMORY_EMAIL) params.de = MYMEMORY_EMAIL;
 
   const res = await axios.get("https://api.mymemory.translated.net/get", {
     params,
     timeout: 20000,
+    signal,
     validateStatus: () => true,
   });
 
@@ -138,7 +138,7 @@ async function mymemory(text, target, source) {
  * @param {string} source
  * @returns {Promise<string[]>}
  */
-async function deepl(texts, target, source) {
+async function deepl(texts, target, source, signal) {
   const host = DEEPL_KEY.endsWith(":fx") ? "api-free.deepl.com" : "api.deepl.com";
   const body = new URLSearchParams();
   texts.forEach((t) => body.append("text", t));
@@ -147,6 +147,7 @@ async function deepl(texts, target, source) {
 
   const res = await axios.post("https://" + host + "/v2/translate", body, {
     headers: { Authorization: "DeepL-Auth-Key " + DEEPL_KEY },
+    signal,
     timeout: 20000,
     validateStatus: () => true,
   });
@@ -167,13 +168,14 @@ async function deepl(texts, target, source) {
  * @param {string} source
  * @returns {Promise<string[]>}
  */
-async function libretranslate(texts, target, source) {
+async function libretranslate(texts, target, source, signal) {
   const body = { q: texts, source: source || "auto", target, format: "text" };
   // A self-hosted instance usually runs open, so only send a key if there is one.
   if (LIBRE_KEY) body.api_key = LIBRE_KEY;
 
   const res = await axios.post(LIBRE_URL + "/translate", body, {
     headers: { "Content-Type": "application/json" },
+    signal,
     // Generous on purpose: a self-hosted instance translates on the CPU, and
     // a batch of 25 lines takes seconds even before batches contend for cores.
     timeout: Number(process.env.LIBRETRANSLATE_TIMEOUT_MS) || 180000,
@@ -212,7 +214,7 @@ function batch(texts) {
   let cur = [];
   let len = 0;
   for (const t of texts) {
-    const add = t.length + JOINER.length;
+    const add = Buffer.byteLength(t, 'utf8') + JOINER.length;
     if (cur.length && len + add > MYMEMORY_MAX_Q) { out.push(cur); cur = []; len = 0; }
     cur.push(t);
     len += add;
@@ -236,32 +238,46 @@ function batch(texts) {
  *   length; failed counts the ones that came back untranslated
  * @throws when the provider reports a spent quota -- the run cannot continue
  */
-async function translateBatch(items, target, source) {
-  if (PROVIDER === "deepl") {
-    const out = await deepl(items, target, source);
+async function translateBatch(items, target, source, provider = PROVIDER, request = { deepl, libretranslate, mymemory }, signal) {
+  if (provider === "deepl") {
+    const out = await request.deepl(items, target, source, signal);
     return out.length === items.length ? { out, failed: 0 } : { out: items, failed: items.length };
   }
 
-  if (PROVIDER === "libretranslate") {
-    const out = await libretranslate(items, target, source);
+  if (provider === "libretranslate") {
+    const out = await request.libretranslate(items, target, source, signal);
     return out.length === items.length ? { out, failed: 0 } : { out: items, failed: items.length };
   }
 
-  if (items.length === 1) return { out: [await mymemory(items[0], target, source)], failed: 0 };
+  const translateOne = async text => {
+    const chunks = [];
+    let current = '';
+    for (const character of text) {
+      if (Buffer.byteLength(current + character, 'utf8') > MYMEMORY_MAX_Q) { chunks.push(current); current = ''; }
+      current += character;
+    }
+    if (current) chunks.push(current);
+    const out = [];
+    for (const chunk of chunks) { signal?.throwIfAborted(); out.push(await request.mymemory(chunk, target, source, signal)); }
+    return out.join(' ');
+  };
+  if (items.length === 1) return { out: [await translateOne(items[0])], failed: 0 };
 
   try {
-    const joined = await mymemory(items.join(JOINER), target, source);
+    const joined = await request.mymemory(items.join(JOINER), target, source, signal);
     const parts = joined.split(JOINER_RE);
     if (parts.length === items.length) return { out: parts.map((p) => p.trim()), failed: 0 };
   } catch (e) {
+    if (signal?.aborted) throw e;
     if (e && e.quota) throw e;          // no point retrying into a spent quota
   }
 
   const one = [];
   let failed = 0;
   for (const it of items) {
-    try { one.push(await mymemory(it, target, source)); }
+    try { one.push(await translateOne(it)); }
     catch (e) {
+      if (signal?.aborted) throw e;
       if (e && e.quota) throw e;
       one.push(it); failed++;           // keep the original, but say so
     }
@@ -282,9 +298,8 @@ async function translateBatch(items, target, source) {
  *
  * @param {string} vtt - the source WebVTT
  * @param {string} target - target language code, e.g. "id"
- * @param {object} [opts]
- * @param {string} [opts.source="en"] - source language code
- * @returns {Promise<{vtt: string, provider: string, translated: number}>}
+ * @param {import('./translate.types.js').TranslationOptions} [opts]
+ * @returns {Promise<import('./translate.types.js').TranslationResult>}
  *
  * @example
  *   const { vtt } = await translateVtt(source, "id");
@@ -296,22 +311,32 @@ async function translateVtt(vtt, target, opts = {}) {
   const unique = [...new Set(translatable.map((i) => lines[i]))];
   const map = new Map();
   const batches = batch(unique);
+  opts.onProgress?.(0, unique.length);
 
   // Small worker pool: these providers throttle aggressively, and firing a
   // whole episode at once earns a 429 rather than a faster result.
   let cursor = 0;
   let failedLines = 0;
+  let completed = 0, stopped = false;
   const worker = async () => {
-    while (cursor < batches.length) {
+    while (!stopped && cursor < batches.length) {
+      opts.signal?.throwIfAborted();
       const items = batches[cursor++];
-      const { out, failed } = await translateBatch(items, target, source);
+      let result;
+      try { result = await translateBatch(items, target, source, PROVIDER, opts.request, opts.signal); }
+      catch (error) { stopped = true; throw error; }
+      const { out, failed } = result;
       failedLines += failed;
       items.forEach((it, k) => map.set(it, out[k] ?? it));
+      completed += items.length;
+      opts.onProgress?.(completed, unique.length);
     }
   };
-  await Promise.all(
+  const settled = await Promise.allSettled(
     Array.from({ length: Math.min(CONCURRENCY, batches.length) }, worker)
   );
+  const rejected = settled.find(result => result.status === 'rejected');
+  if (rejected) throw rejected.reason;
 
   for (const i of translatable) lines[i] = map.get(lines[i]) ?? lines[i];
 

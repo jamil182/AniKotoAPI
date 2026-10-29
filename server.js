@@ -41,6 +41,7 @@ import { createAccountsRouter } from "./src/routes/accounts.route.js";
 import { createCmsRouter } from "./src/routes/cms.route.js";
 import { createBrandingRouter } from "./src/routes/branding.route.js";
 import { createVisitorsRouter } from './src/routes/visitors.route.js';
+import { createSubtitleTranslationRouter } from './src/routes/subtitleTranslation.route.js';
 import { visitorAddress } from './src/services/visitorAddress.js';
 import { getDb } from "./src/db/index.js";
 
@@ -278,6 +279,7 @@ const publishedCatalog = createPublishedCatalog(getDb, catalogClient);
 const publicCatalog = getCatalogMode(process.env.PUBLIC_CATALOG_MODE) === 'managed' ? publishedCatalog : null;
 app.use('/api/auth', createAccountsRouter(getDb));
 app.use('/api', createVisitorsRouter(getDb));
+app.use('/api/stream/sub-translate', createSubtitleTranslationRouter(getDb));
 app.use("/api/admin", createCmsRouter(getDb, catalogClient));
 app.use("/api/catalog", createCatalogRouter(catalogClient, publicCatalog));
 createApiRoutes(app, jsonResponse, jsonError, publishedCatalog);

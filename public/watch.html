@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/app.css" />
+  <link rel="stylesheet" href="/assets/app.css?v=subtitles-2" />
   <link rel="stylesheet" href="/assets/anime-description.css" />
   <script type="module" src="/assets/branding.js"></script>
   <script type="module" src="/assets/visitors.js"></script>
@@ -67,6 +67,7 @@
           <button class="tbtn" id="modeDirect" aria-pressed="false">Direct</button>
           <span id="playbackHint">Use the embedded player's controls for subtitles and quality.</span>
         </div>
+        <p id="subtitleStatus" class="subtitle-status" role="status" aria-live="polite" hidden></p>
         <div class="player-toolbar" id="toolbar">
           <button class="tbtn" id="tbPrev" title="Previous episode">‹ Prev</button>
           <button class="tbtn" id="tbNext" title="Next episode">Next ›</button>
@@ -105,6 +106,7 @@
   <script src="/assets/api.js"></script>
   <script type="module">
     import { createEmbedPlayer } from '/assets/embed-player.js';
+    import { withIndonesianTranslation, loadSubtitleTrack, subtitleLanguage } from '/assets/subtitles.js?v=2';
     import { serverRowsHTML } from '/assets/server-list.js';
     import { mountAnimeDescription } from '/assets/anime-description.js';
 
@@ -127,19 +129,6 @@
     // It is built from the English source when the stream ships one, since
     // translating from English reads far better than from whichever track
     // happens to be listed first.
-    const TRANSLATE_TO = 'id';
-    const TRANSLATE_LABEL = 'Indonesian (auto-translate)';
-    function withTranslation(list) {
-      const tracks = Array.isArray(list) ? list.slice() : [];
-      if (!tracks.length) return tracks;
-      // Nothing to add when the stream already carries a real Indonesian track.
-      if (tracks.some(s => /indonesian|bahasa/i.test(s.label || s.language || ''))) return tracks;
-      const src = tracks.find(s => /english/i.test(s.label || s.language || '')) || tracks[0];
-      const url = src && (src.url || src.file);
-      if (!url) return tracks;
-      tracks.push({ label: TRANSLATE_LABEL, language: TRANSLATE_TO, url, translated: true });
-      return tracks;
-    }
     // What to do when hls fatally errors — set per render path (server chain
     // fallback for Anikoto scrapes, a plain message for the embed path).
     let onPlaybackFail = () => { showMsg('This server failed — trying another…'); fallbackToNext(); };
@@ -236,6 +225,8 @@
     }
 
     async function selectServer(server, btn, notice = '') {
+      resetSubtitles();
+      subtitles = [];
       const selection = ++sourceSelection;
       document.getElementById('playbackHint').textContent = notice || `Direct · ${server.name} · ${(server.type || 'sub').toUpperCase()}`;
       tried.add(server.link_id);
@@ -249,7 +240,7 @@
         if (selection !== sourceSelection || playbackMode !== 'direct') return;
         if (!r.url) throw new Error(r.error || 'No stream URL');
         skipData = r.skipData || null;
-        subtitles = withTranslation(r.subtitles);
+        subtitles = withIndonesianTranslation(r.subtitles);
         play(r.url);
       } catch (e) {
         if (selection !== sourceSelection || playbackMode !== 'direct') return;
@@ -308,6 +299,8 @@
     }
 
     function switchPlaybackMode(mode) {
+      resetSubtitles();
+      subtitles = [];
       playbackMode = mode;
       sourceSelection++;
       playbackRequest?.abort();
@@ -334,7 +327,7 @@
     }
     document.getElementById('modeEmbed').onclick = () => switchPlaybackMode('embed');
     document.getElementById('modeDirect').onclick = () => switchPlaybackMode('direct');
-    window.addEventListener('pagehide', () => { playbackRequest?.abort(); embedPlayer.clear(); destroyHls(); });
+    window.addEventListener('pagehide', () => { resetSubtitles(); playbackRequest?.abort(); embedPlayer.clear(); destroyHls(); });
     window.addEventListener('pageshow', event => { if (event.persisted && currentEpisode) switchPlaybackMode(playbackMode); });
 
     // ---- Episode grid with 100-episode ranges ----
@@ -472,76 +465,78 @@
     }
 
     // ---- Subtitles ----
-    // Parse WebVTT text into { start, end, text } cues. Timestamps may use a
-    // dot or comma for the fraction; tags are stripped for VTTCue.
-    function parseVTT(text) {
-      const toSec = (s) => {
-        const m = s.trim().match(/(?:(\d+):)?(\d+):(\d+)[.,](\d+)/);
-        if (!m) return null;
-        return (+(m[1] || 0)) * 3600 + (+m[2]) * 60 + (+m[3]) + (+m[4]) / 1000;
-      };
-      const cues = [];
-      for (const block of text.replace(/\r/g, '').split(/\n\n+/)) {
-        const lines = block.split('\n').filter(Boolean);
-        const tl = lines.find(l => l.includes('-->'));
-        if (!tl) continue;
-        const [a, b] = tl.split('-->');
-        // toSec finds the timestamp anywhere in the string, so pass the halves
-        // as-is — splitting on spaces broke on the leading space after "-->".
-        const start = toSec(a), end = toSec(b || '');
-        if (start == null || end == null || end <= start) continue;
-        const txt = lines.slice(lines.indexOf(tl) + 1).join('\n').replace(/<[^>]+>/g, '').trim();
-        if (txt) cues.push({ start, end, text: txt });
-      }
-      return cues;
+    let subTrack = null, curSub = -1, subReq = 0, subAbort = null, loadedSubKey = '';
+    const subtitleStatus = document.getElementById('subtitleStatus');
+    function subtitleNotice(message = '') {
+      subtitleStatus.textContent = message;
+      subtitleStatus.hidden = !message;
     }
-
-    let subTrack = null, curSub = -1, subReq = 0;
-
-    // Load subtitle track `idx` from the subtitles[] list (-1 = none picked
-    // yet → use the default track or the first). A stream can carry several
-    // languages; the CC menu lists them all and calls this to switch.
+    function resetSubtitles() {
+      subReq++; subAbort?.abort(); subAbort = null; loadedSubKey = ''; curSub = -1;
+      subtitleNotice();
+      if (subTrack) {
+        subTrack.mode = 'disabled';
+        for (const cue of [...(subTrack.cues || [])]) subTrack.removeCue(cue);
+        subTrack = null;
+      }
+    }
+    function installSubtitles(cues, track) {
+      const next = video.addTextTrack('subtitles', track.label || track.language || 'Subtitle', subtitleLanguage(track) || 'en');
+      for (const cue of cues) next.addCue(new VTTCue(cue.start, cue.end, cue.text));
+      if (subTrack) {
+        subTrack.mode = 'disabled';
+        for (const cue of [...(subTrack.cues || [])]) subTrack.removeCue(cue);
+      }
+      subTrack = next;
+      applyCuePosition();
+      subTrack.mode = ccOn ? 'showing' : 'hidden';
+    }
     async function applySubtitle(idx) {
-      // Each call takes a ticket. Building a translated track can take many
-      // seconds, and MANIFEST_PARSED fires applySubtitle again during that
-      // wait, so a stale call must not install its track over a newer one --
-      // that race left the player holding an empty, disabled track.
-      const myReq = ++subReq;
       const ccBtn = document.getElementById('vCC');
-      if (subTrack) { try { [...(subTrack.cues || [])].forEach(c => subTrack.removeCue(c)); } catch {} subTrack.mode = 'disabled'; subTrack = null; }
-      if (!subtitles.length) { ccBtn.style.display = 'none'; curSub = -1; return; }
-      ccBtn.style.display = '';
+      ccBtn.style.display = subtitles.length ? '' : 'none';
+      if (!subtitles.length || !ccOn || playbackMode !== 'direct') return;
       if (idx == null) {
-        // Honour the track the viewer last picked. subLang was written on every
-        // pick but never read back anywhere, so each new episode fell through to
-        // the default track -- or, failing that, whatever sat first in the list.
-        const saved = prefs.subLang;
-        idx = saved ? subtitles.findIndex(s => (s.label || s.language) === saved) : -1;
-        if (idx < 0) idx = subtitles.findIndex(s => s.default);
+        idx = prefs.subLang ? subtitles.findIndex(track => (track.label || track.language) === prefs.subLang) : -1;
+        if (idx < 0) idx = subtitles.findIndex(track => track.default);
         if (idx < 0) idx = 0;
       }
+      const track = subtitles[idx];
+      if (!track) return;
       curSub = idx;
-      const sub = subtitles[idx];
-      if (!sub) return;
+      const key = JSON.stringify([track.url || track.file, track.language, Boolean(track.translated)]);
+      if (subTrack && loadedSubKey === key) { subTrack.mode = 'showing'; return; }
+      subAbort?.abort();
+      const request = new AbortController();
+      subAbort = request;
+      const ticket = ++subReq;
+      const current = () => ticket === subReq && !request.signal.aborted && playbackMode === 'direct';
+      const pending = progress => {
+        if (!current()) return;
+        subtitleNotice('Menyiapkan subtitle Indonesia otomatis' + (progress.total ? ': ' + progress.completed + ' / ' + progress.total + ' baris' : '…') + '. Subtitle asli tetap tersedia selama proses.');
+      };
       try {
-        // Fetch + parse ourselves: a dynamically-created <track src> fails to
-        // load in this setup, so we add cues via addTextTrack instead.
-        // A translated track goes through the translating endpoint instead,
-        // which serves from its cache once anyone has watched this episode.
-        const endpoint = sub.translated
-          ? '/api/stream/sub-translate?to=' + encodeURIComponent(sub.language || TRANSLATE_TO) +
-            '&url=' + encodeURIComponent(sub.url)
-          : '/api/stream/sub-proxy?url=' + encodeURIComponent(sub.url || sub.file);
-        if (sub.translated) showMsg('Translating subtitles, this can take a moment...');
-        const vtt = await (await fetch(endpoint)).text();
-        // Superseded while we waited: leave the UI to whoever came after us.
-        if (myReq !== subReq) return;
-        subTrack = video.addTextTrack('subtitles', sub.label || sub.language || 'Subtitle', 'sub');
-        for (const c of parseVTT(vtt)) subTrack.addCue(new VTTCue(c.start, c.end, c.text));
-        applyCuePosition();
-        subTrack.mode = ccOn ? 'showing' : 'hidden';
-        if (sub.translated) hideMsg();
-      } catch { if (sub.translated) hideMsg(); }
+        if (track.translated) {
+          pending({ total: 0, completed: 0 });
+          if (!subTrack) {
+            const original = subtitles.find(item => !item.translated && subtitleLanguage(item) === 'en');
+            if (original) {
+              try {
+                const originalCues = await loadSubtitleTrack(original, { signal: request.signal });
+                if (!current()) return;
+                installSubtitles(originalCues, original);
+              } catch (error) { if (request.signal.aborted) return; }
+            }
+          }
+        } else subtitleNotice('Memuat subtitle…');
+        const cues = await loadSubtitleTrack(track, { signal: request.signal, onProgress: pending });
+        if (!current()) return;
+        installSubtitles(cues, track);
+        loadedSubKey = key;
+        subtitleNotice(track.translated ? 'Subtitle Indonesia otomatis siap.' : '');
+      } catch (error) {
+        if (!current()) return;
+        subtitleNotice(error.message + (subTrack ? ' Subtitle sebelumnya tetap ditampilkan.' : ''));
+      }
     }
 
     // ---- Subtitle appearance ----------------------------------------------
@@ -636,8 +631,8 @@
     function setCC(on) {
       ccOn = on; prefs.cc = on; savePrefs();
       document.getElementById('vCC').classList.toggle('on', on);
-      if (on) { if (subTrack) subTrack.mode = 'showing'; else if (subtitles.length) applySubtitle(curSub >= 0 ? curSub : null); }
-      else if (subTrack) subTrack.mode = 'hidden';
+      if (on) { if (subTrack) subTrack.mode = 'showing'; if (subtitles.length) applySubtitle(curSub >= 0 ? curSub : null); }
+      else { subReq++; subAbort?.abort(); subtitleNotice(); if (subTrack) subTrack.mode = 'hidden'; }
     }
 
     // ---- Tabbed settings menu: Captions / Speed / Volume Boost (+ Quality) ----
@@ -734,7 +729,7 @@
         const i = +b.dataset.cc;
         if (i < 0) { setCC(false); }                       // Off
         else { ccOn = true; prefs.cc = true; prefs.subLang = subtitles[i]?.label || ''; savePrefs();
-               document.getElementById('vCC').classList.add('on'); await applySubtitle(i); }
+               document.getElementById('vCC').classList.add('on'); const loading = applySubtitle(i); buildMenu(); await loading; }
         buildMenu();
       });
       const bs = menu.querySelector('#boostSlider');

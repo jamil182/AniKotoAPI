@@ -324,6 +324,7 @@ img { display: block; max-width: 100%; }
 .player-wrap.embed-active > .skip-intro { display: none; }
 .playback-modes { display: flex; align-items: center; gap: 8px; padding-top: 10px; flex-wrap: wrap; }
 .playback-modes span { color: var(--muted); font-size: .75rem; }
+.subtitle-status { margin: 10px 0; padding: 10px 14px; color: var(--accent-hi); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: .8rem; overflow-wrap: anywhere; }
 .tbtn:disabled { opacity: .45; cursor: default; }
 .player-wrap.hide-cursor { cursor: none; }
 .player-wrap.hide-cursor video { cursor: none; }
