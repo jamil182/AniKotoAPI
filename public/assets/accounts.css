@@ -1,0 +1,18 @@
+.account-page { min-height: calc(100svh - 65px); display: grid; place-items: center; padding-block: 44px; }
+.account-card { width: min(100%, 460px); padding: 32px; border: 1px solid var(--border-hi); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+.account-eyebrow { margin: 0 0 8px; color: var(--accent); font-size: .72rem; font-weight: 700; letter-spacing: .13em; }
+.account-card h1 { margin: 0 0 8px; color: var(--ink); font-size: 1.9rem; line-height: 1.2; }
+.account-intro { margin: 0 0 24px; color: var(--muted); font-size: .88rem; }
+.account-form { display: grid; gap: 17px; }
+.account-field { display: grid; gap: 6px; }
+.account-field label { color: var(--body); font-size: .85rem; font-weight: 500; }
+.account-field input { width: 100%; min-height: 46px; padding: 11px 13px; border: 1px solid var(--border-hi); border-radius: 9px; background: var(--bg-soft); color: var(--ink); font: inherit; font-size: .9rem; }
+.account-field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.account-field small { font-size: .75rem; color: var(--muted); }
+.account-submit { min-height: 46px; margin-top: 4px; font-weight: 700; }
+.account-submit:disabled { opacity: .6; cursor: wait; }
+.account-error { margin: 0 0 18px; padding: 11px 13px; border: 1px solid var(--danger); border-radius: 9px; color: var(--danger); font-size: .85rem; }
+.account-alternate { margin: 22px 0 0; text-align: center; font-size: .85rem; }
+.account-alternate a { color: var(--accent); font-weight: 600; }
+.account-home { display: block; margin-top: 16px; text-align: center; color: var(--muted); font-size: .8rem; }
+@media (max-width: 540px) { .account-page { padding: 28px 16px; } .account-card { padding: 26px 22px; } }

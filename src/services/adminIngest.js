@@ -6,7 +6,7 @@
  * @exports malEmbedUrl, ingestAnikoto, ingestMalEpisode
  */
 
-import { upsertAnime, upsertEpisode } from "../db/library.repo.js";
+import { getAnimeByAny, getEpisodes, upsertAnime, upsertEpisode } from "../db/library.repo.js";
 
 /** Build the megaplay embed URL for a MAL/AniList episode. */
 export function malEmbedUrl({ source, id, episode, dub }) {
@@ -57,15 +57,20 @@ export function ingestAnikoto(db, { series, anikotoId, sub, dub, autoUpdate }) {
  */
 export function ingestMalEpisode(db, { source, id, episode, sub, dub, embedUrl, meta }) {
   const key = source === "anilist" ? { anilistId: Number(id) } : { malId: Number(id) };
+  const existing = getAnimeByAny(db, key);
   const animeId = upsertAnime(db, {
     ...key,
-    title: meta?.title || `${source.toUpperCase()} ${id}`,
+    title: existing?.title || meta?.title || `${source.toUpperCase()} ${id}`,
+    autoUpdate: Boolean(existing?.auto_update),
     poster: meta?.poster || null,
     synopsis: meta?.synopsis || null,
     status: meta?.status || null,
     type: meta?.type || null,
   });
-  const embed = dub ? { dub: embedUrl } : { sub: embedUrl };
+  const oldEpisode = getEpisodes(db, animeId).find(ep => ep.number === Number(episode));
+  let stored = {};
+  try { stored = JSON.parse(oldEpisode?.embed_url || '{}'); } catch { /* Older rows can lack embed JSON. */ }
+  const embed = { ...(typeof stored.sub === 'string' ? { sub: stored.sub } : {}), ...(typeof stored.dub === 'string' ? { dub: stored.dub } : {}), ...(dub ? { dub: embedUrl } : { sub: embedUrl }) };
   upsertEpisode(db, animeId, {
     number: Number(episode), sub: !dub, dub: !!dub,
     embedUrl: JSON.stringify(embed), source,

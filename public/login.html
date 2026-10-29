@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex"><title>Login — AniJs</title>
+  <link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/assets/app.css"><link rel="stylesheet" href="/assets/accounts.css">
+</head>
+<body>
+  <header id="nav"></header>
+  <main class="wrap account-page">
+    <section class="account-card" aria-labelledby="accountTitle">
+      <p class="account-eyebrow">SELAMAT DATANG KEMBALI</p>
+      <h1 id="accountTitle">Login ke AniJs</h1>
+      <p class="account-intro">Masuk menggunakan email dan kata sandi akun Anda.</p>
+      <p id="accountError" class="account-error" role="alert" tabindex="-1" hidden></p>
+      <form id="accountForm" class="account-form" data-action="login">
+        <div class="account-field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" maxlength="254" required></div>
+        <div class="account-field"><label for="password">Kata sandi</label><input id="password" name="password" type="password" autocomplete="current-password" minlength="15" maxlength="128" required></div>
+        <button class="nav-btn solid account-submit" type="submit">Login</button>
+      </form>
+      <p class="account-alternate">Belum punya akun? <a id="accountAlternate" href="/register">Register</a></p>
+      <a class="account-home" href="/home">← Kembali ke beranda</a>
+    </section>
+  </main>
+  <script src="/assets/api.js"></script><script type="module" src="/assets/account-form.js"></script>
+</body>
+</html>

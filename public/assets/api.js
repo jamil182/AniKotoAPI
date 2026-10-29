@@ -11,9 +11,17 @@ const API = location.protocol.startsWith('http')
   ? location.origin + '/api'
   : 'https://anikototvapi.vercel.app/api';
 
-async function apiGet(path) {
-  const res = await fetch(API + path);
-  if (!res.ok) throw new Error('HTTP ' + res.status);
+async function apiGet(path, { signal } = {}) {
+  const timeout = AbortSignal.timeout(25000);
+  const res = await fetch(API + path, {
+    cache: 'no-store', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const error = new Error(body.message || 'HTTP ' + res.status);
+    error.retryAfter = Number(res.headers.get('Retry-After')) || 0;
+    throw error;
+  }
   const data = await res.json();
   if (data && data.success === false) throw new Error(data.message || 'Request failed');
   return data.results;
@@ -34,8 +42,7 @@ const decodeEntities = (s) => {
   return t.value;
 };
 
-// The API returns some slugs with an episode suffix (".../ep-1"). Trim it so a
-// slug reads as the anime, ready for the detail route wired up in a later phase.
+// Episode suffixes are omitted from anime detail URLs.
 const animeSlug = (slug) => String(slug || '').split('/')[0];
 
 function subDubChips(item) {
@@ -45,8 +52,6 @@ function subDubChips(item) {
   return h;
 }
 
-// Poster card. Non-navigating in this phase: it carries the slug on a data
-// attribute so a later phase can turn it into a link without markup changes.
 // Durations arrive as "25m", "24 min" or a bare "12". Normalise to one form
 // so the hover card does not read like three different fields.
 function fmtDuration(v) {
@@ -55,7 +60,7 @@ function fmtDuration(v) {
   return n ? esc(n[0] + ' min') : esc(String(v));
 }
 // ---- Poster hover card ----
-// Every field here is already in memory from /library/home, so hovering costs
+// Every field here is already in memory from /catalog/home, so hovering costs
 // no request. Rows whose data is missing are dropped rather than printed
 // empty: duration in particular is absent for a third of the catalogue.
 function cardTipHTML(item) {
@@ -98,16 +103,14 @@ document.addEventListener('mouseover', (e) => {
   tip.style.top = over > 0 ? (-Math.min(over, r.top - 12)) + 'px' : '0px';
 });
 
-function cardHTML(item) {
+function cardHTML(item, progressHTML = '') {
   const title = item.title || item.name || 'Untitled';
-  const type = item.type || '';
   return `
     <div class="card" data-id="${esc(item.id)}">
       <div class="card-poster">
         <img loading="lazy" src="${esc(item.poster || '/favicon.svg')}" alt="${esc(title)}"
              onerror="this.style.visibility='hidden'">
-        <div class="card-badges">${subDubChips(item)}</div>
-        ${type ? `<span class="card-type">${esc(type)}</span>` : ''}
+        ${progressHTML}
       </div>
       <div class="card-title">${esc(title)}</div>
       ${item.rating ? `<div class="card-sub">★ ${esc(item.rating)}</div>` : ''}
@@ -126,7 +129,8 @@ async function renderCards(el, loader, { count = 12, empty = 'Nothing here yet.'
   try {
     const items = await loader();
     if (!items || !items.length) { el.innerHTML = `<div class="state">${empty}</div>`; return; }
-    el.innerHTML = `<div class="grid">${items.slice(0, count).map(cardHTML).join('')}</div>`;
+    const { cardProgressHTML } = await import('/assets/card-progress.js');
+    el.innerHTML = `<div class="grid">${items.slice(0, count).map(item => cardHTML(item, cardProgressHTML(item))).join('')}</div>`;
   } catch (e) {
     el.innerHTML = `<div class="state">Couldn't load this section (${esc(e.message)}).<br><button>Retry</button></div>`;
     el.querySelector('button').onclick = () => renderCards(el, loader, { count, empty });
@@ -134,8 +138,7 @@ async function renderCards(el, loader, { count = 12, empty = 'Nothing here yet.'
 }
 
 // ---- Navigation ----
-// The frontend is library-backed: anime are addressed by their internal
-// library id (mixed-source — MAL entries have no slug), so navigation is by id.
+// Catalog identifiers are AniKoto slugs, including search and ranking results.
 const animeHref = (id) => '/anime/' + encodeURIComponent(id);
 
 // Any element carrying a non-empty data-id navigates to that anime's detail
@@ -153,15 +156,21 @@ function navHTML(active) {
   const on = (k) => active === k ? ' style="color:var(--ink)"' : '';
   return `
     <div class="wrap nav-inner">
-      <a href="/home" class="logo">Ani<b>Js</b></a>
+      <div class="nav-brand">
+        <button type="button" class="nav-menu-toggle" id="navMenuToggle" aria-label="Open menu" aria-controls="siteMenu" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path class="menu-bars" d="M3 5h18M3 12h18M3 19h18"/><path class="menu-close" d="m5 5 14 14M5 19 19 5"/></svg></button>
+        <a href="/home" class="logo" aria-label="AniJs home"><img src="/logo.png" alt="AniJs" width="132" height="34" decoding="async"></a>
+      </div>
       <div class="nav-search">
         <input id="navSearch" type="text" placeholder="Search anime…" autocomplete="off" />
         <div class="search-drop" id="navSearchDrop"></div>
       </div>
       <nav class="nav-links">
+        <span id="liveStatus" class="live-status" role="status" aria-live="polite">Connecting…</span>
         <button class="nav-btn" id="navRandom">Random</button>
-        <a class="nav-btn" href="/docs"${on('docs')}>API Docs</a>
-        <a class="nav-btn solid" href="https://github.com/Shineii86/AniKotoAPI" target="_blank" rel="noopener">GitHub</a>
+        <span class="nav-account" id="navAccount">
+          <a class="nav-btn" href="/login"${on('login')}>Login</a>
+          <a class="nav-btn solid" href="/register"${on('register')}>Register</a>
+        </span>
       </nav>
     </div>`;
 }
@@ -177,7 +186,8 @@ function wireNav() {
     if (q.length < 2) { drop.classList.remove('open'); return; }
     timer = setTimeout(async () => {
       try {
-        const r = await apiGet('/library/search?keyword=' + encodeURIComponent(q));
+        const r = await apiGet('/catalog/search?keyword=' + encodeURIComponent(q));
+        if (input.value.trim() !== q) return;
         const items = (r.data || []).slice(0, 6);
         drop.innerHTML = items.length
           ? items.map(it => `
@@ -191,6 +201,7 @@ function wireNav() {
           : '<div class="search-empty">No matches.</div>';
         drop.classList.add('open');
       } catch (e) {
+        if (input.value.trim() !== q) return;
         drop.innerHTML = `<div class="search-empty">Search failed: ${esc(e.message)}</div>`;
         drop.classList.add('open');
       }
@@ -204,11 +215,12 @@ function wireNav() {
   document.getElementById('navRandom').onclick = async (e) => {
     const btn = e.target; const old = btn.textContent; btn.textContent = '…'; btn.disabled = true;
     try {
-      // Random picks from the stored library.
-      const h = await apiGet('/library/home');
-      const pool = h.latest || [];
-      if (pool.length) location.href = animeHref(pool[Math.floor((Date.now() % pool.length))].id);
-    } catch (_) { /* ignore */ }
+      const anime = await apiGet('/catalog/random');
+      location.href = animeHref(anime.id);
+    } catch (error) {
+      drop.innerHTML = `<div class="search-empty">${esc(error.message)}</div>`;
+      drop.classList.add('open');
+    }
     finally { btn.textContent = old; btn.disabled = false; }
   };
 }
@@ -220,4 +232,6 @@ function mountNav(active) {
   host.className = 'nav';
   host.innerHTML = navHTML(active);
   wireNav();
+  import('/assets/site-menu.js').then(module => module.mountSiteMenu(host)).catch(() => {});
+  import('/assets/account-nav.js').then(module => module.mountAccountNav(document.getElementById('navAccount'))).catch(() => {});
 }

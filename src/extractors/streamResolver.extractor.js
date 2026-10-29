@@ -18,6 +18,7 @@
 
 import axios from "axios";
 import { headers } from "../configs/header.config.js";
+import { decodeSourcePayload } from "../helper/sourcePayload.helper.js";
 
 // ══════════════════════════════════════════════════════════════
 // STREAM RESOLVER
@@ -126,8 +127,11 @@ const resolveStreamUrl = async (embedUrl, options = {}) => {
     let lastPathError = null;
     for (const sourcesPath of SOURCES_PATHS) {
       try {
+        const sourceParams = new URLSearchParams({ id: dataId });
+        const selectedCdn = new URL(embedUrl).searchParams.get("s");
+        if (selectedCdn && /^[a-z0-9_-]{1,32}$/i.test(selectedCdn)) sourceParams.set("s", selectedCdn);
         const apiResponse = await axios.get(
-          `https://${apiDomain}${sourcesPath}?id=${encodeURIComponent(dataId)}`,
+          `https://${apiDomain}${sourcesPath}?${sourceParams}`,
           {
             headers: {
               ...headers,
@@ -143,8 +147,8 @@ const resolveStreamUrl = async (embedUrl, options = {}) => {
           ? (() => { try { return JSON.parse(apiResponse.data); } catch { return null; } })()
           : apiResponse.data;
 
-        if (parsed && typeof parsed === "object") {
-          apiData = parsed;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          apiData = decodeSourcePayload(parsed);
           break;
         }
         lastPathError = `${sourcesPath} returned a non-JSON body`;

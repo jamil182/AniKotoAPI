@@ -20,7 +20,7 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 
-const DEFAULT_PATH = path.join(process.cwd(), "data", "anikoto.db");
+const DEFAULT_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "anikoto.db");
 
 // ---- FEATURE: Schema migration ----
 /**
@@ -29,6 +29,21 @@ const DEFAULT_PATH = path.join(process.cwd(), "data", "anikoto.db");
  */
 export function migrate(db) {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS user_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL COLLATE NOCASE UNIQUE,
+      display_name TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      token_hash TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES user_accounts(id) ON DELETE CASCADE,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_user_sessions_user ON user_sessions(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS ix_user_sessions_expiry ON user_sessions(expires_at);
     CREATE TABLE IF NOT EXISTS anime (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       anikoto_id INTEGER, mal_id INTEGER, anilist_id INTEGER,
@@ -69,6 +84,15 @@ export function migrate(db) {
   const cols = new Set(db.prepare("PRAGMA table_info(anime)").all().map((c) => c.name));
   if (!cols.has("year")) db.exec("ALTER TABLE anime ADD COLUMN year INTEGER");
   if (!cols.has("duration")) db.exec("ALTER TABLE anime ADD COLUMN duration TEXT");
+  if (!cols.has("publication_state")) db.exec("ALTER TABLE anime ADD COLUMN publication_state TEXT NOT NULL DEFAULT 'draft' CHECK (publication_state IN ('draft', 'published'))");
+  if (!cols.has("published_at")) db.exec("ALTER TABLE anime ADD COLUMN published_at TEXT");
+  if (!cols.has("last_synced_at")) db.exec("ALTER TABLE anime ADD COLUMN last_synced_at TEXT");
+  if (!cols.has("allow_sub")) db.exec("ALTER TABLE anime ADD COLUMN allow_sub INTEGER NOT NULL DEFAULT 1");
+  if (!cols.has("allow_dub")) db.exec("ALTER TABLE anime ADD COLUMN allow_dub INTEGER NOT NULL DEFAULT 1");
+  if (!cols.has("source_slug")) db.exec("ALTER TABLE anime ADD COLUMN source_slug TEXT");
+  const episodeCols = new Set(db.prepare("PRAGMA table_info(episode)").all().map(c => c.name));
+  if (!episodeCols.has("mal_id")) db.exec("ALTER TABLE episode ADD COLUMN mal_id INTEGER");
+  db.exec("CREATE INDEX IF NOT EXISTS ix_anime_publication ON anime(publication_state, published_at)");
 }
 
 // ---- FEATURE: Connection ----

@@ -32,6 +32,14 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { createApiRoutes } from "./src/routes/apiRoutes.js";
 import { addCreatorInfo } from "./src/middleware/creatorInfo.js";
+import { createCatalogRouter } from "./src/routes/catalog.route.js";
+import { EMBED_ORIGINS } from "./public/assets/embed-policy.js";
+import { createAniKotoClient } from "./src/services/anikotoApi.js";
+import { createPublishedCatalog } from "./src/services/publishedCatalog.js";
+import { getCatalogMode } from "./src/services/catalogMode.js";
+import { createAccountsRouter } from "./src/routes/accounts.route.js";
+import { createCmsRouter } from "./src/routes/cms.route.js";
+import { getDb } from "./src/db/index.js";
 
 // ══════════════════════════════════════════════════════════════
 // SERVER CONFIGURATION
@@ -79,8 +87,8 @@ app.use((req, res, next) => {
   if (!allowedOrigins || allowedOrigins.includes("*") || (origin && allowedOrigins.includes(origin))) {
     res.setHeader("Access-Control-Allow-Origin", origin || "*");
   }
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Requested-With");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, X-Admin-Token");
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
@@ -101,7 +109,7 @@ app.use((req, res, next) => {
   // NOTE: cdn.jsdelivr.net is allowed for hls.js on the watch page. Media and
   // segments are fetched same-origin through the stream proxy, so connect-src
   // stays 'self'; media-src allows blob: for the MediaSource buffers hls.js uses.
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; media-src 'self' blob:; connect-src 'self'");
+  res.setHeader("Content-Security-Policy", `default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; media-src 'self' blob:; connect-src 'self'; frame-src ${EMBED_ORIGINS.join(' ')}`);
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
   next();
@@ -134,6 +142,13 @@ app.get("/", (req, res) => {
 
 app.get("/home", (req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
+});
+
+app.get('/browse', (req, res) => res.sendFile(path.join(publicDir, 'browse.html')));
+
+app.get(['/login', '/register'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.sendFile(path.join(publicDir, req.path === '/register' ? 'register.html' : 'login.html'));
 });
 
 // NOTE: Anime detail page. The slug is read client-side from the path, so every
@@ -251,7 +266,13 @@ app.use((req, res, next) => {
   next();
 });
 
-createApiRoutes(app, jsonResponse, jsonError);
+const catalogClient = createAniKotoClient();
+const publishedCatalog = createPublishedCatalog(getDb, catalogClient);
+const publicCatalog = getCatalogMode(process.env.PUBLIC_CATALOG_MODE) === 'managed' ? publishedCatalog : null;
+app.use('/api/auth', createAccountsRouter(getDb));
+app.use("/api/admin", createCmsRouter(getDb, catalogClient));
+app.use("/api/catalog", createCatalogRouter(catalogClient, publicCatalog));
+createApiRoutes(app, jsonResponse, jsonError, publishedCatalog);
 
 // ══════════════════════════════════════════════════════════════
 // 404 HANDLER
@@ -259,6 +280,9 @@ createApiRoutes(app, jsonResponse, jsonError);
 
 // ---- FEATURE: Global error handler ----
 app.use((err, req, res, next) => {
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ success: false, message: 'Invalid JSON body' });
+  }
   console.error(`[ERROR] ${req.id} ${err.message}`, err.stack);
   if (err.type === 'entity.too.large') {
     return res.status(413).json({ success: false, message: "Request entity too large" });
@@ -308,10 +332,8 @@ const server = app.listen(PORT, () => {
 // NOTE: In-process timer for localhost/long-running hosts. Serverless deploys
 // should instead call POST /api/admin/run-updates from an external cron.
 if (process.env.ADMIN_TOKEN && process.env.NODE_ENV !== "test") {
-  const { startScheduler } = await import("./src/services/autoUpdate.js");
-  const { getDb } = await import("./src/db/index.js");
-  const { fetchCatalogSeries } = await import("./src/services/catalogMeta.js");
-  startScheduler(getDb(), (anime) => fetchCatalogSeries(anime.anikoto_id).then(s => s?.episodes || []));
+  const { startCmsScheduler } = await import("./src/services/cmsCatalog.js");
+  startCmsScheduler(getDb(), catalogClient);
   console.info("[AUTO-UPDATE] hourly scheduler started");
 }
 

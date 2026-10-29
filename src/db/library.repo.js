@@ -75,8 +75,8 @@ export function upsertAnime(db, rec) {
  */
 export function upsertEpisode(db, animeId, ep) {
   db.prepare(`
-    INSERT INTO episode (anime_id, number, title, sub, dub, server_ids, embed_url, source, created_at, updated_at)
-    VALUES (@anime_id, @number, @title, @sub, @dub, @server_ids, @embed_url, @source, @now, @now)
+    INSERT INTO episode (anime_id, number, title, sub, dub, server_ids, embed_url, source, mal_id, created_at, updated_at)
+    VALUES (@anime_id, @number, @title, @sub, @dub, @server_ids, @embed_url, @source, @mal_id, @now, @now)
     ON CONFLICT(anime_id, number) DO UPDATE SET
       title = COALESCE(excluded.title, episode.title),
       sub = MAX(episode.sub, excluded.sub),
@@ -84,12 +84,13 @@ export function upsertEpisode(db, animeId, ep) {
       server_ids = COALESCE(excluded.server_ids, episode.server_ids),
       embed_url = COALESCE(excluded.embed_url, episode.embed_url),
       source = excluded.source,
+      mal_id = COALESCE(excluded.mal_id, episode.mal_id),
       updated_at = @now
   `).run({
     anime_id: animeId, number: ep.number, title: ep.title ?? null,
     sub: ep.sub ? 1 : 0, dub: ep.dub ? 1 : 0,
     server_ids: ep.serverIds ?? null, embed_url: ep.embedUrl ?? null,
-    source: ep.source, now: now(),
+    source: ep.source, mal_id: ep.malId ?? null, now: now(),
   });
 }
 
@@ -106,7 +107,7 @@ export const animeForAutoUpdate = (db) => db.prepare("SELECT * FROM anime WHERE 
 /** Parse the JSON columns of an anime row into arrays. */
 export function parseAnime(row) {
   if (!row) return row;
-  const p = (s) => { try { return JSON.parse(s); } catch { return []; } };
+  const p = (s) => { if (Array.isArray(s)) return s; try { const value = JSON.parse(s); return Array.isArray(value) ? value : []; } catch { return []; } };
   return { ...row, genres: p(row.genres), studios: p(row.studios) };
 }
 

@@ -1,201 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AniJs — Admin</title>
-  <link rel="icon" href="/favicon.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/app.css" />
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AniJs — Kelola Anime</title>
+  <link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/assets/app.css"><link rel="stylesheet" href="/assets/admin.css">
 </head>
 <body>
-  <header id="nav"></header>
-  <div class="wrap" style="padding:28px 0 60px">
-    <h1 style="font-family:var(--font-display);color:var(--ink);margin:0 0 4px">Anime Fetch Data</h1>
-    <p style="color:var(--muted);margin-top:0">Fetch a complete series via Anikoto, or add one episode at a time via MAL/AniList.</p>
-
-    <div class="admin-grid">
-      <section class="admin-card">
-        <h3>1. Fetch Anikoto</h3>
-        <label>Search anime title</label>
-        <div class="admin-row">
-          <input id="aSearch" type="text" placeholder="Naruto: Shippuden" autocomplete="off">
-          <button class="btn primary" id="aSearchBtn">Search</button>
-        </div>
-        <div id="aResults"></div>
-        <label>Anikoto Series ID</label>
-        <input id="aSeriesId" type="text" placeholder="e.g. 7174" inputmode="numeric" autocomplete="off">
-        <div class="admin-langs">
-          <label><input type="checkbox" id="aSub" checked> SUB</label>
-          <label><input type="checkbox" id="aDub"> DUB</label>
-        </div>
-        <label class="admin-langs" style="margin-top:8px"><input type="checkbox" id="aAuto"> Automatic hourly episode updates</label>
-        <button class="btn primary" id="aFetch" disabled style="margin-top:12px">Fetch Anikoto</button>
-        <div id="aOut" class="admin-out"></div>
-      </section>
-
-      <section class="admin-card">
-        <h3>2. Fetch MAL/AniList Episode</h3>
-        <label>Source</label>
-        <select id="mSource">
-          <option value="mal">MAL ID + episode</option>
-          <option value="anilist">AniList ID + episode</option>
-        </select>
-        <div class="admin-row" style="margin-top:10px">
-          <input id="mId" type="text" placeholder="61316" autocomplete="off">
-          <input id="mEp" type="text" placeholder="1" value="1" autocomplete="off">
-        </div>
-        <div class="admin-langs">
-          <label><input type="checkbox" id="mSub" checked> SUB</label>
-          <label><input type="checkbox" id="mDub"> DUB</label>
-        </div>
-        <div class="admin-out" id="mPreview"></div>
-        <button class="btn primary" id="mFetch" style="margin-top:12px">Fetch MAL/AniList Episode</button>
-        <div id="mOut" class="admin-out"></div>
-      </section>
+  <header class="nav"><div class="wrap cms-nav"><a href="/home" class="logo" aria-label="AniJs home"><img src="/logo.png" alt="AniJs" width="132" height="34" decoding="async"></a><span>Pengelola Anime</span><a class="btn" href="/home">Lihat website ↗</a><button class="btn" id="logout" hidden>Keluar</button></div></header>
+  <main class="wrap cms-main">
+    <div class="cms-heading"><div><p class="cms-eyebrow">KATALOG WEBSITE</p><h1>Kelola anime Anda</h1><p id="catalogModeInfo">Memeriksa sumber katalog publik…</p></div><button class="btn" id="runSync" hidden>Sinkron semua</button></div>
+    <p id="notice" class="cms-notice" role="status" aria-live="polite" hidden></p>
+    <section class="admin-card cms-auth" id="authPanel"><h2>Masuk ke admin</h2><p>Gunakan ADMIN_TOKEN yang dikonfigurasi di server.</p><form id="loginForm"><label for="token">Token admin</label><div class="admin-row"><input id="token" type="password" autocomplete="current-password" required><button class="btn primary" type="submit">Masuk</button></div></form><p id="authError" role="alert"></p></section>
+    <div id="workspace" hidden>
+      <div class="cms-stats"><div><span>Total anime</span><b id="countAll">0</b></div><div><span>Published</span><b id="countPublished">0</b></div><div><span>Draft</span><b id="countDraft">0</b></div><div><span>Sinkron otomatis</span><b id="countAuto">0</b></div></div>
+      <div class="admin-grid cms-imports">
+        <section class="admin-card"><h2>Impor dari AniKotoAPI</h2><p>Cari judul atau masukkan slug anime dari AniKoto.</p>
+          <form id="searchForm"><label for="searchTitle">Cari anime</label><div class="admin-row"><input id="searchTitle" placeholder="Contoh: Naruto" minlength="2" maxlength="120" required><button class="btn" type="submit">Cari</button></div></form><div id="searchResults" class="cms-results"></div>
+          <form id="importForm"><label for="importSlug">Slug atau URL anime</label><input id="importSlug" placeholder="naruto-eybxz" required maxlength="500"><div class="admin-langs"><label><input id="importSub" type="checkbox" checked> SUB</label><label><input id="importDub" type="checkbox" checked> DUB</label></div><label class="cms-checkbox"><input id="importAuto" type="checkbox" checked> Sinkron episode otomatis setiap jam</label><button class="btn primary" type="submit">Impor sebagai Draft</button></form>
+        </section>
+        <section class="admin-card"><h2>Tambah episode MAL / AniList</h2><p>Tambahkan episode melalui ID. Metadata dapat ditinjau dan diedit sebelum Publish.</p><form id="malForm"><label for="malSource">Sumber</label><select id="malSource"><option value="mal">MyAnimeList</option><option value="anilist">AniList</option></select><div class="cms-form-grid"><div><label for="malId">ID anime</label><input id="malId" inputmode="numeric" pattern="[1-9][0-9]*" placeholder="20" required></div><div><label for="malEpisode">Episode</label><input id="malEpisode" type="number" min="0.1" step="any" value="1" required></div></div><div class="admin-langs"><label><input id="malSub" type="checkbox" checked> SUB</label><label><input id="malDub" type="checkbox"> DUB</label></div><button class="btn primary" type="submit">Tambahkan episode</button></form><p class="cms-muted">Impor ulang mempertahankan status publikasi dan judul yang sudah Anda atur.</p></section>
+      </div>
+      <section class="cms-library"><div class="cms-library-head"><h2>Koleksi anime</h2><button class="btn" id="reloadLibrary">Muat ulang</button></div><div class="cms-filters"><input id="librarySearch" type="search" placeholder="Cari judul atau slug…" aria-label="Cari koleksi"><select id="publicationFilter" aria-label="Filter publikasi"><option value="all">Semua status</option><option value="published">Published</option><option value="draft">Draft</option></select></div><div id="libraryRows"></div><div class="cms-pager"><button class="btn" id="prevPage">‹ Sebelumnya</button><span id="pageLabel"></span><button class="btn" id="nextPage">Berikutnya ›</button></div></section>
     </div>
-
-    <div class="admin-libhead">
-      <h2>Library</h2>
-    </div>
-    <div class="lib-search">
-      <svg class="lib-search-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16.5 16.5 21 21" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
-      <input id="libSearch" type="search" placeholder="Search Anime .." autocomplete="off" aria-label="Search the library">
-      <kbd class="lib-search-kbd">/</kbd>
-    </div>
-    <div id="library"></div>
-  </div>
-
-  <script src="/assets/api.js"></script>
-  <script>
-    mountNav();
-
-    let TOKEN = null;
-    try { TOKEN = localStorage.getItem('anijs_admin_token'); } catch {}
-    if (!TOKEN) { TOKEN = prompt('Admin token:') || ''; try { localStorage.setItem('anijs_admin_token', TOKEN); } catch {} }
-    const H = { 'x-admin-token': TOKEN, 'content-type': 'application/json' };
-    const adminGet = async (p) => (await fetch('/api/admin' + p, { headers: H })).json();
-    const adminPost = async (p, body) => (await fetch('/api/admin' + p, { method: 'POST', headers: H, body: JSON.stringify(body) })).json();
-
-    // ---- Panel 1: Fetch Anikoto ----
-    // The Series ID can be typed as well as picked, so the field itself is the
-    // single source of truth. The fetch used to read a dataset value that only
-    // the Select button ever set, which left a typed ID inert.
-    const seriesIdEl = document.getElementById('aSeriesId');
-    const syncSeriesId = () => {
-      document.getElementById('aFetch').disabled = !/^[0-9]+$/.test(seriesIdEl.value.trim());
-    };
-    seriesIdEl.addEventListener('input', syncSeriesId);
-    document.getElementById('aSearchBtn').onclick = async () => {
-      const box = document.getElementById('aResults');
-      box.innerHTML = '<div class="state">Searching…</div>';
-      const r = await adminGet('/search?keyword=' + encodeURIComponent(document.getElementById('aSearch').value.trim()));
-      const items = r.results || [];
-      // NOTE: use data-aslug / data-anid (NOT data-slug / data-id) — api.js
-      // installs global [data-id] and [data-slug] click listeners that would
-      // navigate away from this page.
-      // NOTE: no cap here. The search returns one page holding up to 30 hits
-      // (26 for "naruto"), and slicing to 8 silently discarded the rest. The
-      // list scrolls inside its own box, so showing them all costs no layout.
-      box.innerHTML = items.length ? items.map(a =>
-        `<div class="admin-hit" data-aslug="${esc(a.slug)}" data-anid="${esc(a.animeId)}">
-           <img src="${esc(a.poster)}" onerror="this.style.display='none'">
-           <div><b>${esc(a.title)}</b><div class="admin-hit-m">ID ${esc(a.animeId)} · ${esc(a.type || '')} · SUB ${a.sub || 0} DUB ${a.dub || 0}</div></div>
-           <button class="btn">Select</button>
-         </div>`).join('') : '<div class="state">No results (or wrong token).</div>';
-      box.querySelectorAll('.admin-hit').forEach(el => el.querySelector('button').onclick = () => {
-        seriesIdEl.value = el.dataset.anid;
-        syncSeriesId();
-      });
-    };
-
-    document.getElementById('aFetch').onclick = async () => {
-      const out = document.getElementById('aOut'); out.textContent = 'Fetching…';
-      const r = await adminPost('/fetch-anikoto', {
-        seriesId: seriesIdEl.value.trim(),
-        sub: document.getElementById('aSub').checked,
-        dub: document.getElementById('aDub').checked,
-        autoUpdate: document.getElementById('aAuto').checked,
-      });
-      out.textContent = r.success ? `Stored — ${r.results.episodeCount} episodes.` : 'Error: ' + r.message;
-      loadLibrary();
-    };
-
-    // ---- Panel 2: Fetch MAL/AniList ----
-    const preview = () => {
-      const src = document.getElementById('mSource').value;
-      const seg = src === 'anilist' ? 'ani' : src;   // MegaPlay uses /ani/ for AniList
-      document.getElementById('mPreview').textContent =
-        `https://megaplay.buzz/stream/${seg}/${document.getElementById('mId').value || 'ID'}/${document.getElementById('mEp').value || '1'}/${document.getElementById('mDub').checked ? 'dub' : 'sub'}`;
-    };
-    ['mSource', 'mId', 'mEp', 'mSub', 'mDub'].forEach(id => document.getElementById(id).addEventListener('input', preview));
-    preview();
-
-    document.getElementById('mFetch').onclick = async () => {
-      const out = document.getElementById('mOut'); out.textContent = 'Fetching…';
-      const r = await adminPost('/fetch-mal', {
-        source: document.getElementById('mSource').value,
-        id: document.getElementById('mId').value.trim(),
-        episode: document.getElementById('mEp').value.trim(),
-        sub: document.getElementById('mSub').checked,
-        dub: document.getElementById('mDub').checked,
-      });
-      // The route already returns the internal library id and the resolved
-      // title, so surface both -- that id is how the row is found in the
-      // Library table below, and in the anime/episode tables.
-      out.textContent = r.success
-        ? 'Stored episode — library ID ' + r.results.animeId +
-          (r.results.title ? ' · ' + r.results.title : '') + '.'
-        : 'Error: ' + r.message;
-      loadLibrary();
-    };
-
-    // ---- Library ----
-    // The endpoint hands back every row at once, so the filter runs here
-    // rather than making a round trip on each keystroke.
-    let libraryRows = [];
-
-    function renderLibrary() {
-      const q = document.getElementById('libSearch').value.trim().toLowerCase();
-      const box = document.getElementById('library');
-      const rows = q
-        ? libraryRows.filter(a => String(a.title || '').toLowerCase().includes(q))
-        : libraryRows;
-
-      box.innerHTML = rows.length
-        ? rows.map(a =>
-            `<div class="admin-libitem"><b>${esc(a.title)}</b> <span class="admin-hit-m">${a.total_episodes || 0} ep${a.auto_update ? ' · auto' : ''}</span> <button class="btn" data-del="${a.id}">Delete</button></div>`).join('')
-        : libraryRows.length
-          // Distinguish "nothing stored" from "nothing matched", so an empty
-          // list never looks like the library was wiped.
-          ? `<div class="state">No stored title matches “${esc(q)}”.</div>`
-          : '<div class="state">Empty — fetch something above.</div>';
-
-      box.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
-        await fetch('/api/admin/anime/' + b.dataset.del, { method: 'DELETE', headers: H });
-        loadLibrary();
-      });
-    }
-
-    async function loadLibrary() {
-      const r = await adminGet('/library');
-      libraryRows = r.results || [];
-      renderLibrary();
-    }
-
-    const libSearchEl = document.getElementById('libSearch');
-    libSearchEl.addEventListener('input', renderLibrary);
-    // "/" jumps to the box, but not while the caret is already in a field.
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
-      const t = e.target;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
-      e.preventDefault();
-      libSearchEl.focus();
-    });
-    loadLibrary();
-  </script>
+  </main>
+  <dialog id="editor" class="cms-dialog"><form id="editForm" class="admin-card"><div class="cms-library-head"><h2>Edit anime</h2><button class="btn" type="button" id="closeEditor">Tutup</button></div><p id="editError" role="alert"></p><div class="cms-form-grid"><div><label for="editTitle">Judul</label><input id="editTitle" required maxlength="240"></div><div><label for="editSlug">Slug publik</label><input id="editSlug" maxlength="240" required pattern="[a-zA-Z0-9][a-zA-Z0-9_-]*"></div><div><label for="editJapanese">Judul alternatif</label><input id="editJapanese" maxlength="240"></div><div><label for="editPublication">Publikasi</label><select id="editPublication"><option value="draft">Draft</option><option value="published">Published</option></select></div><div><label for="editPoster">URL poster (HTTPS)</label><input id="editPoster" type="url"></div><div><label for="editBanner">URL banner (HTTPS)</label><input id="editBanner" type="url"></div><div><label for="editType">Tipe</label><input id="editType" maxlength="50" placeholder="TV / Movie / ONA"></div><div><label for="editStatus">Status tayang</label><input id="editStatus" maxlength="80" placeholder="Currently Airing / Finished Airing"></div><div><label for="editRating">Rating</label><input id="editRating" maxlength="30"></div><div><label for="editGenres">Genre (pisahkan dengan koma)</label><input id="editGenres" maxlength="1000"></div></div><label for="editSynopsis">Sinopsis</label><textarea id="editSynopsis" rows="5" maxlength="6000"></textarea><div class="admin-langs"><label><input id="editSub" type="checkbox"> Izinkan SUB</label><label><input id="editDub" type="checkbox"> Izinkan DUB</label></div><label class="cms-checkbox"><input id="editAuto" type="checkbox"> Sinkron episode otomatis setiap jam</label><div class="cms-dialog-footer"><span id="editDetails" class="cms-muted"></span><button class="btn primary" type="submit">Simpan perubahan</button></div></form></dialog>
+  <script type="module" src="/assets/admin.js"></script>
 </body>
 </html>

@@ -1,0 +1,43 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createEmbedPlayer } from './embed-player.js';
+
+test('iframe lifecycle validates destinations and removes old players', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const previousDocument = globalThis.document;
+  const frames = [];
+  globalThis.document = { createElement: () => {
+    const frame = { attrs: {}, setAttribute(key, value) { this.attrs[key] = value; }, remove() { this.removed = true; } };
+    frames.push(frame);
+    return frame;
+  } };
+  t.after(() => { if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument; });
+  const classes = new Set();
+  const container = { classList: { add: name => classes.add(name), remove: name => classes.delete(name) }, append: () => {} };
+  let loaded = 0;
+  let errors = 0;
+  const player = createEmbedPlayer({ container, onLoading: () => {}, onLoad: () => { loaded++; }, onError: () => { errors++; } });
+  assert.throws(() => player.load('https://evil.example/player', 'Unsafe'), /not supported/);
+  assert.equal(frames.length, 0);
+  player.load('https://megaplay.buzz/stream/mal/20/1/sub', 'Naruto SUB');
+  const first = frames[0];
+  const staleLoad = first.onload;
+  assert.equal(player.active, true);
+  assert.equal(first.title, 'Naruto SUB');
+  assert.equal(first.allowFullscreen, true);
+  assert.equal(first.attrs.sandbox, undefined, 'providers require an ordinary iframe');
+  first.onload();
+  t.mock.timers.tick(26000);
+  assert.equal(loaded, 1);
+  assert.equal(errors, 0);
+  player.load('https://megaplay.buzz/stream/mal/20/1/dub', 'Naruto DUB');
+  assert.equal(first.removed, true);
+  staleLoad();
+  assert.equal(loaded, 1, 'old load event cannot hide a new loading state');
+  t.mock.timers.tick(25000);
+  assert.equal(errors, 1);
+  player.clear();
+  assert.equal(frames[1].removed, true);
+  assert.equal(player.active, false);
+  assert.equal(classes.has('embed-active'), false);
+});

@@ -1,0 +1,48 @@
+[hidden] { display: none !important; }
+.cms-nav { display: flex; align-items: center; gap: 16px; min-height: 68px; }
+.cms-nav > span { color: var(--muted); font-size: .85rem; flex: 1; }
+.cms-main { padding-top: 38px; padding-bottom: 70px; }
+.cms-heading,.cms-library-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.cms-heading h1 { font-family: var(--font-display); color: var(--ink); font-size: clamp(2rem,4vw,3rem); margin: 0; }
+.cms-heading p,.admin-card > p { color: var(--muted); }
+.cms-eyebrow { letter-spacing: .16em; font-size: .7rem; color: var(--accent-hi) !important; margin-bottom: 8px; }
+.cms-notice { padding: 14px 18px; border: 1px solid var(--accent); background: rgba(93,184,166,.1); border-radius: 10px; }
+.cms-notice.error,#authError,#editError { color: #f3a398; }
+.cms-notice.error { border-color: #b4645a; }
+.cms-auth { max-width: 600px; margin-top: 28px; }
+.cms-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; margin: 26px 0; }
+.cms-stats > div { padding: 20px; border: 1px solid var(--border); background: var(--surface); border-radius: 12px; }
+.cms-stats span { display: block; color: var(--muted); font-size: .8rem; }
+.cms-stats b { display: block; color: var(--ink); font-size: 1.8rem; margin-top: 4px; }
+.cms-imports h2,.cms-library h2,.cms-dialog h2 { font-family: var(--font-display); color: var(--ink); margin-top: 0; }
+.cms-results { max-height: 290px; overflow: auto; margin: 10px 0; }
+.cms-checkbox { display: flex !important; align-items: center; gap: 9px; margin: 16px 0 !important; }
+.cms-checkbox input,.admin-langs input { width: auto; }
+.cms-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 16px; }
+.cms-library { margin-top: 40px; }
+.cms-library-head h2 { margin: 0; }
+.cms-filters { display: flex; gap: 12px; margin: 20px 0; }
+.cms-filters input,.cms-filters select { background: var(--surface); border: 1px solid var(--border); color: var(--ink); border-radius: 9px; padding: 12px; font: inherit; }
+.cms-filters input { flex: 1; min-width: 0; }
+.cms-row { display: flex; gap: 18px; align-items: center; padding: 18px; margin-bottom: 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 12px; }
+.cms-row > img { width: 62px; height: 88px; border-radius: 7px; object-fit: cover; background: var(--bg-soft); }
+.cms-row-info { flex: 1; min-width: 0; }
+.cms-row h3 { color: var(--ink); margin: 0 0 8px; font-size: 1rem; }
+.cms-row-info p { margin: 7px 0 0; font-size: .75rem; color: var(--muted); overflow-wrap: anywhere; }
+.cms-row-meta,.cms-row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .75rem; color: var(--muted); }
+.cms-badge { padding: 3px 9px; border-radius: 7px; background: #473c29; color: #ecc68e; }
+.cms-badge.published { background: #203e38; color: var(--accent-hi); }
+.cms-row-actions .btn { padding: 8px 12px; font-size: .75rem; }
+.cms-delete { color: #f3a398; }
+.cms-empty { text-align: center; border: 1px dashed var(--border-hi); padding: 48px 20px; border-radius: 12px; color: var(--muted); }
+.cms-empty h3 { color: var(--ink); }
+.cms-muted { color: var(--muted); font-size: .78rem; }
+.cms-pager { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 22px; color: var(--muted); font-size: .8rem; }
+.cms-dialog { width: min(780px,calc(100% - 24px)); max-height: 90vh; padding: 0; background: var(--surface); color: var(--body); border: 1px solid var(--border-hi); border-radius: 16px; }
+.cms-dialog::backdrop { background: rgba(0,0,0,.75); }
+.cms-dialog .admin-card { border: 0; margin: 0; }
+.cms-dialog textarea { width: 100%; resize: vertical; padding: 12px; border-radius: 9px; background: var(--bg-soft); color: var(--ink); border: 1px solid var(--border); font: inherit; }
+.cms-dialog-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 20px; }
+.btn:disabled { opacity: .45; cursor: default; }
+@media(max-width:900px) { .cms-row { flex-wrap: wrap; }.cms-row-actions { width: 100%; }.cms-stats { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) { .cms-heading { align-items: flex-start; flex-direction: column; }.cms-form-grid { grid-template-columns: 1fr; }.cms-nav { flex-wrap: wrap; padding-block: 12px; }.cms-nav .btn { padding: 7px 10px; }.cms-pager { gap: 8px; }.cms-filters { flex-direction: column; } }

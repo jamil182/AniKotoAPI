@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AniJs — Watch Anime</title>
   <meta name="description" content="AniJs — browse and discover anime, powered by the AniKoto API." />
-  <link rel="icon" href="/favicon.svg" />
+  <link rel="icon" href="/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -26,32 +26,30 @@
   <!-- Main -->
   <div class="wrap wrap-home main">
     <div>
-      <section class="section">
+      <section class="section catalog-section" id="latestEpisodes">
         <div class="section-head">
           <h2 class="section-title">Latest Episodes</h2>
           <div class="tabs" id="latestTabs">
             <button class="tab on" data-src="latest">All</button>
             <button class="tab" data-src="trending">Trending</button>
           </div>
-          <div class="pager" id="latestPager" hidden>
-            <button class="pager-btn" id="pagePrev" aria-label="Previous page">&lsaquo;</button>
-            <span class="pager-now" id="pageNow">1 / 1</span>
-            <button class="pager-btn" id="pageNext" aria-label="Next page">&rsaquo;</button>
-          </div>
+          <a class="view-more" id="latestViewMore" href="/browse">View more &rarr;</a>
         </div>
+        <nav class="pager catalog-pagination catalog-pagination-top" id="latestPagerTop" aria-label="Latest episode pages, top"></nav>
         <div id="latest"></div>
+        <nav class="pager catalog-pagination" id="latestPager" aria-label="Latest episode pages"></nav>
       </section>
 
       <section class="section">
         <div class="section-head">
-          <h2 class="section-title">Most Popular</h2>
+          <h2 class="section-title" id="popularHeading">Most Popular</h2>
         </div>
         <div id="popular"></div>
       </section>
 
       <section class="section">
         <div class="section-head">
-          <h2 class="section-title">Genres</h2>
+          <h2 class="section-title" id="genresSection" style="scroll-margin-top:160px">Genres</h2>
           <button class="tab" id="clearFilter" hidden>Clear filter</button>
         </div>
         <div class="chip-row" id="genres"></div>
@@ -78,7 +76,7 @@
     <aside>
       <div class="rail">
         <div class="section-head">
-          <h2 class="section-title">Top Anime</h2>
+          <h2 class="section-title" id="rankingHeading">Top Anime</h2>
           <div class="tabs" id="topTabs">
             <button class="tab on" data-k="today">Day</button>
             <button class="tab" data-k="week">Week</button>
@@ -98,8 +96,11 @@
     </div>
   </footer>
 
+  <script src="/assets/realtime.js"></script>
   <script src="/assets/api.js"></script>
-  <script>
+  <script type="module">
+    import { catalogParams } from '/assets/catalog-pagination.js';
+    import { createCatalogGrid } from '/assets/catalog-grid.js';
     mountNav();
 
     // ---- Hero carousel (spotlights) ----
@@ -166,20 +167,15 @@
     }
 
     // ---- Genre and A-Z filters -------------------------------------------
-    // Both narrow the Latest grid rather than linking away: there is no /search
-    // page, and every title here already lives in the local library.
-    const filter = { genre: null, letter: null };
-    const firstLetter = (t) => {
-      const c = String(t || '').trim().charAt(0).toUpperCase();
-      return /[A-Z]/.test(c) ? c : '#';
-    };
-    const applyFilter = (list) => (list || []).filter(a =>
-      (!filter.genre || (a.genres || []).includes(filter.genre)) &&
-      (!filter.letter || firstLetter(a.title) === filter.letter));
+    // Genre and A-Z controls browse the upstream catalog.
+    const initialBrowse = catalogParams(location.search);
+    let activeSrc = initialBrowse.source;
+    const filter = { genre: initialBrowse.genre || null, letter: initialBrowse.letter === '0' ? '#' : initialBrowse.letter?.toUpperCase() || null };
+    const genreSlug = value => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
     function paintChips() {
       document.querySelectorAll('#genres .chip').forEach(c =>
-        c.classList.toggle('on', c.dataset.genre === filter.genre));
+        c.classList.toggle('on', genreSlug(c.dataset.genre) === (filter.genre ? genreSlug(filter.genre) : null)));
       document.querySelectorAll('#azList .chip').forEach(c =>
         c.classList.toggle('on', c.dataset.letter === filter.letter));
       document.getElementById('clearFilter').hidden = !filter.genre && !filter.letter;
@@ -191,11 +187,8 @@
     // with byte-identical data -- so a day strip would have been a row of
     // controls that changed nothing.
     //
-    // Airing times come from the upstream catalogue, not the library, so most
-    // rows are titles that were never stored here. Only the ones the library
-    // holds become links; the rest stay plain text rather than offering a click
-    // that lands on a page which does not exist.
-    const libIndex = new Map();       // normalised title -> library id
+    // Match titles when a schedule row lacks its own slug.
+    const libIndex = new Map();
     const normTitle = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
     const ymd = (d) => d.getFullYear() + '-' +
       String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -208,11 +201,11 @@
       const el = document.getElementById('schedList');
       el.innerHTML = '<div class="state">Loading…</div>';
       try {
-        const r = await apiGet('/schedule?date=' + ymd(new Date()));
+        const r = await apiGet('/catalog/schedule?date=' + ymd(new Date()));
         const rows = Array.isArray(r) ? r : (r && r.data) || [];
         if (!rows.length) { el.innerHTML = '<div class="state">Nothing scheduled.</div>'; return; }
         el.innerHTML = rows.map(it => {
-          const libId = libIndex.get(normTitle(it.title));
+          const libId = animeSlug(it.slug) || libIndex.get(normTitle(it.title));
           const title = libId
             ? `<a class="sched-title" href="/anime/${encodeURIComponent(libId)}">${esc(it.title)}</a>`
             : `<span class="sched-title off">${esc(it.title)}</span>`;
@@ -224,65 +217,57 @@
       }
     }
 
-    // ---- Paging -----------------------------------------------------------
-    // Pages the list that is actually on screen: the active tab narrowed by the
-    // genre and letter filters. Anything else and choosing a filter while on
-    // page 2 would leave the grid empty.
-    const PAGE_SIZE = 12;
-    let activeSrc = 'latest';
-    let page = 1;
-
-    const sourceList = () =>
-      applyFilter(activeSrc === 'trending' ? (homeCache?.top || []) : (homeCache?.latest || []));
-    const pageCount = () => Math.max(1, Math.ceil(sourceList().length / PAGE_SIZE));
-
-    function renderPager() {
-      const total = pageCount();
-      document.getElementById('latestPager').hidden = total <= 1;
-      document.getElementById('pagePrev').disabled = page <= 1;
-      document.getElementById('pageNext').disabled = page >= total;
-      document.getElementById('pageNow').textContent = page + ' / ' + total;
-    }
-
-    function refreshLatest() {
-      // A filter can shrink the list under the current page.
-      const total = pageCount();
-      if (page > total) page = total;
+    // ---- Server-backed Latest Episodes pagination ----
+    const catalog = createCatalogGrid({
+      grid: document.getElementById('latest'),
+      pager: [document.getElementById('latestPagerTop'), document.getElementById('latestPager')],
+      viewMore: document.getElementById('latestViewMore'),
+      fillRows: true,
+      getMetadata: () => [...(homeCache?.latest || []), ...(homeCache?.popular || []), ...(homeCache?.top || [])],
+      initial: initialBrowse,
+      onNavigate: (params, { replace = false } = {}) => history[replace ? 'replaceState' : 'pushState'](null, '', '/home?' + new URLSearchParams(params) + '#latestEpisodes'),
+    });
+    const refreshLatest = () => catalog.refresh().catch(() => {});
+    function resetAndRefresh() {
+      const params = { source: activeSrc, page: 1 };
+      if (filter.genre) params.genre = genreSlug(filter.genre);
+      if (filter.letter) params.letter = filter.letter === '#' ? '0' : filter.letter;
       paintChips();
-      renderPager();
-      renderCards(document.getElementById('latest'),
-        () => Promise.resolve(sourceList().slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)),
-        { count: PAGE_SIZE, empty: 'Nothing matches that filter.' });
+      catalog.set(params).catch(() => {});
     }
-
-    // Any change of source or filter starts again from the first page.
-    const resetAndRefresh = () => { page = 1; refreshLatest(); };
-
-    document.getElementById('pagePrev').onclick = () => { if (page > 1) { page--; refreshLatest(); } };
-    document.getElementById('pageNext').onclick = () => { if (page < pageCount()) { page++; refreshLatest(); } };
+    function restorePage() {
+      const params = catalogParams(location.search);
+      activeSrc = params.source;
+      filter.genre = params.genre || null;
+      filter.letter = params.letter === '0' ? '#' : params.letter?.toUpperCase() || null;
+      document.querySelectorAll('#latestTabs .tab').forEach(button => button.classList.toggle('on', button.dataset.src === activeSrc));
+      paintChips();
+      catalog.set(params, { navigate: false }).catch(() => {});
+    }
+    window.addEventListener('popstate', restorePage);
+    document.querySelectorAll('#latestTabs .tab').forEach(button => button.classList.toggle('on', button.dataset.src === activeSrc));
 
     function renderGenres(list) {
       const el = document.getElementById('genres');
       const g = (list || []).filter(Boolean);
-      if (!g.length) { el.innerHTML = '<div class="state">No genres in the library yet.</div>'; return; }
+      if (!g.length) { el.innerHTML = '<div class="state">No genres available.</div>'; return; }
       el.innerHTML = g.map(n => `<button class="chip" data-genre="${esc(n)}">${esc(n)}</button>`).join('');
       el.onclick = (e) => {
         const c = e.target.closest('.chip'); if (!c) return;
         filter.genre = filter.genre === c.dataset.genre ? null : c.dataset.genre;
+        filter.letter = null;
         resetAndRefresh();
       };
     }
 
     function renderAz(list) {
       const el = document.getElementById('azList');
-      // Only letters the library actually has, so no dead buttons.
-      const have = new Set((list || []).map(a => firstLetter(a.title)));
-      const letters = [...have].sort();
-      if (!letters.length) { el.innerHTML = '<div class="state">Library is empty.</div>'; return; }
+      const letters = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
       el.innerHTML = letters.map(l => `<button class="chip" data-letter="${esc(l)}">${esc(l)}</button>`).join('');
       el.onclick = (e) => {
         const c = e.target.closest('.chip'); if (!c) return;
         filter.letter = filter.letter === c.dataset.letter ? null : c.dataset.letter;
+        filter.genre = null;
         resetAndRefresh();
       };
     }
@@ -291,35 +276,48 @@
       filter.genre = null; filter.letter = null; resetAndRefresh();
     };
 
-    // ---- Loaders (from the stored library) ----
+    // ---- Live catalog ----
     let homeCache = null;
-    // Latest and Trending now go through sourceList(), which applies the tab,
-    // the filters and the page together; only Most Popular still loads flat.
+    // Latest uses upstream pages; Most Popular remains a short preview.
     const loaders = {
-      popular: () => Promise.resolve(homeCache?.top || []),
+      popular: () => Promise.resolve(homeCache?.popular || []),
     };
 
-    async function boot() {
-      document.getElementById('heroInner').innerHTML = '<div class="skeleton" style="height:120px;width:60%"></div>';
-      try {
-        homeCache = await apiGet('/library/home');
-      } catch { return heroError(); }
-
-      renderHero(homeCache.spotlights || []);
+    let stopLive = null;
+    let homeFingerprint = '';
+    function applyHome(data) {
+      const fingerprint = JSON.stringify({ ...data, fetchedAt: undefined });
+      if (fingerprint === homeFingerprint) { refreshLatest(); loadSchedule(); return; }
+      homeFingerprint = fingerprint;
+      homeCache = data;
+      document.getElementById('topTabs').hidden = Boolean(data.curated);
+      document.getElementById('popularHeading').textContent = data.curated ? 'Featured Anime' : 'Most Popular';
+      document.getElementById('rankingHeading').textContent = data.curated ? 'Top Rated' : 'Top Anime';
+      document.querySelector('#latestTabs [data-src="trending"]').textContent = data.curated ? 'Top Rated' : 'Trending';
+      const featured = homeCache.spotlights?.length ? homeCache.spotlights : homeCache.latest;
+      renderHero(featured || []);
+      if (!featured?.length) document.getElementById('heroInner').innerHTML = '<h1>Belum ada anime yang dipublikasikan</h1><p>Anime akan tampil setelah admin memilih Publish.</p><a class="btn primary" href="/admin">Buka Admin</a>';
       refreshLatest();
       renderCards(document.getElementById('popular'), loaders.popular, { count: 12, empty: 'Nothing here yet.' });
 
-      // Top-ten rail (library top, shown under every tab)
-      topData = { today: homeCache.top, week: homeCache.top, month: homeCache.top };
-      renderTop(homeCache.top);
+      topData = homeCache.rankings;
+      const activePeriod = document.querySelector('#topTabs .tab.on')?.dataset.k || 'today';
+      renderTop(topData[activePeriod]);
       renderGenres(homeCache.genres || []);
       renderAz(homeCache.latest || []);
 
-      // Titles the library holds, so the schedule knows which rows to link.
+      libIndex.clear();
       for (const a of homeCache.latest || []) libIndex.set(normTitle(a.title), a.id);
-      tickClock();
-      setInterval(tickClock, 1000);   // it was written once and then stood still
+      paintChips();
       loadSchedule();
+    }
+
+    function boot() {
+      stopLive?.();
+      stopLive = startLiveRefresh(signal => apiGet('/catalog/home', { signal }), {
+        onData: applyHome,
+        onError: () => { if (!homeCache) heroError(); },
+      });
     }
 
     // ---- Tabs ----
@@ -335,6 +333,8 @@
       renderTop(topData[b.dataset.k]);
     };
 
+    tickClock();
+    setInterval(tickClock, 1000);
     boot();
   </script>
 </body>

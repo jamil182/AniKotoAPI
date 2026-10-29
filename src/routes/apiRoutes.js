@@ -77,7 +77,7 @@ import { resolveStreamUrl } from "../extractors/streamResolver.extractor.js";
  * @example
  *   createApiRoutes(app, jsonResponse, jsonError);
  */
-const createApiRoutes = (app, jsonResponse, jsonError) => {
+const createApiRoutes = (app, jsonResponse, jsonError, publishedCatalog) => {
   // ══════════════════════════════════════════════════════════════
   // REQUEST COUNTER (must be before all routes)
   // ══════════════════════════════════════════════════════════════
@@ -889,18 +889,20 @@ app.get("/api/openapi", (req, res) => {
   // ══════════════════════════════════════════════════════════════
 
   app.get("/api/library/home", (req, res) => {
-    res.json({ success: true, results: homeSections(getDb()) });
+    res.json({ success: true, results: publishedCatalog ? publishedCatalog.home() : homeSections(getDb()) });
   });
   app.get("/api/library/search", (req, res) => {
     const kw = (req.query.keyword || "").toString();
-    res.json({ success: true, results: { data: searchAnime(getDb(), kw) } });
+    res.json({ success: true, results: publishedCatalog ? publishedCatalog.search(kw) : { data: searchAnime(getDb(), kw) } });
   });
   app.get("/api/library/anime/:id", (req, res) => {
     const a = parseAnime(getAnimeById(getDb(), Number(req.params.id)));
-    if (!a) return res.status(404).json({ success: false, message: "Not in library" });
+    if (!a || a.publication_state !== 'published') return res.status(404).json({ success: false, message: "Not published" });
     res.json({ success: true, results: a });
   });
   app.get("/api/library/episodes/:id", (req, res) => {
+    const anime = getAnimeById(getDb(), Number(req.params.id));
+    if (!anime || anime.publication_state !== 'published') return res.status(404).json({ success: false, message: 'Not published' });
     res.json({ success: true, results: getEpisodes(getDb(), Number(req.params.id)) });
   });
 

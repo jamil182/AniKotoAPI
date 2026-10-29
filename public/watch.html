@@ -4,11 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>aniJr — Watch</title>
-  <link rel="icon" href="/favicon.svg" />
+  <link rel="icon" href="/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/app.css" />
+  <link rel="stylesheet" href="/assets/anime-description.css" />
 </head>
 <body>
   <header id="nav"></header>
@@ -59,6 +60,11 @@
           <div class="v-menu" id="vMenu"></div>
           <div class="player-msg" id="playerMsg"><div class="box">Loading…</div></div>
         </div>
+        <div class="playback-modes" aria-label="Playback mode">
+          <button class="tbtn on" id="modeEmbed" aria-pressed="true">Embed</button>
+          <button class="tbtn" id="modeDirect" aria-pressed="false">Direct</button>
+          <span id="playbackHint">Use the embedded player's controls for subtitles and quality.</span>
+        </div>
         <div class="player-toolbar" id="toolbar">
           <button class="tbtn" id="tbPrev" title="Previous episode">‹ Prev</button>
           <button class="tbtn" id="tbNext" title="Next episode">Next ›</button>
@@ -75,12 +81,12 @@
           <div class="servers-inner" id="servers"></div>
         </div>
 
-        <div id="infoPanel"></div>
       </div>
 
       <aside>
         <div class="related" id="trending"><h3>Top Anime</h3><div class="state">—</div></div>
       </aside>
+      <div id="infoPanel" class="watch-description"></div>
     </div>
   </div>
 
@@ -93,11 +99,16 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+  <script src="/assets/realtime.js"></script>
   <script src="/assets/api.js"></script>
-  <script>
+  <script type="module">
+    import { createEmbedPlayer } from '/assets/embed-player.js';
+    import { serverRowsHTML } from '/assets/server-list.js';
+    import { mountAnimeDescription } from '/assets/anime-description.js';
+
     mountNav();
 
-    // Path: /watch/<library-id>/<ep>
+    // Path: /watch/<AniKoto slug>/<episode>.
     const parts = location.pathname.replace(/^\/watch\//, '').split('/');
     const id = decodeURIComponent(parts[0] || '');
     const epNo = decodeURIComponent(parts[1] || '1');
@@ -107,6 +118,8 @@
     let hls = null, episodes = [], skipData = null, curIndex = -1;
     let serverBtns = [], serverMap = new Map(), tried = new Set();
     let subtitles = [], ccOn = false;
+    let playbackMode = 'embed', currentEpisode = null, currentEmbed = null;
+    let playbackRequest = null, sourceSelection = 0, nativeControlsReady = false;
 
     // Offer a machine-translated Indonesian track alongside the real ones.
     // It is built from the English source when the stream ships one, since
@@ -151,6 +164,15 @@
     const showMsg = (h) => { msg.innerHTML = `<div class="box">${h}</div>`; msg.style.display = 'flex'; };
     const hideMsg = () => { msg.style.display = 'none'; };
     const epUrl = (n) => `/watch/${encodeURIComponent(id)}/${encodeURIComponent(n)}`;
+    const embedPlayer = createEmbedPlayer({
+      container: document.getElementById('playerWrap'),
+      onLoading: () => showMsg('Loading embedded player…'),
+      onLoad: hideMsg,
+      onError: () => {
+        showMsg('The embedded player did not load. Try another server or Direct mode.<br><button id="retryEmbed">Retry embed</button>');
+        document.getElementById('retryEmbed').onclick = () => { if (currentEmbed) selectEmbeddedSource(currentEmbed); };
+      },
+    });
 
     // ---- Persisted toggles ----
     const prefs = (() => { try { return JSON.parse(localStorage.getItem('anijs_watch') || '{}'); } catch { return {}; } })();
@@ -163,9 +185,11 @@
     // Selects directly (not via .click()) so it does NOT reset the tried set —
     // only a user's manual pick clears it.
     function fallbackToNext() {
+      if (playbackMode !== 'direct') return false;
       const next = serverBtns.find(b => !tried.has(serverMap.get(b).link_id));
       if (!next) { showMsg('All servers failed for this episode. Try another episode.'); return false; }
-      selectServer(serverMap.get(next), next);
+      const failed = serverMap.get(serverBtns.find(button => button.classList.contains('on')));
+      selectServer(serverMap.get(next), next, `${failed?.name || 'Previous server'} failed. Trying ${serverMap.get(next).name}…`);
       return true;
     }
 
@@ -194,6 +218,7 @@
     }
 
     function play(masterUrl) {
+      if (playbackMode !== 'direct') return;
       const src = '/api/stream/proxy?url=' + encodeURIComponent(masterUrl);
       destroyHls(); hideMsg();
       if (window.Hls && Hls.isSupported()) {
@@ -208,17 +233,24 @@
       } else { showMsg('This browser cannot play HLS.'); }
     }
 
-    async function selectServer(server, btn) {
+    async function selectServer(server, btn, notice = '') {
+      const selection = ++sourceSelection;
+      document.getElementById('playbackHint').textContent = notice || `Direct · ${server.name} · ${(server.type || 'sub').toUpperCase()}`;
       tried.add(server.link_id);
-      document.querySelectorAll('.server-btn').forEach(b => b.classList.toggle('on', b === btn));
+      document.querySelectorAll('.server-btn').forEach(b => { b.classList.toggle('on', b === btn); b.setAttribute('aria-pressed', String(b === btn)); });
       showMsg('Resolving stream…');
       try {
-        const r = await apiGet('/stream/resolve?id=' + encodeURIComponent(server.link_id));
+        const endpoint = server.storedLanguage
+          ? '/catalog/resolve-stored?slug=' + encodeURIComponent(id) + '&ep=' + encodeURIComponent(epNo) + '&language=' + encodeURIComponent(server.storedLanguage)
+          : '/catalog/resolve?id=' + encodeURIComponent(server.link_id) + '&slug=' + encodeURIComponent(id);
+        const r = await apiGet(endpoint);
+        if (selection !== sourceSelection || playbackMode !== 'direct') return;
         if (!r.url) throw new Error(r.error || 'No stream URL');
         skipData = r.skipData || null;
         subtitles = withTranslation(r.subtitles);
         play(r.url);
       } catch (e) {
+        if (selection !== sourceSelection || playbackMode !== 'direct') return;
         // Resolve failed — fall through to the next server automatically.
         if (!fallbackToNext()) {
           showMsg(`Couldn't resolve any server (${esc(e.message)}).`);
@@ -227,22 +259,15 @@
     }
 
     function renderServers(servers) {
+      tried.clear();
       onPlaybackFail = () => { showMsg('This server failed — trying another…'); fallbackToNext(); };
       const box = document.getElementById('servers');
       if (!servers.length) { box.innerHTML = '<div class="state">No servers.</div>'; showMsg('No servers available.'); return; }
-      const groups = {};
-      servers.forEach(s => { (groups[s.type] = groups[s.type] || []).push(s); });
-      box.innerHTML = Object.entries(groups).map(([type, list]) => `
-        <div class="servers-group">
-          <h4>${esc((type || 'sub').toUpperCase())}</h4>
-          <div class="server-btns">
-            ${list.map((s, i) => `<button class="server-btn" data-type="${esc(type)}" data-i="${i}">${esc(s.name)}</button>`).join('')}
-          </div>
-        </div>`).join('');
+      box.innerHTML = serverRowsHTML(servers.map(server => ({ name: server.name, language: server.type })));
       serverBtns = [...box.querySelectorAll('.server-btn')];
       serverMap = new Map();
       serverBtns.forEach(btn => {
-        const s = groups[btn.dataset.type][+btn.dataset.i];
+        const s = servers[Number(btn.dataset.i)];
         serverMap.set(btn, s);
         // A manual pick starts a fresh fallback chain from that server.
         btn.onclick = () => { tried.clear(); selectServer(s, btn); };
@@ -251,34 +276,64 @@
       if (serverBtns[0]) selectServer(serverMap.get(serverBtns[0]), serverBtns[0]);
     }
 
-    // ---- Language servers: resolve the stored MegaPlay embed per language ----
-    // Every episode carries embed URLs as JSON {sub?, dub?} (Anikoto s-2 or
-    // MAL/AniList), so playback is one uniform path.
-    function renderLangServers(embeds) {
-      onPlaybackFail = () => showMsg('This stream failed to play. Try the other language or another episode.');
+    // ---- Iframe playback ----
+    function renderEmbedServers(sources) {
+      if (!sources.length) throw new Error('No video embed is available for this episode');
       const box = document.getElementById('servers');
-      const langs = [];
-      if (embeds.sub) langs.push(['SUB', embeds.sub]);
-      if (embeds.dub) langs.push(['DUB', embeds.dub]);
-      if (!langs.length) { box.innerHTML = '<div class="state">No stream stored.</div>'; showMsg('No playable source.'); return; }
-      box.innerHTML = `<div class="servers-group"><h4>Language</h4><div class="server-btns">${
-        langs.map(([l], i) => `<button class="server-btn${i === 0 ? ' on' : ''}" data-i="${i}">${l} · MegaPlay</button>`).join('')
-      }</div></div>`;
+      box.innerHTML = serverRowsHTML(sources);
       const btns = [...box.querySelectorAll('.server-btn')];
-      btns.forEach((btn, i) => btn.onclick = () => { btns.forEach(b => b.classList.toggle('on', b === btn)); selectEmbed(langs[i][1]); });
-      selectEmbed(langs[0][1]);
+      btns.forEach(btn => { btn.onclick = () => selectEmbeddedSource(sources[Number(btn.dataset.i)], btn); });
+      if (btns[0]) selectEmbeddedSource(sources[Number(btns[0].dataset.i)], btns[0]);
     }
-    async function selectEmbed(embedUrl) {
-      showMsg('Resolving stream…');
+
+    async function selectEmbeddedSource(source, btn) {
+      const selection = ++sourceSelection;
+      currentEmbed = source;
+      embedPlayer.clear();
+      if (btn) document.querySelectorAll('.server-btn').forEach(b => {
+        b.classList.toggle('on', b === btn);
+        b.setAttribute('aria-pressed', String(b === btn));
+      });
+      showMsg('Loading embedded player…');
       try {
-        const r = await apiGet('/stream/resolve-url?url=' + encodeURIComponent(embedUrl));
-        if (!r.url) throw new Error(r.error || 'no stream');
-        skipData = r.skipData || null; subtitles = withTranslation(r.subtitles);
-        play(r.url);
-      } catch (e) {
-        showMsg(`Couldn't resolve this stream (${esc(e.message)}).`);
+        const url = source.url || (await apiGet('/catalog/embed?slug=' + encodeURIComponent(id) + '&id=' + encodeURIComponent(source.linkId))).url;
+        if (selection !== sourceSelection || playbackMode !== 'embed') return;
+        embedPlayer.load(url, `${source.name} ${source.language.toUpperCase()} — Episode ${epNo}`);
+      } catch (error) {
+        if (selection !== sourceSelection || playbackMode !== 'embed') return;
+        showMsg(`Couldn't load this embed (${esc(error.message)}). Try another server or Direct mode.`);
       }
     }
+
+    function switchPlaybackMode(mode) {
+      playbackMode = mode;
+      sourceSelection++;
+      playbackRequest?.abort();
+      embedPlayer.clear();
+      destroyHls();
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      for (const [key, value] of [['modeEmbed', 'embed'], ['modeDirect', 'direct']]) {
+        const button = document.getElementById(key);
+        button.classList.toggle('on', mode === value);
+        button.setAttribute('aria-pressed', String(mode === value));
+      }
+      for (const key of ['tbAutoPlay', 'tbAutoNext', 'tbAutoSkip']) {
+        const button = document.getElementById(key);
+        button.disabled = mode === 'embed';
+        button.title = mode === 'embed' ? 'Controlled by the embedded player' : '';
+      }
+      document.getElementById('playbackHint').textContent = mode === 'embed'
+        ? "Use the embedded player's controls for subtitles and quality."
+        : 'Direct mode uses the built-in video controls.';
+      if (mode === 'direct' && !nativeControlsReady) { setupPlayer(); nativeControlsReady = true; }
+      if (currentEpisode) loadEpisodeServers(currentEpisode);
+    }
+    document.getElementById('modeEmbed').onclick = () => switchPlaybackMode('embed');
+    document.getElementById('modeDirect').onclick = () => switchPlaybackMode('direct');
+    window.addEventListener('pagehide', () => { playbackRequest?.abort(); embedPlayer.clear(); destroyHls(); });
+    window.addEventListener('pageshow', event => { if (event.persisted && currentEpisode) switchPlaybackMode(playbackMode); });
 
     // ---- Episode grid with 100-episode ranges ----
     function renderEpisodeGrid() {
@@ -312,21 +367,15 @@
     }
 
 
-    // ---- Sidebar: more from the library -----------------------------------
-    // This used to pull the upstream trending list, whose rows carried a slug
-    // and no library id. Nothing in api.js listens for data-slug, and adding a
-    // listener would not have helped either: navigation resolves to
-    // /anime/<library id>, which an upstream title simply does not have. The
-    // panel was inert. Read the library instead, where every row is both
-    // clickable and playable.
+    // ---- Sidebar: upstream catalog recommendations ----
     async function loadTopPicks() {
       const el = document.getElementById('trending');
       const head = `<h3>Top Anime</h3>`;
       try {
-        const home = await apiGet('/library/home');
+        const home = await apiGet('/catalog/home');
         // Drop whatever is already playing above it.
         const list = (home.top || []).filter(a => String(a.id) !== String(id)).slice(0, 10);
-        if (!list.length) { el.innerHTML = head + `<div class="state">Nothing else stored yet.</div>`; return; }
+        if (!list.length) { el.innerHTML = head + `<div class="state">No recommendations available.</div>`; return; }
         el.innerHTML = head + list.map(it => `
           <div class="related-row" data-id="${esc(it.id)}">
             <img loading="lazy" src="${esc(it.poster)}" alt="" onerror="this.style.visibility='hidden'">
@@ -342,23 +391,7 @@
     loadTopPicks();
 
     function renderInfo(w) {
-      const jpt = w.japaneseTitle || w.japanese_title;
-      const jp = jpt && jpt !== w.title ? jpt : '';
-      document.getElementById('infoPanel').innerHTML = `
-        <div class="watch-info">
-          <img src="${esc(w.poster || '/favicon.svg')}" alt="${esc(w.title)}" onerror="this.style.visibility='hidden'">
-          <div>
-            <h2>${esc(w.title)}</h2>
-            ${jp ? `<div class="alt">${esc(jp)}</div>` : ''}
-            <div class="detail-meta" style="margin-bottom:10px">
-              ${w.type ? `<span class="badge">${esc(w.type)}</span>` : ''}
-              ${w.status ? `<span class="badge">${esc(w.status)}</span>` : ''}
-              ${w.rating ? `<span class="badge q">★ ${esc(String(w.rating).replace(/\s+/g,' ').trim())}</span>` : ''}
-            </div>
-            ${w.synopsis ? `<p class="syn">${esc(w.synopsis)}</p>` : ''}
-            <div style="margin-top:10px"><a href="/anime/${encodeURIComponent(id)}" style="color:var(--accent-hi);font-size:.85rem">Full details →</a></div>
-          </div>
-        </div>`;
+      mountAnimeDescription(document.getElementById('infoPanel'), w, { detailHref: '/anime/' + encodeURIComponent(id) });
     }
 
     // Renders the upstream's own phrasing: the arrival time in GMT, followed by
@@ -390,13 +423,13 @@
     }
 
     // The arrival time lives on the upstream watch page, which is addressed by
-    // slug -- the field the catalogue supplies and the library now stores.
+    // slug supplied by AniKotoAPI.
     // Fetched after the player is running so it never delays playback, and
     // quietly skipped when there is no slug or no next episode.
     async function loadCountdown(slug, epNo) {
       if (!slug) return;
       try {
-        const w = await apiGet('/watch?slug=' + encodeURIComponent(slug) + '&ep=' + encodeURIComponent(epNo));
+        const w = await apiGet('/catalog/watch?slug=' + encodeURIComponent(slug) + '&ep=' + encodeURIComponent(epNo));
         renderCountdown(w && w.nextEpisodeTimestamp ? w.nextEpisodeTimestamp : null);
       } catch { /* no countdown is an acceptable outcome */ }
     }
@@ -814,6 +847,7 @@
 
       // Keyboard
       document.addEventListener('keydown', (e) => {
+        if (playbackMode !== 'direct') return;
         if (/input|select|textarea/i.test(e.target.tagName)) return;
         if (e.key === ' ') { e.preventDefault(); toggle(); }
         else if (e.key === 'ArrowLeft') video.currentTime -= 5;
@@ -825,49 +859,82 @@
       setPlayIcons(); setVolIcon();
     }
 
-    async function boot() {
-      if (!id) { showMsg('No anime specified.'); return; }
-      showMsg('Loading episode…');
+    let stopLive = null;
+    let playerReady = false;
+    let episodeFingerprint = '';
+
+    async function loadEpisodeServers(ep) {
+      playbackRequest?.abort();
+      const request = new AbortController();
+      playbackRequest = request;
+      const mode = playbackMode;
+      showMsg(mode === 'embed' ? 'Loading embed servers…' : 'Loading video servers…');
       try {
-        // The library drives metadata + the episode grid; each episode carries
-        // its source (anikoto server_ids, or a MAL/AniList embed_url).
-        const [info, rows] = await Promise.all([
-          apiGet('/library/anime/' + encodeURIComponent(id)),
-          apiGet('/library/episodes/' + encodeURIComponent(id)),
-        ]);
-        episodes = rows.map(e => ({
-          episode_no: e.number, title: e.title,
-          server_ids: e.server_ids, embed_url: e.embed_url, source: e.source,
-          embeds: (() => { try { return JSON.parse(e.embed_url || '{}'); } catch { return {}; } })(),
-        }));
-        const ep = episodes.find(e => String(e.episode_no) === String(epNo)) || episodes[0];
-        if (!ep) throw new Error('Episode not found');
-
-        document.title = `${info.title} — Ep ${ep.episode_no} — AniJs`;
-        document.getElementById('nowWatching').innerHTML =
-          `You're watching<br><b>Episode ${esc(ep.episode_no)}</b><br><span style="font-size:.78rem">If a server doesn't work, try another.</span>`;
-
-        renderEpisodeGrid();
-        wireToolbar();
-        setupPlayer();
-        renderInfo(info);
-        renderCountdown(null);
-        loadCountdown(info.slug, ep.episode_no);
-
-        // Uniform playback: every episode stores embed URLs by language.
-        // Legacy episodes (stored before the redesign) may only have server_ids.
-        if (ep.embeds.sub || ep.embeds.dub) {
-          renderLangServers(ep.embeds);
-        } else if (ep.server_ids) {
-          const servers = await apiGet('/servers?ids=' + encodeURIComponent(ep.server_ids));
-          renderServers(servers);
-        } else {
-          showMsg('No playable source stored for this episode.');
+        if (mode === 'embed') {
+          const data = await apiGet('/catalog/embeds?slug=' + encodeURIComponent(id) + '&ep=' + encodeURIComponent(ep.episode_no), { signal: request.signal });
+          if (!request.signal.aborted && mode === playbackMode) renderEmbedServers(data.sources);
+          return;
         }
-      } catch (e) {
-        showMsg(`Couldn't load this episode (${esc(e.message)}).<br><button id="rb">Retry</button>`);
-        document.getElementById('rb').onclick = boot;
+        if (ep.server_ids) {
+          const servers = await apiGet('/catalog/servers?ids=' + encodeURIComponent(ep.server_ids) + '&slug=' + encodeURIComponent(id), { signal: request.signal });
+          if (request.signal.aborted || mode !== playbackMode) return;
+          renderServers(servers);
+        } else if (ep.embed_url || ep.mal_id) {
+          const data = await apiGet('/catalog/embeds?slug=' + encodeURIComponent(id) + '&ep=' + encodeURIComponent(ep.episode_no), { signal: request.signal });
+          if (request.signal.aborted || mode !== playbackMode) return;
+          renderServers(data.sources.map(source => ({ name: source.name, type: source.language, link_id: source.id, storedLanguage: source.language })));
+        } else {
+          showMsg('AniKotoAPI has no playable server for this episode.');
+        }
+      } catch (error) {
+        if (request.signal.aborted || mode !== playbackMode) return;
+        showMsg(`Couldn't load servers (${esc(error.message)}).<br><button id="retryServers">Retry</button>`);
+        document.getElementById('retryServers').onclick = () => loadEpisodeServers(ep);
       }
+    }
+
+    function boot() {
+      if (!id) { showMsg('No anime specified.'); return; }
+      stopLive?.();
+      showMsg('Loading episode…');
+      stopLive = startLiveRefresh(async signal => {
+        const [info, rows] = await Promise.all([
+          apiGet('/catalog/anime/' + encodeURIComponent(id), { signal }),
+          apiGet('/catalog/episodes/' + encodeURIComponent(id), { signal }),
+        ]);
+        const ep = rows.episodes.find(e => String(e.episode_no) === String(epNo));
+        if (!ep) throw new Error('Episode not available from AniKotoAPI');
+        return { info, rows, ep };
+      }, {
+        onData: ({ info, rows, ep }) => {
+          const fingerprint = JSON.stringify(rows.episodes);
+          episodes = rows.episodes;
+          if (fingerprint !== episodeFingerprint) {
+            renderEpisodeGrid();
+            document.getElementById('tbPrev').disabled = curIndex <= 0;
+            document.getElementById('tbNext').disabled = curIndex < 0 || curIndex >= episodes.length - 1;
+          }
+          episodeFingerprint = fingerprint;
+          renderInfo(info);
+          loadCountdown(info.slug, ep.episode_no);
+          currentEpisode = ep;
+          if (playerReady) return;
+          playerReady = true;
+
+          document.title = `${info.title} — Ep ${ep.episode_no} — AniJs`;
+          document.getElementById('nowWatching').innerHTML =
+            `<div>You're watching <b>Episode ${esc(ep.episode_no)}.</b></div><p>If current server doesn't work, please try other servers beside.</p>`;
+
+          wireToolbar();
+          renderCountdown(null);
+          switchPlaybackMode('embed');
+        },
+        onError: error => {
+          if (playerReady) return;
+          showMsg(`Couldn't load this episode (${esc(error.message)}).<br><button id="rb">Retry</button>`);
+          document.getElementById('rb').onclick = boot;
+        },
+      });
     }
 
     boot();

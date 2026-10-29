@@ -1,0 +1,7 @@
+export class AccountError extends Error {
+  constructor(message, status = 400) {
+    super(message);
+    this.name = 'AccountError';
+    this.status = status;
+  }
+}

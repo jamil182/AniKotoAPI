@@ -2629,3 +2629,135 @@ Free to use, modify, and distribute — see the [LICENSE](LICENSE) file for deta
   <br/><br/>
   <sub>© Shinei Nouzen. All Rights Reserved.</sub>
 </p>
+
+## AniJs: automatic catalog and live episode updates
+
+### User accounts
+
+The shared top navigation links to `/login` and `/register`. Registration signs
+the user in; the menu then shows their name and Logout. User accounts do not
+grant admin access. `/api/auth/register`, `/login` and `/logout` accept JSON POST
+requests; `/api/auth/me` reports the current user. Email addresses are unique
+without regard to case. Passwords require 15–128 characters and use salted
+scrypt (`N=32768, r=8, p=3`), one of the configurations in the
+[OWASP password storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
+
+Opaque sessions last seven days, rotate on login, are revoked on logout, and
+are capped at five per account. SQLite stores token hashes, not cookie values.
+Cookies are HttpOnly and SameSite=Lax; HTTPS requests (including proxies setting
+`X-Forwarded-Proto: https`) also use Secure. Serve public deployments over HTTPS
+and preserve the original Host header through the proxy. Cross-origin writes
+and non-JSON submissions are rejected. Auth attempts are limited per IP; password
+hashing concurrency and queue length are bounded. For multiple server processes,
+use shared rate limiting at the reverse proxy as well. These basic accounts do
+not include email verification or password-reset email delivery.
+
+### Catalog source
+
+The button before the logo opens the shared site navigation. It supports Home,
+Genre, Types, Updated, Added, Popular, Upcoming, Ongoing and Completed. Types
+expands to TV, Movie, OVA, ONA and Special. Category pages retain their filter
+while paging. Escape, clicking outside, or moving focus outside closes the menu.
+
+Embed and Direct use the same two-row SUB/DUB server layout, with a blue active
+server. Each button retains its original API source index and token. Unavailable
+languages have an explanatory label rather than fabricated servers.
+
+Latest Episodes uses the API's actual paginated listings rather than paging only
+the homepage preview. Numbered controls support previous/next and first/last page
+navigation. View more opens `/browse` for the complete listing. URLs retain page,
+source and filters, including browser Back/Forward and reload. Polling refreshes
+the selected page; changing a source or filter returns to page 1. The API's total
+page count determines the available navigation.
+
+Cards show a bottom episode ribbon: CC for SUB, a microphone for DUB, and
+released/total episode counts from the API. Unknown or inconsistent totals use
+`?`; duration values are not shown as anime types. Latest Episodes completes
+partial responsive rows with distinct previews from the next API page when
+available (40 cards become 42 in a six-column grid). These are next-page previews
+and may appear again when navigating to that page. Existing API pagination stays
+intact; a failed optional preview request leaves the current page visible.
+
+The AniJs pages (`/`, `/home`, `/anime/:slug`, `/watch/:slug/:episode`)
+use same-origin `/api/catalog/*` routes. `PUBLIC_CATALOG_MODE=live` (the default)
+shows AniKotoAPI's current catalog directly: new titles and episodes appear
+without importing or publishing them in admin. Detail pages, search, episode
+lists, Embed and Direct playback all use the same live source. The API's
+episode MAL ID can supply a fallback in both playback modes. This mode does
+not publish or modify the local CMS collection.
+
+Set `PUBLIC_CATALOG_MODE=managed` and restart the server to show only the admin
+collection. In this mode, only Published anime appear publicly; Draft titles
+return 404 from detail and playback routes. Public anime URLs use the editable
+catalog slug; MAL/AniList entries without one use `library-<id>`.
+`/api/catalog/status` reports the active mode. `/api/library/*` always serves
+only the Published local collection.
+
+Open `/admin` and sign in using the configured `ADMIN_TOKEN`. Search AniKotoAPI
+(results support pagination), select an anime or paste its watch URL/slug, then
+import it as Draft. Review the title, poster, synopsis, genres and language
+settings in the editor and select Published. In managed mode, changing it back
+to Draft hides it from the public catalog. In live mode, these controls manage
+the separate local collection and do not hide titles already public on AniKoto.
+Published records must be returned to Draft before
+deletion. Existing collection records default to Draft during migration, and
+no existing collection content is deleted. Admin tokens are kept in session
+storage; older locally stored tokens migrate after successful sign-in.
+
+Native imports and episode synchronization preserve existing editorial fields
+and publication status. The source slug is stored separately from an editable
+public slug. Use the per-title Sync button or Sync all (an asynchronous job with
+progress) to update episodes immediately. Selected AniKoto series also synchronize
+hourly on a long-running server when admin is configured and NODE_ENV is not test.
+Serverless hosts can trigger `POST /api/admin/run-updates` with X-Admin-Token
+from an external scheduler. MAL/AniList episode imports preserve both SUB and DUB
+links when selected together; they can be edited and published in the same CMS.
+
+The CMS needs persistent writable SQLite storage. `DATABASE_PATH` overrides
+`./data/anikoto.db`; keep its database, WAL and SHM files together on persistent
+storage. A read-only/ephemeral Vercel filesystem is not suitable for this CMS
+database without changing the storage backend.
+
+Start with `npm start` and open http://localhost:4444/home. The optional
+`ANIKOTO_API_BASE_URL` environment variable selects an HTTPS deployment;
+the default is `https://anikototvapi.vercel.app/api`.
+
+Visible pages check for updates every 30 seconds, pause when hidden, and
+retry with backoff after errors (including HTTP 429). Last successful data
+stays visible during an outage. Episode updates do not restart playback.
+The server shares in-flight requests and caches successful responses for
+30 seconds, bounded to 200 entries. The upstream API also caches data, so
+this is automatic polling, not guaranteed instant push delivery. Video
+availability depends on the upstream servers and their bot protection.
+
+`npm run test:unit` runs the offline unit and local HTTP contract tests.
+`npm test` runs the existing network integration suite.
+
+The watch page starts in **Embed** mode. `/api/catalog/embeds?slug=...&ep=...`
+loads that episode's real server names and SUB/DUB availability from AniKotoAPI.
+Each HD-1, Vidstream-2, Vidstream-1 or HD-2 button uses its own upstream link
+token through `/api/catalog/embed`. Server names are never fabricated, and
+distinct links from the same provider stay separate. When the server list is
+unavailable, the episode's MAL ID supplies fallback MegaPlay links.
+The iframe opens directly; HLS extraction is not
+required. Controls, subtitles and language availability belong to the provider.
+Choose **Direct** to use the existing HLS player. Episode list polling leaves
+the selected embed running. Only the configured player origins can be framed.
+Providers require an ordinary iframe and reject the sandbox attribute, so their
+scripts run within the provider's cross-origin frame under the browser's normal
+permissions. The parent site's camera, microphone and location remain disabled.
+
+### Replace the logo and favicon
+
+The shared navigation, landing page and admin use `public/logo.png`. All HTML
+pages use `public/favicon.png`. These start as copies of the bundled AniKoto
+artwork. Replace those two PNG files with your own images using the same names;
+no HTML or JavaScript changes or build step are needed. Prefer a transparent
+horizontal logo (the bundled image is 744 × 192) and a square favicon (512 × 512).
+The logo is fitted without stretching. Refresh the browser cache after replacing
+the files; browser tabs may retain the previous favicon until reopened.
+
+Direct mode resolves `/api/stream` embed URLs locally. The resolver supports
+both plain sources and the provider's encrypted `enc` transport envelope,
+preserves each server's CDN selector, and registers video/subtitle CDN hosts
+with the existing proxy guard. `/videojs/stream/...` embeds are also supported.

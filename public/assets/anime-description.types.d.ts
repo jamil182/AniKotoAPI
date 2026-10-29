@@ -1,0 +1,31 @@
+export interface AnimeDescription {
+  title?: string;
+  poster?: string;
+  japaneseTitle?: string;
+  japanese_title?: string;
+  altNames?: string;
+  alt_names?: string;
+  synopsis?: string;
+  description?: string;
+  genres?: string[];
+  studios?: string[];
+  producers?: string[];
+  type?: string;
+  premiered?: string;
+  aired?: string;
+  year?: number;
+  status?: string;
+  duration?: string;
+  rating?: string | number;
+  malScore?: string | number;
+  mal_score?: string | number;
+  reviewCount?: string | number;
+  review_count?: string | number;
+  total?: number;
+  totalEpisodes?: number;
+  total_episodes?: number;
+  episodes?: number | string;
+  sub?: number;
+  dub?: number;
+  quality?: string;
+}
