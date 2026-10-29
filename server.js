@@ -39,6 +39,7 @@ import { createPublishedCatalog } from "./src/services/publishedCatalog.js";
 import { getCatalogMode } from "./src/services/catalogMode.js";
 import { createAccountsRouter } from "./src/routes/accounts.route.js";
 import { createCmsRouter } from "./src/routes/cms.route.js";
+import { createBrandingRouter } from "./src/routes/branding.route.js";
 import { getDb } from "./src/db/index.js";
 
 // ══════════════════════════════════════════════════════════════
@@ -125,6 +126,7 @@ app.use((req, res, next) => {
 // NOTE: redirect: false prevents automatic redirects to index.html.
 // index: false stops it answering "/" with index.html, so the landing route
 // below can own the root; the anime home lives at /home.
+app.use('/api/branding', createBrandingRouter(publicDir));
 app.use(express.static(publicDir, { redirect: false, index: false }));
 
 // ══════════════════════════════════════════════════════════════

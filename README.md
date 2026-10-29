@@ -2756,8 +2756,12 @@ pages use `public/favicon.png`. These start as copies of the bundled AniKoto
 artwork. Replace those two PNG files with your own images using the same names;
 no HTML or JavaScript changes or build step are needed. Prefer a transparent
 horizontal logo (the bundled image is 744 × 192) and a square favicon (512 × 512).
-The logo is fitted without stretching. Refresh the browser cache after replacing
-the files; browser tabs may retain the previous favicon until reopened.
+The logo is fitted without stretching. `/api/branding` derives image URL versions
+from the actual file contents. Pages refresh those URLs on load or when the tab
+becomes visible, so replacing artwork bypasses old browser/CDN cache entries
+without changing filenames or restarting the application. Metadata is never
+cached; unchanged files reuse their digest. If metadata is unavailable, the
+current images stay in place. Reopen a tab if the browser retains its tab icon.
 
 Direct mode resolves `/api/stream` embed URLs locally. The resolver supports
 both plain sources and the provider's encrypted `enc` transport envelope,
