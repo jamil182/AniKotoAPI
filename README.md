@@ -2747,6 +2747,8 @@ Providers require an ordinary iframe and reject the sandbox attribute, so their
 scripts run within the provider's cross-origin frame under the browser's normal
 permissions. The parent site's camera, microphone and location remain disabled.
 
+For deployment on aaPanel, see [Deployment aaPanel](docs/DEPLOY_AAPANEL.md).
+
 ### Replace the logo and favicon
 
 The shared navigation, landing page and admin use `public/logo.png`. All HTML

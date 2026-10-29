@@ -47,6 +47,9 @@ import { getDb } from "./src/db/index.js";
 
 const app = express();
 const PORT = process.env.PORT || 4444;
+const HOST = process.env.HOST || "0.0.0.0";
+// aaPanel's local reverse proxy supplies the original visitor address.
+app.set("trust proxy", "loopback");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const publicDir = path.join(process.cwd(), "public");
@@ -324,7 +327,7 @@ app.use((req, res) => {
 // SERVER START
 // ══════════════════════════════════════════════════════════════
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, HOST, () => {
   console.info(`AniKotoAPI listening at ${PORT}`);
 });
 

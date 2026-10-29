@@ -8,10 +8,12 @@ import { adminAuth } from '../middleware/adminAuth.js';
 
 const password = 'a-long-test-passphrase-26';
 async function fixture(t, options = {}) {
+  const { trustProxy = false, ...accountOptions } = options;
   const db = openDb(':memory:');
   const app = express();
+  app.set('trust proxy', trustProxy);
   app.use(express.json());
-  app.use('/auth', createAccountsRouter(() => db, options));
+  app.use('/auth', createAccountsRouter(() => db, accountOptions));
   app.get('/admin', adminAuth, (req, res) => res.json({ ok: true }));
   app.use((error, req, res, next) => res.status(error.status || 500).json({ success: false }));
   const server = app.listen(0, '127.0.0.1');
@@ -91,6 +93,19 @@ test('authentication throttle expires and supplies Retry-After', async t => {
   assert.equal(limited.headers.get('retry-after'), '900');
   time = 900001;
   assert.equal((await post('login', {})).status, 400);
+});
+
+test('local reverse proxy preserves visitor throttles and rejects forged address chains', async t => {
+  const { post } = await fixture(t, { trustProxy: 'loopback', maxAttempts: 1 });
+  assert.equal((await post('login', {}, { 'X-Forwarded-For': '203.0.113.9, 198.51.100.1' })).status, 400);
+  assert.equal((await post('login', {}, { 'X-Forwarded-For': '203.0.113.10, 198.51.100.1' })).status, 429);
+  assert.equal((await post('login', {}, { 'X-Forwarded-For': '198.51.100.2' })).status, 400);
+});
+
+test('untrusted direct requests cannot evade throttling with forwarded headers', async t => {
+  const { post } = await fixture(t, { maxAttempts: 1 });
+  assert.equal((await post('login', {}, { 'X-Forwarded-For': '198.51.100.1' })).status, 400);
+  assert.equal((await post('login', {}, { 'X-Forwarded-For': '198.51.100.2' })).status, 429);
 });
 
 test('sessions expire and each account retains at most five active sessions', async t => {
