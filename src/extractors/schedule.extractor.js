@@ -1,90 +1,49 @@
-/*
- * ======= • ======= • ======= • ======= • =======• =======
- * AniKotoAPI — schedule.extractor.js
- * Repository: https://github.com/Shineii86/AniKotoAPI
- *
- * @description
- *   Extracts anime schedule for a specific date.
- *   Returns airing times and episode numbers for scheduled anime.
- *
- * @exports
- *   extractSchedule
- *
- * @author  Shinei Nouzen
- * @license MIT
- * ======= • ======= • ======= • ======= • =======• =======
- */
+import * as cheerio from 'cheerio';
+import { fetchWithMirror } from '../helper/mirror.helper.js';
+import { isScheduleDate } from '../../public/assets/schedule-data.js';
 
-import * as cheerio from "cheerio";
-import { URLS } from "../configs/dataUrl.js";
-import { fetchWithMirror } from "../helper/mirror.helper.js";
-
-// ══════════════════════════════════════════════════════════════
-// SCHEDULE EXTRACTION
-// ══════════════════════════════════════════════════════════════
-
-// ---- FEATURE: Extract anime schedule for a specific date ----
-/**
- * Fetches and parses the anime schedule for a given date.
- * Returns airing times and episode numbers for scheduled anime.
- *
- * @param {string} date - Date to fetch schedule for (format: YYYY-MM-DD)
- * @returns {Promise<Array<Object>>} Array of scheduled anime objects
- * @returns {string} return.slug - URL slug for the anime
- * @returns {string} return.title - Anime title
- * @returns {string} return.time - Airing time
- * @returns {number} return.episode_no - Episode number
- *
- * @example
- *   const schedule = await extractSchedule("2024-01-15");
- *   console.log(schedule[0].time); // Airing time
- *   console.log(schedule[0].episode_no); // Episode number
- */
-const extractSchedule = async (date) => {
-  try {
-    // NOTE: The schedule data is loaded via AJAX endpoint, not a static page
-    const path = `/ajax/schedule?date=${date}`;
-    const { data: raw } = await fetchWithMirror(path, {
-      headers: { "X-Requested-With": "XMLHttpRequest" }
-    });
-
-    // NOTE: Parse JSON response first — fetchWithMirror returns raw text by default
-    let parsed = raw;
-    if (typeof raw === "string") {
-      try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+/** @param {string} html @returns {import('../../public/assets/schedule.types.js').ScheduleRow[]} */
+export function parseScheduleHtml(html) {
+  const $ = cheerio.load(html);
+  return $('.item').slice(0, 200).map((index, element) => {
+    const item = $(element);
+    const title = item.find('.title').text().trim().slice(0, 300);
+    if (!title) return null;
+    const href = item.attr('href') || item.find('a[href]').first().attr('href');
+    let slug = null, episode = null;
+    if (href) {
+      try {
+        const url = new URL(href, 'https://anikoto.cz');
+        if (['http:', 'https:'].includes(url.protocol) && !url.username && !url.password) {
+          const match = /^\/(?:watch|anime)\/([a-z0-9][a-z0-9_-]{0,239})(?:\/(?:ep-)?(\d+(?:\.\d+)?))?\/?$/i.exec(url.pathname);
+          if (match) { slug = match[1]; episode = match[2] ? Number(match[2]) : null; }
+        }
+      } catch { /* Missing source links remain text, never a fabricated slug. */ }
     }
-    const html = parsed?.result || "";
-    const $ = cheerio.load(html);
+    const number = episode || Number(item.find('.ep').text().match(/\d+(?:\.\d+)?/)?.[0]);
+    const time = item.find('.time').text().trim();
+    return { slug, title, japaneseTitle: (item.find('.title').attr('data-jp') || '').slice(0, 300),
+      time: /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : '',
+      episode_no: Number.isFinite(number) && number > 0 && number <= 100000 ? number : null };
+  }).get();
+}
 
-    const schedule = [];
-
-    // NOTE: Schedule items live inside .item with .time, .ep, .title structure
-    $(".item").each((i, el) => {
-      const title = $(el).find(".title").text().trim() || "";
-      const jpTitle = $(el).find(".title").attr("data-jp") || "";
-      const time = $(el).find(".time").text().trim() || "";
-      const episodeText = $(el).find(".ep span").text().trim() || "";
-      const episodeNo = parseInt(episodeText.replace(/\D/g, "")) || 0;
-      // NOTE: Items may not have direct links — use title as identifier
-      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "";
-
-      if (title) {
-        schedule.push({
-          slug,
-          title,
-          japaneseTitle: jpTitle,
-          time,
-          episode_no: episodeNo
-        });
-      }
-    });
-
-    return schedule;
-  } catch (error) {
-    throw error;
+/** @param {string} date
+ * @param {{timezone?: number, signal?: AbortSignal, request?: typeof fetchWithMirror}} options
+ */
+export async function extractSchedule(date, { timezone = 7, signal, request = fetchWithMirror } = {}) {
+  if (!isScheduleDate(date) || !Number.isFinite(timezone) || timezone < -12 || timezone > 14 || !Number.isInteger(timezone * 4)) throw new TypeError('Invalid schedule date or timezone');
+  const time = Date.parse(date + 'T00:00:00Z') / 1000 - timezone * 3600;
+  const query = new URLSearchParams({ tz: String(timezone), time: String(time) });
+  const deadline = AbortSignal.timeout(12000);
+  const response = await request('/ajax/schedule/date?' + query, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }, timeout: 3500, retries: 0, useProxy: false,
+    signal: signal ? AbortSignal.any([signal, deadline]) : deadline,
+  });
+  let data = response.data;
+  if (typeof data === 'string') {
+    try { data = JSON.parse(data); } catch { throw new Error('Invalid schedule response'); }
   }
-};
-
-export { extractSchedule };
-
-// ══════════════════════════════════════════════════════════════ END: schedule.extractor.js
+  if (!data || Number(data.status) !== 200 || typeof data.result !== 'string') throw new Error('Schedule source unavailable');
+  return parseScheduleHtml(data.result);
+}

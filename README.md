@@ -2632,6 +2632,15 @@ Free to use, modify, and distribute — see the [LICENSE](LICENSE) file for deta
 
 ## AniJs: automatic catalog and live episode updates
 
+### Estimated Schedule
+
+The home schedule includes a seven-day calendar and week navigation. Dates and
+airing times follow the browser's timezone. Schedule links use the source's real
+anime IDs; episode buttons check availability before opening the player. The
+schedule refreshes independently of the home feed and caches each date/timezone
+for one minute. `/api/schedule` and `/api/catalog/schedule` accept `date=YYYY-MM-DD`
+and `tz=7` (timezone offset in hours; default WIB).
+
 ### Direct subtitle translation
 
 Direct subtitle setup and translation progress: [Subtitle translation](docs/SUBTITLE_TRANSLATION.md).

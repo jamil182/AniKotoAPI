@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/app.css" />
+  <link rel="stylesheet" href="/assets/schedule.css?v=1" />
   <script type="module" src="/assets/branding.js"></script>
   <script type="module" src="/assets/visitors.js"></script>
 </head>
@@ -64,15 +65,7 @@
         <div class="chip-row az" id="azList"></div>
       </section>
 
-      <section class="section">
-        <div class="section-head">
-          <h2 class="section-title">Estimated Schedule</h2>
-          <span class="sched-now" id="schedNow"></span>
-        </div>
-        <div class="sched">
-          <div class="sched-list" id="schedList"></div>
-        </div>
-      </section>
+
     </div>
 
     <aside>
@@ -90,6 +83,22 @@
     </aside>
   </div>
 
+  <section class="wrap wrap-home schedule-section" id="estimatedSchedule" aria-labelledby="scheduleHeading">
+    <div class="schedule-panel">
+      <div class="schedule-head">
+        <div class="schedule-heading"><h2 id="scheduleHeading">Estimated Schedule</h2><span class="sched-now" id="schedNow"></span></div>
+        <nav class="schedule-calendar" aria-label="Tanggal jadwal anime">
+          <button class="schedule-arrow" id="schedPrev" type="button" aria-label="Previous week">‹</button>
+          <div class="schedule-days" id="schedDays" role="group" aria-label="Pilih hari"></div>
+          <button class="schedule-arrow" id="schedNext" type="button" aria-label="Next week">›</button>
+        </nav>
+      </div>
+      <div class="schedule-feedback"><p id="schedStatus" role="status" aria-live="polite" hidden></p><button class="btn" id="schedRetry" type="button" hidden>Coba lagi</button></div>
+      <div class="sched-list" id="schedList" aria-busy="true"><p class="schedule-empty">Memuat jadwal…</p></div>
+    </div>
+    <p class="schedule-note">Waktu mengikuti zona waktu perangkat Anda. Jadwal bersifat perkiraan dan dapat berubah. Tombol episode membuka pemutar setelah episode tersedia.</p>
+  </section>
+
   <footer class="foot">
     <div class="wrap foot-inner">
       <span>AniJs — a frontend for the <a href="/docs">AniKoto API</a>.</span>
@@ -103,7 +112,9 @@
   <script type="module">
     import { catalogParams } from '/assets/catalog-pagination.js';
     import { createCatalogGrid } from '/assets/catalog-grid.js';
+    import { mountSchedule } from '/assets/schedule-page.js?v=1';
     mountNav();
+    mountSchedule(document.getElementById('estimatedSchedule'));
 
     // ---- Hero carousel (spotlights) ----
     let heroSlides = [], heroIdx = 0, heroTimer = null;
@@ -183,42 +194,6 @@
       document.getElementById('clearFilter').hidden = !filter.genre && !filter.letter;
     }
 
-    // ---- Estimated schedule ------------------------------------------------
-    // One list, not seven. The upstream `date` parameter turns out to have no
-    // effect -- every date, including ones never requested before, comes back
-    // with byte-identical data -- so a day strip would have been a row of
-    // controls that changed nothing.
-    //
-    // Match titles when a schedule row lacks its own slug.
-    const libIndex = new Map();
-    const normTitle = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-    const ymd = (d) => d.getFullYear() + '-' +
-      String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-
-    function tickClock() {
-      document.getElementById('schedNow').textContent = 'Now: ' + new Date().toLocaleString();
-    }
-
-    async function loadSchedule() {
-      const el = document.getElementById('schedList');
-      el.innerHTML = '<div class="state">Loading…</div>';
-      try {
-        const r = await apiGet('/catalog/schedule?date=' + ymd(new Date()));
-        const rows = Array.isArray(r) ? r : (r && r.data) || [];
-        if (!rows.length) { el.innerHTML = '<div class="state">Nothing scheduled.</div>'; return; }
-        el.innerHTML = rows.map(it => {
-          const libId = animeSlug(it.slug) || libIndex.get(normTitle(it.title));
-          const title = libId
-            ? `<a class="sched-title" href="/anime/${encodeURIComponent(libId)}">${esc(it.title)}</a>`
-            : `<span class="sched-title off">${esc(it.title)}</span>`;
-          const ep = it.episode_no ? `<span class="sched-ep">Episode ${esc(it.episode_no)}</span>` : '';
-          return `<div class="sched-row"><span class="sched-time">${esc(it.time || '--:--')}</span>${title}${ep}</div>`;
-        }).join('');
-      } catch {
-        el.innerHTML = '<div class="state">Schedule unavailable right now.</div>';
-      }
-    }
-
     // ---- Server-backed Latest Episodes pagination ----
     const catalog = createCatalogGrid({
       grid: document.getElementById('latest'),
@@ -289,7 +264,7 @@
     let homeFingerprint = '';
     function applyHome(data) {
       const fingerprint = JSON.stringify({ ...data, fetchedAt: undefined });
-      if (fingerprint === homeFingerprint) { refreshLatest(); loadSchedule(); return; }
+      if (fingerprint === homeFingerprint) { refreshLatest(); return; }
       homeFingerprint = fingerprint;
       homeCache = data;
       document.getElementById('topTabs').hidden = Boolean(data.curated);
@@ -308,10 +283,7 @@
       renderGenres(homeCache.genres || []);
       renderAz(homeCache.latest || []);
 
-      libIndex.clear();
-      for (const a of homeCache.latest || []) libIndex.set(normTitle(a.title), a.id);
       paintChips();
-      loadSchedule();
     }
 
     function boot() {
@@ -335,8 +307,6 @@
       renderTop(topData[b.dataset.k]);
     };
 
-    tickClock();
-    setInterval(tickClock, 1000);
     boot();
   </script>
 </body>

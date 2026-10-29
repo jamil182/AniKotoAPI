@@ -1,0 +1,43 @@
+.schedule-section { margin-top: 40px; margin-bottom: 70px; scroll-margin-top: 85px; }
+.schedule-section [hidden] { display: none !important; }
+.schedule-panel { background: #101c2a; border: 1px solid rgba(127,155,185,.1); border-radius: 6px; overflow: hidden; }
+.schedule-head { padding: 26px 40px 0; background: linear-gradient(125deg,rgba(80,112,145,.13),transparent 58%),repeating-linear-gradient(145deg,transparent 0 85px,rgba(7,17,28,.12) 86px 89px),#172331; }
+.schedule-heading { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 24px; }
+.schedule-heading h2 { margin: 0; color: #e5edf5; font-family: var(--font-body); font-weight: 500; font-size: clamp(1.2rem,2vw,1.7rem); }
+.schedule-panel .sched-now { margin: 0; color: #8ba0b8; font-size: .9rem; }
+.schedule-calendar { display: flex; align-items: center; gap: 16px; }
+.schedule-days { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); flex: 1; min-width: 0; gap: 12px; }
+.schedule-day { position: relative; border: 0; padding: 0 2px 20px; text-align: left; background: transparent; color: #60758c; cursor: pointer; min-width: 0; }
+.schedule-date { display: block; margin-bottom: 2px; font-size: .8rem; text-transform: uppercase; white-space: nowrap; }
+.schedule-weekday { display: block; font-family: Impact,'Arial Narrow',sans-serif; font-weight: 400; font-size: clamp(1.9rem,3.4vw,3.2rem); line-height: 1.1; text-transform: uppercase; }
+.schedule-day.selected { color: #bdcee1; }
+.schedule-day.selected::after { content: ''; position: absolute; height: 2px; bottom: 0; left: 0; width: 38px; background: #35b7df; }
+.schedule-day:hover { color: #dde9f4; }
+.schedule-arrow { flex: 0 0 28px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #b5cbe1; cursor: pointer; font: 3.4rem/1 Arial,sans-serif; }
+.schedule-arrow:first-child { margin-left: -26px; }
+.schedule-arrow:last-child { margin-right: -26px; }
+.schedule-panel button:focus-visible,.schedule-panel a:focus-visible { outline: 2px solid #35b7df; outline-offset: 4px; border-radius: 3px; }
+.schedule-panel .sched-list { padding: 18px 0; min-height: 120px; }
+.schedule-panel .sched-row { padding: 14px 40px; gap: 18px; border: 0; }
+.schedule-panel .sched-row:hover { background: rgba(76,112,150,.07); }
+.schedule-panel .sched-time { width: 48px; color: #7f9cba; font-family: Impact,'Arial Narrow',sans-serif; font-weight: 400; font-size: 1.2rem; }
+.schedule-panel .sched-title { color: #9eb5cf; font-size: .92rem; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; text-decoration: none; }
+.schedule-panel a.sched-title:hover { color: #d3e4f7; text-decoration: underline; }
+.schedule-panel .sched-title.off { opacity: .6; }
+.schedule-panel .sched-ep { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-width: 140px; background: #182839; padding: 6px 14px; color: #9db9d8; border-radius: 30px; text-decoration: none; white-space: nowrap; }
+.schedule-panel a.sched-ep:hover { background: #25435c; color: #d8edff; }
+.schedule-panel .sched-ep.unavailable { opacity: .5; }
+.schedule-panel .sched-ep span { font-size: .62rem; }
+.schedule-empty { padding: 24px 40px; color: #9db1c9; margin: 0; }
+.schedule-feedback { display: flex; gap: 14px; align-items: center; padding: 0 40px; }
+.schedule-feedback p { color: #e9bb8e; font-size: .84rem; }
+.schedule-note { color: var(--muted); font-size: .75rem; padding: 10px 0; margin: 0; }
+@media(max-width:700px) {
+  .schedule-head { padding: 22px 20px 0; }.schedule-calendar { gap: 8px; }.schedule-days { gap: 4px; }
+  .schedule-arrow:first-child { margin-left: -14px; }.schedule-arrow:last-child { margin-right: -14px; }
+  .schedule-arrow { flex-basis: 22px; font-size: 2.8rem; }.schedule-date { font-size: .58rem; }
+  .schedule-panel .sched-row { padding: 14px 18px; gap: 12px; flex-wrap: wrap; }.schedule-panel .sched-title { font-size: .84rem; }
+  .schedule-panel .sched-time { width: 42px; }.schedule-panel .sched-ep { min-width: 104px; padding: 5px 10px; font-size: .7rem; }
+  .schedule-panel .sched-title { flex-basis: calc(100% - 70px); }.schedule-panel .sched-ep { margin-left: 54px; }
+  .schedule-empty { padding: 24px 18px; }.schedule-feedback { padding: 0 18px; }
+}

@@ -157,6 +157,7 @@ async function fetchWithMirror(path, options = {}) {
     returnType = "text",
     headers: customHeaders = {},
     useProxy = true,
+    signal,
   } = options;
 
   // Merge default headers with custom headers
@@ -189,11 +190,13 @@ async function fetchWithMirror(path, options = {}) {
     const url = buildUrl(path, mirror);
     
     for (let attempt = 0; attempt <= retries; attempt++) {
+      signal?.throwIfAborted();
       try {
         const response = await axios.get(url, {
           headers: requestHeaders,
           timeout,
           responseType: returnType === "text" ? "text" : "json",
+          signal,
         });
 
         if (response.status === 200) {
@@ -241,6 +244,7 @@ async function fetchWithMirror(path, options = {}) {
           throw new Error(`Endpoint not found: ${path}`);
         }
       } catch (error) {
+        if (signal?.aborted) throw error;
         lastError = error;
         // NOTE: Don't retry on 404 — the endpoint simply doesn't exist on this mirror
         if (error.message?.includes("Endpoint not found")) {

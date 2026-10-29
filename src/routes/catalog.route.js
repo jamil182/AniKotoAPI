@@ -5,6 +5,7 @@ import { getEpisodeEmbeds } from "../services/episodeEmbeds.js";
 import { resolveCatalogStream } from "../services/catalogStream.js";
 import { parseEmbedUrl } from "../../public/assets/embed-policy.js";
 import { CATALOG_VIEWS, isCatalogSource, isAnimeType } from '../../public/assets/catalog-sources.js';
+import { scheduleQuery, scheduleService } from '../services/schedule.js';
 
 function text(value, label, max = 240) {
   if (typeof value !== "string" || !value.trim() || value.length > max || /[\x00-\x1f]/.test(value)) {
@@ -25,7 +26,7 @@ function episode(value) {
   return result;
 }
 
-export function createCatalogRouter(client = createAniKotoClient(), catalog = null, { resolve = resolveCatalogStream } = {}) {
+export function createCatalogRouter(client = createAniKotoClient(), catalog = null, { resolve = resolveCatalogStream, schedule = scheduleService } = {}) {
   const router = Router();
   const route = (path, handler) => router.get(path, async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
@@ -99,9 +100,25 @@ export function createCatalogRouter(client = createAniKotoClient(), catalog = nu
     return pool[randomInt(pool.length)];
   });
   route("/schedule", req => {
-    const date = text(req.query.date, "date", 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new AniKotoError("Invalid date", 400);
-    return catalog ? catalog.schedule(date) : client.get("/schedule", { date });
+    const { date, timezone } = scheduleQuery(req.query);
+    return catalog ? catalog.schedule(date, timezone) : schedule.get(date, timezone);
+  });
+  router.get('/schedule-watch', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    let requestedSlug, requestedEpisode;
+    try {
+      requestedSlug = slug(req.query.slug);
+      requestedEpisode = episode(req.query.ep);
+      if (catalog) catalog.require(requestedSlug);
+    } catch (error) {
+      return res.status(error instanceof AniKotoError ? error.status : 400).json({ success: false, message: 'Anime atau episode tidak valid.' });
+    }
+    const details = '/anime/' + encodeURIComponent(requestedSlug);
+    try {
+      const data = await (catalog?.episodeClient || client).get('/episodes/' + requestedSlug);
+      const available = Array.isArray(data?.episodes) && data.episodes.some(row => Number(row.episode_no) === Number(requestedEpisode));
+      return res.redirect(303, available ? '/watch/' + encodeURIComponent(requestedSlug) + '/' + encodeURIComponent(requestedEpisode) : details);
+    } catch { return res.redirect(303, details); }
   });
   route("/watch", req => {
     const ep = text(req.query.ep, "episode", 10);
