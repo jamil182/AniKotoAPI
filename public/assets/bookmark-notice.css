@@ -1,0 +1,39 @@
+.bookmark-notice-wrap { margin-top: 16px; }
+.bookmark-notice-wrap[hidden] { display: none; }
+.bookmark-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #205269;
+  border-radius: 6px;
+  background: #102331;
+  color: #e2edf7;
+  font-size: .76rem;
+  line-height: 1.6;
+}
+.bookmark-notice-icon { width: 12px; height: 16px; flex: 0 0 auto; color: #22b5df; }
+.bookmark-notice p { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.bookmark-notice a { color: #24c6ef; text-decoration: none; }
+.bookmark-notice a:hover { text-decoration: underline; }
+.bookmark-notice-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: #243646;
+  color: #e2edf7;
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.bookmark-notice-close:hover { background: #344d61; }
+.bookmark-notice a:focus-visible, .bookmark-notice-close:focus-visible { outline: 2px solid #24c6ef; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .bookmark-notice { align-items: flex-start; gap: 8px; }
+  .bookmark-notice-icon { margin-top: 4px; }
+}

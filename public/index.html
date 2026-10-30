@@ -11,6 +11,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/app.css?v=weekly-1" />
   <link rel="stylesheet" href="/assets/schedule.css?v=1" />
+  <link rel="stylesheet" href="/assets/bookmark-notice.css?v=1" />
+  <script type="module" src="/assets/bookmark-notice.js?v=1"></script>
   <script type="module" src="/assets/branding.js"></script>
   <script type="module" src="/assets/visitors.js"></script>
 </head>
@@ -25,6 +27,14 @@
       <div class="hero-dots" id="heroDots"></div>
     </div>
   </section>
+
+  <aside class="wrap wrap-home bookmark-notice-wrap" id="bookmarkNotice" aria-label="Bookmark reminder">
+    <div class="bookmark-notice">
+      <svg class="bookmark-notice-icon" viewBox="0 0 16 20" aria-hidden="true"><path d="M2 1h12a1 1 0 0 1 1 1v17l-7-4-7 4V2a1 1 0 0 1 1-1Z" fill="currentColor" /></svg>
+      <p>Please bookmark <a href="https://aniyear.com/">aniyear.com</a> to stay updated. Thank you!</p>
+      <button type="button" class="bookmark-notice-close" aria-label="Close bookmark reminder" data-dismiss>&times;</button>
+    </div>
+  </aside>
 
   <!-- Main -->
   <div class="wrap wrap-home main">
