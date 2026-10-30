@@ -1,4 +1,4 @@
-import { siteLocale, languageLabel } from './site-language-data.js';
+import { siteLocale, languageLabel } from './site-language-data.js?v=2';
 import { translatedSynopsis } from './synopsis-language.js';
 
 const skip='script,style,noscript,pre,code,textarea,input,[contenteditable],[translate="no"],#accountName,#accountEmail,.comment-body,.comment-preview,.comment-meta,.comment-avatar,.nav-account-name,.card-title,.tip-title,.rank-t,.t,.anime-description-title,.anime-description-alias,.hero h1,.weekly-card-copy h2,.sched-title,.ep-item,.seo-catalog-list a,.anime-synopsis-text,.hero-inner p,.tip-syn,.weekly-card-copy p';

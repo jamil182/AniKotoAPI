@@ -68,6 +68,14 @@ export function languageLabel(value, locale) {
   if (count) text=count[1]+(locale==='id' ? ' Komentar' : ' Comments');
   const reviews=/^(\S+) (?:reviews|ulasan)$/i.exec(trimmed);
   if (reviews) text=reviews[1]+(locale==='id' ? ' ulasan' : ' reviews');
+  const episodes=/^(?:Episodes|Episode)\s*\(([\d,]+)\)$/i.exec(trimmed);
+  if (episodes) text=(locale==='id' ? 'Episode' : 'Episodes')+' ('+episodes[1]+')';
+  const label=/^(.+?)([:：])$/.exec(trimmed);
+  if (label && entries.has(label[1].toLowerCase())) text=entries.get(label[1].toLowerCase())[locale==='id' ? 1 : 0]+label[2];
+  if (!text && trimmed.includes(',')) {
+    const segments=trimmed.split(/(\s*,\s*)/);
+    if (segments.some(part=>entries.has(part.toLowerCase()))) text=segments.map(part=>entries.get(part.toLowerCase())?.[locale==='id' ? 1 : 0] || part).join('');
+  }
   if (!text) return value;
   if (trimmed.toUpperCase()===trimmed && /[A-Z]{2}/.test(trimmed)) text=text.toUpperCase();
   return value.match(/^\s*/)[0]+text+value.match(/\s*$/)[0];

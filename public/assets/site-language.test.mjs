@@ -16,6 +16,9 @@ test('interface labels translate reversibly, preserve whitespace, and support dy
   assert.equal(languageLabel('25 Comments','id'),'25 Komentar');
   assert.equal(languageLabel('Kebijakan Privasi','en'),'Privacy Policy');
   assert.equal(languageLabel('One Piece','id'),'One Piece');
+  assert.equal(languageLabel('Type:','id'),'Jenis:');
+  assert.equal(languageLabel('Episodes (1180)','id'),'Episode (1180)');
+  assert.equal(languageLabel('Action, Adventure, Fantasy','id'),'Aksi, Petualangan, Fantasi');
   assert.equal(languageLabel('<script>private()</script>','id'),'<script>private()</script>');
 });
 test('synopsis client only sends a validated catalog slug, uses no credentials and handles failures',async t=>{
