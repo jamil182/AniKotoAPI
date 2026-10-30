@@ -12,7 +12,7 @@ Gunakan OAuth Client **Web application** milik Anda. Pada daftar **Authorized
 redirect URIs** di Google Cloud, tambahkan tepat:
 
 ```text
-https://anime.jsmovies.my.id/api/auth/google/callback
+https://aniyear.com/api/auth/google/callback
 ```
 
 Isi tiga variabel ini pada `/www/wwwroot/anikoto-app/.env` melalui editor aaPanel:
@@ -20,7 +20,7 @@ Isi tiga variabel ini pada `/www/wwwroot/anikoto-app/.env` melalui editor aaPane
 ```dotenv
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=https://anime.jsmovies.my.id/api/auth/google/callback
+GOOGLE_REDIRECT_URI=https://aniyear.com/api/auth/google/callback
 ```
 
 Masukkan Client ID dan Client Secret pada dua nilai yang kosong. Simpan rahasia

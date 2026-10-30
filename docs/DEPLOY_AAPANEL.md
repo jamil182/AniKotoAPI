@@ -1,6 +1,6 @@
 # Deployment aaPanel
 
-Konfigurasi untuk `anime.jsmovies.my.id`:
+Konfigurasi untuk `aniyear.com`:
 
 | Pengaturan | Nilai |
 | --- | --- |
@@ -33,7 +33,7 @@ HOST=127.0.0.1
 PORT=4455
 PUBLIC_CATALOG_MODE=live
 ANIKOTO_API_BASE_URL=https://anikototvapi.vercel.app/api
-ALLOWED_ORIGINS=https://anime.jsmovies.my.id
+ALLOWED_ORIGINS=https://aniyear.com
 DATABASE_PATH=/www/server/anijs-data/anikoto.db
 ```
 
@@ -50,7 +50,7 @@ yang sama sekaligus melalui PM2 dan `npm start` di terminal.
 
 ## Domain dan reverse proxy
 
-Gunakan website aaPanel untuk `anime.jsmovies.my.id` dengan sertifikat SSL yang
+Gunakan website aaPanel untuk `aniyear.com` dengan sertifikat SSL yang
 valid. Jika website sudah ada, pertahankan sertifikat dan ACME challenge serta
 buat cadangan konfigurasi sebelum mengubah proxy. Arahkan semua path ke Node.js,
 termasuk `/assets`, `/api`, `/anime` dan `/watch`.
@@ -92,7 +92,7 @@ database sebelum update. Statistik dimulai saat fitur dipasang. Pengaturan lokas
 retensi dan batasan counter dijelaskan di [Statistik pengunjung](VISITOR_STATS.md).
 
 Periksa `http://127.0.0.1:4455/api/health` dari server, kemudian kunjungi
-`https://anime.jsmovies.my.id/home`. Periksa pencarian, halaman anime, Embed,
+`https://aniyear.com/home`. Periksa pencarian, halaman anime, Embed,
 Direct dan halaman akun. `/api/catalog/status` harus melaporkan mode `live`.
 Tampilan katalog dan ketersediaan video tetap bergantung pada API/provider.
 
@@ -103,3 +103,25 @@ lokasi yang tetap dan lakukan backup sebelum pembaruan yang mengubah skema.
 Untuk backup SQLite yang aktif, gunakan SQLite backup API atau hentikan aplikasi
 sebelum menyalin database beserta WAL/SHM. Jangan menyalin hanya file `.db` ketika
 masih ada transaksi yang aktif.
+
+## Migrasi domain ke aniyear.com
+
+Domain utama adalah `https://aniyear.com`. Aplikasi tetap menggunakan folder,
+proses `anijs`, port, dan database yang sama; akun, komentar, serta katalog tidak
+perlu diimpor ulang. Cookie sesi dibatasi per domain sehingga pengguna perlu
+login kembali saat pertama membuka domain baru.
+
+Website aaPanel `aniyear.com` meneruskan request ke `127.0.0.1:4455` melalui
+`/www/server/panel/vhost/nginx/proxy/aniyear.com/anijs.conf`. HTTP dialihkan ke
+HTTPS. Pertahankan lokasi ACME yang lebih spesifik untuk pembaruan sertifikat.
+Website lama `anime.jsmovies.my.id` memberikan redirect permanen 301 ke
+`https://aniyear.com$request_uri`, sehingga path episode dan query tetap utuh.
+Pertahankan DNS serta sertifikat domain lama agar redirect HTTPS tetap bekerja.
+
+Callback di `.env` dan Authorized redirect URIs di Google Cloud harus sama:
+`https://aniyear.com/api/auth/google/callback`. Restart hanya `anijs` setelah
+mengubah environment. Jangan mengganti Client ID, Client Secret, ADMIN_TOKEN,
+atau lokasi database hanya karena mengganti domain.
+
+Konfigurasi sebelum migrasi dicadangkan di `/www/backup/anijs-domain/` pada
+server. Cadangan `.env` bersifat rahasia dan tidak boleh dipublikasikan.
