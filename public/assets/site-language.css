@@ -1,0 +1,7 @@
+.site-language { display: inline-flex; align-items: center; flex-shrink: 0; overflow: hidden; border-radius: 4px; background: #1c2b3d; }
+.site-language button { border: 0; border-radius: 0; background: transparent; color: #9ab2cc; padding: 3px 8px; font: inherit; font-size: .73rem; line-height: 1.5; cursor: pointer; }
+.site-language button[aria-pressed="true"] { background: #b9cada; color: #112033; }
+.site-language button:focus-visible { outline: 2px solid #22b5df; outline-offset: -2px; }
+.site-language--landing { position: absolute; right: 24px; top: 20px; z-index: 50; }
+.site-language-message { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 100; max-width: min(480px,90vw); padding: 10px 14px; border: 1px solid #205269; border-radius: 6px; background: #102331; color: #e2edf7; font-size: .8rem; }
+.site-language-message[hidden] { display: none; }

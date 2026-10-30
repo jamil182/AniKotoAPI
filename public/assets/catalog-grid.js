@@ -40,10 +40,10 @@ export function createCatalogGrid({ grid, pager, viewMore = null, initial = cata
         let items = data.data;
         let columns = columnCount();
         let candidates = [];
-        if (fillRows && items.length && items.length % columns && params.page < total) {
+        if (fillRows && items.length && items.length % columns && total > 1) {
           try {
             const nextQuery = new URLSearchParams(key);
-            nextQuery.set('page', String(params.page + 1));
+            nextQuery.set('page', String(params.page < total ? params.page + 1 : params.page - 1));
             const nextPage = await apiGet('/catalog/browse?' + nextQuery, { signal: request.signal });
             if (request.signal.aborted) return;
             if (Array.isArray(nextPage.data)) candidates = nextPage.data;

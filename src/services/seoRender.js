@@ -45,8 +45,9 @@ export function renderSeo(template, config, metadata) {
     .replace(/<link\b[^>]*rel\s*=\s*["'](?:canonical|sitemap)["'][^>]*>/gi, '')
     .replace(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi, '')
     .replace('</head>', () => head + '\n</head>')
+    .replace(/\/assets\/api\.js(?:\?[^"']*)?(["'])/g, '/assets/api.js?v=language-1$1')
     .replace(/\/assets\/anime-page\.js(?:\?[^"']*)?(["'])/g, '/assets/anime-page.js?v=seo-1$1')
-    .replace(/\/assets\/browse-page\.js(?:\?[^"']*)?(["'])/g, '/assets/browse-page.js?v=seo-1$1');
+    .replace(/\/assets\/browse-page\.js(?:\?[^"']*)?(["'])/g, '/assets/browse-page.js?v=language-1$1');
 }
 
 /** @param {import('./seo.types.js').SeoAnime[]} rows */

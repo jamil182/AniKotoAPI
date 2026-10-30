@@ -236,3 +236,5 @@ function mountNav(active) {
   import('/assets/site-menu.js?v=weekly-1').then(module => module.mountSiteMenu(host)).catch(() => {});
   import('/assets/account-nav.js?v=google-1').then(module => module.mountAccountNav(document.getElementById('navAccount'))).catch(() => {});
 }
+
+import('/assets/site-language.js?v=1').then(module => module.mountSiteLanguage()).catch(() => {});

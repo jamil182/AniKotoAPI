@@ -46,6 +46,7 @@ import { createSubtitleTranslationRouter } from './src/routes/subtitleTranslatio
 import { visitorAddress } from './src/services/visitorAddress.js';
 import { getDb } from "./src/db/index.js";
 import { createSeoRouter } from './src/routes/seo.route.js';
+import { createSynopsisTranslationRouter } from './src/routes/synopsisTranslation.route.js';
 
 // ══════════════════════════════════════════════════════════════
 // SERVER CONFIGURATION
@@ -265,6 +266,7 @@ app.use('/api/comments', createCommentsRouter(getDb, catalogClient, publicCatalo
 app.use('/api/admin/comments', createCommentsModerationRouter(getDb));
 app.use('/api', createVisitorsRouter(getDb));
 app.use('/api/stream/sub-translate', createSubtitleTranslationRouter(getDb));
+app.use('/api/catalog/synopsis', createSynopsisTranslationRouter(getDb, catalogClient, publicCatalog));
 app.use("/api/admin", createCmsRouter(getDb, catalogClient));
 app.use("/api/catalog", createCatalogRouter(catalogClient, publicCatalog));
 createApiRoutes(app, jsonResponse, jsonError, publishedCatalog);

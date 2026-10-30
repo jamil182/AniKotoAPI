@@ -1,5 +1,5 @@
 import { catalogParams } from './catalog-pagination.js';
-import { createCatalogGrid } from './catalog-grid.js';
+import { createCatalogGrid } from './catalog-grid.js?v=language-1';
 import { CATALOG_VIEWS, ANIME_TYPES } from './catalog-sources.js';
 
 mountNav();
@@ -17,7 +17,7 @@ function showSelection(params) {
   document.getElementById('browseDescription').textContent = filter || (params.type ? 'Browse anime by type.' : view.description);
 }
 const catalog = createCatalogGrid({
-  grid: document.getElementById('catalogGrid'), pager: [document.getElementById('catalogPagerTop'), document.getElementById('catalogPager')], initial,
+  grid: document.getElementById('catalogGrid'), pager: [document.getElementById('catalogPagerTop'), document.getElementById('catalogPager')], initial, fillRows: true,
   onNavigate: (params, { replace = false } = {}) => {
     history[replace ? 'replaceState' : 'pushState'](null, '', '/browse?' + new URLSearchParams(params));
     showSelection(params);

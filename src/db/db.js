@@ -22,6 +22,7 @@ import path from "node:path";
 import { migrateVisitors } from './visitors.schema.js';
 import { migrateGoogleAccounts } from './googleAccounts.schema.js';
 import { migrateComments } from './comments.schema.js';
+import { migrateSynopsisTranslations } from './synopsisTranslations.schema.js';
 
 const DEFAULT_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), "data", "anikoto.db");
 
@@ -85,6 +86,7 @@ export function migrate(db) {
 
   migrateGoogleAccounts(db);
   migrateComments(db);
+  migrateSynopsisTranslations(db);
 
   // Added after the table first shipped. SQLite has no ADD COLUMN IF NOT
   // EXISTS, so check what is already there rather than catching an error.

@@ -343,6 +343,16 @@ async function translateVtt(vtt, target, opts = {}) {
   return { vtt: lines.join("\n"), provider: PROVIDER, translated: unique.length, failed: failedLines };
 }
 
+/** @param {string} text @param {{signal?: AbortSignal}} [options]
+ * @returns {Promise<{text: string, provider: string}>} */
+export async function translatePlainText(text, { signal } = {}) {
+  if (typeof text !== 'string' || !text.trim() || text.length > 6000) throw new Error('Invalid translation text');
+  const result = await translateBatch([text], 'id', 'en', PROVIDER, undefined, signal);
+  const translated = result.out[0];
+  if (result.failed || typeof translated !== 'string' || !translated.trim() || translated.length > 24000) throw new Error('Incomplete translation');
+  return { text: translated.trim(), provider: PROVIDER };
+}
+
 export { translateVtt, splitVtt, PROVIDER };
 
 // ══════════════════════════════════════════════════════════════ END: translate.helper.js
