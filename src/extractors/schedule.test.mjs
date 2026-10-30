@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { extractSchedule, parseScheduleHtml } from './schedule.extractor.js';
+import { extractSchedule, parseScheduleHtml, extractWeeklySchedule, parseWeeklyScheduleHtml } from './schedule.extractor.js';
 
 const html = `<div class="items"><a class="item" href="https://anikoto.cz/watch/mazenchu-c2150/ep-5?type=sub"><div class="time">07:50</div><div class="ep"><span>Episode 5</span></div><div class="title" data-jp="Mazenchu">Mazenchu</div></a>
 <a class="item" href="/watch/title-realid/ep-12.5"><div class="time">16:40</div><div class="title">Tom &amp; Jerry</div></a>
@@ -32,4 +32,19 @@ test('malformed source responses are errors rather than empty schedules', async 
   for (const data of ['<html>Cloudflare</html>', { status: 500, result: 'error' }, { status: 200 }]) {
     await assert.rejects(extractSchedule('2026-10-30', { request: async () => ({ data }) }), /response|unavailable/);
   }
+});
+
+test('weekly cards retain source language, posters, synopsis, genres and absolute airing timestamps', async () => {
+  const card = `<div class="sc-grp" data-airing="1793321400"><a class="sc-card" href="/watch/mazenchu-c2150/ep-5?type=sub" data-type="sub"><img src="https://cdn.example/poster.jpg"><div class="sc-name" data-jp="Mazenchu">Mazenchu</div><div class="sc-ep">Episode 5</div><div class="sc-des">Food &amp; friendship</div><div class="sc-gen"><span>Comedy</span><span>Comedy</span></div></a></div>`;
+  const rows = parseWeeklyScheduleHtml(card + card, 7);
+  assert.equal(rows.length, 1); assert.equal(rows[0].language, 'sub');
+  assert.equal(rows[0].airingAt, 1793321400); assert.equal(rows[0].time, '07:50');
+  assert.equal(rows[0].poster, 'https://cdn.example/poster.jpg'); assert.equal(rows[0].synopsis, 'Food & friendship');
+  assert.deepEqual(rows[0].genres, ['Comedy']);
+  const unsafe = parseWeeklyScheduleHtml(card.replace('data-type="sub"', 'data-type="unknown"').replace('https://cdn.example/poster.jpg', 'javascript:alert(1)').replace('1793321400', 'not-a-time'));
+  assert.equal(unsafe[0].language, null); assert.equal(unsafe[0].poster, null); assert.equal(unsafe[0].airingAt, null);
+  await extractWeeklySchedule('2026-10-30', { timezone: 7, request: async path => {
+    assert.match(path, /^\/ajax\/schedule\/page\/date\?/);
+    return { data: { status: 200, result: card } };
+  } });
 });

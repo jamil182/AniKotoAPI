@@ -2634,6 +2634,12 @@ Free to use, modify, and distribute — see the [LICENSE](LICENSE) file for deta
 
 ### Estimated Schedule
 
+The shared top navigation and side menu include **Weekly Schedule** at `/schedule`.
+This dedicated page shows source posters, summaries, genres, SUB/DUB filters, day
+counts and live countdowns. `/api/catalog/weekly-schedule` uses the same date and
+timezone parameters; only the selected day and two background day requests load
+concurrently in the browser. Missing source metadata is not invented.
+
 The home schedule includes a seven-day calendar and week navigation. Dates and
 airing times follow the browser's timezone. Schedule links use the source's real
 anime IDs; episode buttons check availability before opening the player. The

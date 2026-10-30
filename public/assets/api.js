@@ -166,6 +166,7 @@ function navHTML(active) {
       </div>
       <nav class="nav-links">
         <span id="liveStatus" class="live-status" role="status" aria-live="polite">Connecting…</span>
+        <a class="nav-btn nav-weekly" href="/schedule" aria-label="Weekly Schedule" title="Weekly Schedule"${active === 'schedule' ? ' aria-current="page"' : ''}${on('schedule')}><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 11h18m-14 4h3m4 0h3m-10 3h3m4 0h3"/></svg><span>Weekly Schedule</span></a>
         <button class="nav-btn" id="navRandom">Random</button>
         <span class="nav-account" id="navAccount">
           <a class="nav-btn" href="/login"${on('login')}>Login</a>
@@ -232,6 +233,6 @@ function mountNav(active) {
   host.className = 'nav';
   host.innerHTML = navHTML(active);
   wireNav();
-  import('/assets/site-menu.js').then(module => module.mountSiteMenu(host)).catch(() => {});
+  import('/assets/site-menu.js?v=weekly-1').then(module => module.mountSiteMenu(host)).catch(() => {});
   import('/assets/account-nav.js').then(module => module.mountAccountNav(document.getElementById('navAccount'))).catch(() => {});
 }

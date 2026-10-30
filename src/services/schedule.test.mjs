@@ -33,7 +33,7 @@ test('schedule route preserves canonical IDs and checks release availability bef
     return { episodes: [{ episode_no: 5 }] };
   } };
   const dates = [];
-  const app = express(); app.use('/catalog', createCatalogRouter(client, null, { schedule: { get: async (date, timezone) => {
+  const app = express(); app.use('/catalog', createCatalogRouter(client, null, { weeklySchedule: { get: async (date, timezone) => [{ slug: 'mazenchu-c2150', title: 'Mazenchu', language: 'sub', airingAt: 1793321400 }] }, schedule: { get: async (date, timezone) => {
     dates.push({ date, timezone }); return [{ slug: 'mazenchu-c2150', title: 'Mazenchu', episode_no: 5, time: '07:50' }];
   } } }));
   const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
@@ -43,6 +43,9 @@ test('schedule route preserves canonical IDs and checks release availability bef
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.equal((await response.json()).results[0].slug, 'mazenchu-c2150');
   assert.deepEqual(dates, [{ date: '2026-10-30', timezone: 7 }]);
+  const weekly = await (await fetch(base + '/weekly-schedule?date=2026-10-30&tz=7')).json();
+  assert.equal(weekly.results[0].language, 'sub'); assert.equal(weekly.results[0].airingAt, 1793321400);
+  assert.equal((await fetch(base + '/weekly-schedule?date=2026-02-30')).status, 400);
   for (const path of ['/schedule?date=2026-02-30', '/schedule?date=2026-10-30&tz[]=7', '/schedule-watch?slug=../secret&ep=1', '/schedule-watch?slug=mazenchu-c2150&ep=nan']) assert.equal((await fetch(base + path)).status, 400);
   assert.equal(sourceCalls, 0);
   const watch = await fetch(base + '/schedule-watch?slug=mazenchu-c2150&ep=5', { redirect: 'manual' });
@@ -60,6 +63,10 @@ test('managed schedules only expose published titles and preserve their custom p
   upsertAnime(db, { title: 'Private draft', slug: 'private-draft', malId: 21 });
   db.prepare("UPDATE anime SET publication_state='published',source_slug='original-source-a1b2c' WHERE id=?").run(publicId);
   const catalog = createPublishedCatalog(() => db, { get: async () => { throw new Error('Must not use broken hosted schedules'); } }, {
+    weeklySchedule: { get: async () => [
+      { title: 'Published title', slug: 'original-source-a1b2c', language: 'sub', poster: 'https://cdn.example/poster.jpg' },
+      { title: 'Private draft', slug: 'private-draft', language: 'dub' },
+    ] },
     schedule: { get: async () => [
       { title: 'Published title', slug: 'original-source-a1b2c', time: '07:50', episode_no: 1 },
       { title: 'Private draft', slug: 'private-draft', time: '08:50', episode_no: 1 },
@@ -67,4 +74,6 @@ test('managed schedules only expose published titles and preserve their custom p
   });
   const rows = await catalog.schedule('2026-10-30', 7);
   assert.equal(rows.length, 1); assert.equal(rows[0].slug, 'custom-public');
+  const weekly = await catalog.weeklySchedule('2026-10-30', 7);
+  assert.equal(weekly.length, 1); assert.equal(weekly[0].slug, 'custom-public'); assert.equal(weekly[0].language, 'sub');
 });

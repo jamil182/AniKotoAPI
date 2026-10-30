@@ -13,7 +13,7 @@ export function visitorEvent(body) {
   const { path, eventId, type } = body;
   if (typeof path !== 'string' || path.length > 300 || !['view', 'heartbeat'].includes(type)
     || typeof eventId !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(eventId)) return null;
-  if (!/^(?:\/|\/(?:home|browse|privacy|tos)(?:\.html)?|\/(?:anime|watch)\/[a-z0-9][a-z0-9_-]{0,239}(?:\/\d+(?:\.\d+)?)?)$/i.test(path)) return null;
+  if (!/^(?:\/|\/(?:home|browse|schedule|privacy|tos)(?:\.html)?|\/(?:anime|watch)\/[a-z0-9][a-z0-9_-]{0,239}(?:\/\d+(?:\.\d+)?)?)$/i.test(path)) return null;
   return { path, eventId, type };
 }
 

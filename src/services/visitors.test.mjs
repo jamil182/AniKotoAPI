@@ -24,7 +24,7 @@ function fixture(t, initial = Date.UTC(2026, 9, 30, 10)) {
 test('visitor payloads exclude credentials, query strings, external URLs and malformed events', () => {
   for (const path of ['/admin', '/login', '/api/admin/library', '/home?token=secret', '//evil.test', '/watch/a/1#secret', '/assets/app.js']) assert.equal(visitorEvent(view(path)), null);
   for (const body of [null, [], {}, { ...view(), eventId: 'bad' }, { ...view(), type: 'click' }, { ...view(), path: 42 }]) assert.equal(visitorEvent(body), null);
-  for (const path of ['/', '/home', '/browse', '/watch/naruto/1.5', '/anime/naruto', '/privacy.html']) assert.deepEqual(visitorEvent(view(path))?.path, path);
+  for (const path of ['/', '/home', '/browse', '/schedule', '/watch/naruto/1.5', '/anime/naruto', '/privacy.html']) assert.deepEqual(visitorEvent(view(path))?.path, path);
 });
 
 test('page retries and multiple tabs count views once; heartbeats expire online and never inflate views', t => {

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Weekly Schedule</title>
+  <meta name="description" content="Explore the weekly anime airing schedule, filter SUB and DUB episodes, and see release countdowns in your timezone.">
+  <link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/assets/app.css?v=weekly-1"><link rel="stylesheet" href="/assets/weekly-schedule.css?v=1">
+  <script type="module" src="/assets/branding.js"></script><script type="module" src="/assets/visitors.js"></script>
+</head>
+<body class="weekly-body">
+  <header id="nav"></header>
+  <main class="weekly-page" id="weeklySchedule">
+    <div class="weekly-heading"><div><h1>Weekly Schedule</h1><p id="weeklyRange"></p></div><div class="weekly-clock"><span>YOUR TIME</span><time id="weeklyClock"></time></div></div>
+    <section class="weekly-calendar" aria-label="Weekly anime schedule">
+      <nav class="weekly-days-nav" aria-label="Schedule dates"><button type="button" class="weekly-arrow" id="weeklyPrev" aria-label="Previous week">‹</button><div class="weekly-days" id="weeklyDays" role="group" aria-label="Choose a day"></div><button type="button" class="weekly-arrow" id="weeklyNext" aria-label="Next week">›</button></nav>
+      <div class="weekly-filters"><div role="group" aria-label="Episode language"><button type="button" data-language="all" aria-pressed="true">All</button><button type="button" data-language="sub" aria-pressed="false">Sub</button><button type="button" data-language="dub" aria-pressed="false">Dub</button></div><span id="weeklySummary"></span></div>
+    </section>
+    <div class="weekly-feedback"><p id="weeklyStatus" role="status" aria-live="polite" hidden></p><button type="button" id="weeklyRetry" class="btn" hidden>Coba lagi</button></div>
+    <ol class="weekly-timeline" id="weeklyTimeline" aria-busy="true"><li class="weekly-empty">Memuat jadwal…</li></ol>
+    <p class="weekly-note">Jadwal merupakan perkiraan dalam zona waktu perangkat Anda. Episode yang belum tersedia akan membuka detail anime.</p>
+  </main>
+  <footer class="weekly-footer"><div class="wrap"><h2>A-Z List <small>Search anime by title</small></h2><nav id="weeklyAz" aria-label="Anime A-Z"></nav><a class="logo" href="/home" aria-label="Home"><img src="/logo.png" alt="Site logo" width="132" height="34"></a><div class="weekly-footer-links"><a href="/home">Home</a><a href="/privacy">Kebijakan Privasi</a><a href="/tos">Syarat Layanan</a></div><p>Weekly anime schedule · Times may change.</p></div></footer>
+  <script src="/assets/api.js?v=weekly-1"></script><script type="module" src="/assets/weekly-schedule.js?v=1"></script>
+</body>
+</html>

@@ -5,7 +5,7 @@ import { getEpisodeEmbeds } from "../services/episodeEmbeds.js";
 import { resolveCatalogStream } from "../services/catalogStream.js";
 import { parseEmbedUrl } from "../../public/assets/embed-policy.js";
 import { CATALOG_VIEWS, isCatalogSource, isAnimeType } from '../../public/assets/catalog-sources.js';
-import { scheduleQuery, scheduleService } from '../services/schedule.js';
+import { scheduleQuery, scheduleService, weeklyScheduleService } from '../services/schedule.js';
 
 function text(value, label, max = 240) {
   if (typeof value !== "string" || !value.trim() || value.length > max || /[\x00-\x1f]/.test(value)) {
@@ -26,7 +26,7 @@ function episode(value) {
   return result;
 }
 
-export function createCatalogRouter(client = createAniKotoClient(), catalog = null, { resolve = resolveCatalogStream, schedule = scheduleService } = {}) {
+export function createCatalogRouter(client = createAniKotoClient(), catalog = null, { resolve = resolveCatalogStream, schedule = scheduleService, weeklySchedule = weeklyScheduleService } = {}) {
   const router = Router();
   const route = (path, handler) => router.get(path, async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
@@ -102,6 +102,10 @@ export function createCatalogRouter(client = createAniKotoClient(), catalog = nu
   route("/schedule", req => {
     const { date, timezone } = scheduleQuery(req.query);
     return catalog ? catalog.schedule(date, timezone) : schedule.get(date, timezone);
+  });
+  route('/weekly-schedule', req => {
+    const { date, timezone } = scheduleQuery(req.query);
+    return catalog ? catalog.weeklySchedule(date, timezone) : weeklySchedule.get(date, timezone);
   });
   router.get('/schedule-watch', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');

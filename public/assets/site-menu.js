@@ -1,5 +1,6 @@
 export const navigationItems = Object.freeze([
   { label: 'HOME', href: '/home' },
+  { label: 'WEEKLY SCHEDULE', href: '/schedule' },
   { label: 'GENRE', href: '/home#genresSection' },
   { label: 'UPDATED', href: '/browse?source=latest' },
   { label: 'ADDED', href: '/browse?source=added' },
@@ -18,7 +19,7 @@ export function mountSiteMenu(header) {
   panel.hidden = true;
   panel.setAttribute('aria-label', 'Site navigation');
   const link = item => `<a href="${item.href}">${item.label}</a>`;
-  panel.innerHTML = navigationItems.map((item, index) => link(item) + (index === 1
+  panel.innerHTML = navigationItems.map(item => link(item) + (item.label === 'GENRE'
     ? `<details class="site-menu-types"><summary>TYPES</summary><div>${['tv', 'movie', 'ova', 'ona', 'special'].map(type => `<a href="/browse?type=${type}">${type === 'movie' ? 'Movie' : type === 'special' ? 'Special' : type.toUpperCase()}</a>`).join('')}</div></details>` : '')).join('');
   header.append(panel);
   const setOpen = open => {

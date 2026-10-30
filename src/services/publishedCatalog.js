@@ -1,9 +1,20 @@
 import { catalogAnime, publicRows, publishedAnime, randomPublished, storedEpisodes } from '../db/cms.repo.js';
-import { scheduleService } from './schedule.js';
+import { scheduleService, weeklyScheduleService } from './schedule.js';
 
-export function createPublishedCatalog(getDatabase, client, { schedule = scheduleService } = {}) {
+export function createPublishedCatalog(getDatabase, client, { schedule = scheduleService, weeklySchedule = weeklyScheduleService } = {}) {
   const requireAnime = slug => publishedAnime(getDatabase(), slug);
   const list = () => publicRows(getDatabase()).map(row => catalogAnime(getDatabase(), row));
+  const publishedSchedule = async (service, date, timezone) => {
+    const published = list();
+    if (!published.length) return [];
+    const rows = await service.get(date, timezone);
+    return rows.flatMap(row => {
+      const exact = row.slug ? published.find(item => [item.slug, item.source_slug].includes(row.slug)) : null;
+      const matches = published.filter(item => item.title.toLowerCase() === row.title.toLowerCase());
+      const anime = exact || (matches.length === 1 ? matches[0] : null);
+      return anime ? [{ ...row, slug: anime.slug }] : [];
+    });
+  };
   const streamClient = { get: (path, params = {}) => {
     const anime = params.slug ? requireAnime(params.slug) : null;
     return client.get(path, anime ? { ...params, slug: anime.source_slug || anime.slug } : params);
@@ -55,16 +66,7 @@ export function createPublishedCatalog(getDatabase, client, { schedule = schedul
       if (source === 'added') rows.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
       return { data: rows.slice((Number(page) - 1) * 24, Number(page) * 24), totalPages: Math.max(1, Math.ceil(rows.length / 24)) };
     },
-    async schedule(date, timezone = 7) {
-      const published = list();
-      if (!published.length) return [];
-      const rows = await schedule.get(date, timezone);
-      return rows.flatMap(row => {
-        const exact = row.slug ? published.find(item => [item.slug, item.source_slug].includes(row.slug)) : null;
-        const matches = published.filter(item => item.title.toLowerCase() === row.title.toLowerCase());
-        const anime = exact || (matches.length === 1 ? matches[0] : null);
-        return anime ? [{ ...row, slug: anime.slug }] : [];
-      });
-    },
+    schedule: (date, timezone = 7) => publishedSchedule(schedule, date, timezone),
+    weeklySchedule: (date, timezone = 7) => publishedSchedule(weeklySchedule, date, timezone),
   };
 }

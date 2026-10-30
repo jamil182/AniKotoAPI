@@ -1,4 +1,4 @@
-import { extractSchedule } from '../extractors/schedule.extractor.js';
+import { extractSchedule, extractWeeklySchedule } from '../extractors/schedule.extractor.js';
 import { isScheduleDate } from '../../public/assets/schedule-data.js';
 import { AniKotoError } from './anikotoApi.js';
 
@@ -42,3 +42,4 @@ export function createScheduleService({ load = extractSchedule, now = Date.now }
 }
 
 export const scheduleService = createScheduleService();
+export const weeklyScheduleService = createScheduleService({ load: extractWeeklySchedule });

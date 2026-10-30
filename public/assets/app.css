@@ -73,7 +73,7 @@ img { display: block; max-width: 100%; }
 .site-menu details[open] summary::after { content: '−'; }
 .site-menu-types > div { padding: 2px 0; background: #0b1622; }
 .site-menu-types a { padding-left: 32px; font-size: .8rem; }
-.nav-search { position: relative; flex: 1; max-width: 460px; }
+.nav-search { position: relative; flex: 1; max-width: 460px; min-width: 0; }
 .nav-search input {
   width: 100%; padding: 10px 16px; border-radius: 10px;
   background: var(--surface); border: 1px solid var(--border);
@@ -88,6 +88,8 @@ img { display: block; max-width: 100%; }
   font-family: var(--font-body); cursor: pointer; transition: all .15s; white-space: nowrap;
 }
 .nav-btn:hover { background: var(--surface); color: var(--ink); }
+.nav-weekly { display: inline-flex; align-items: center; gap: 7px; }
+.nav-weekly svg { flex-shrink: 0; }
 .nav-btn.solid { background: var(--accent); color: #08110f; border-color: var(--accent); }
 .nav-btn.solid:hover { background: var(--accent-hi); }
 .nav-account { position: relative; display: inline-flex; align-items: center; gap: 6px; }
@@ -696,7 +698,7 @@ a.sched-title:hover { text-decoration: underline; }
 .live-status { font-size: .7rem; color: var(--muted); max-width: 180px; }
 .live-status[data-state="live"] { color: #62d8a3; }
 .live-status[data-state="stale"] { color: #edbd6c; }
-@media (max-width: 720px) {
+@media (max-width: 1000px) {
   .nav-inner { display: grid; grid-template-columns: auto minmax(0, 1fr); height: auto; gap: 8px 16px; padding-top: 10px; padding-bottom: 10px; }
   .nav-search { max-width: none; min-width: 0; }
   .nav-links { grid-column: 1 / -1; width: 100%; margin-left: 0; }

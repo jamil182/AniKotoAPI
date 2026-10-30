@@ -153,6 +153,7 @@ app.get("/home", (req, res) => {
 });
 
 app.get('/browse', (req, res) => res.sendFile(path.join(publicDir, 'browse.html')));
+app.get('/schedule', (req, res) => res.sendFile(path.join(publicDir, 'schedule.html')));
 
 app.get(['/login', '/register'], (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
