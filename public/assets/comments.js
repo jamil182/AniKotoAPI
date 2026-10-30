@@ -2,7 +2,7 @@ import { accountRequest, safeReturnPath } from './accounts.js?v=google-1';
 import { commentRequest } from './comments-api.js';
 import { commentEscape as esc, commentMarkup, formatCommentSelection, timestampText } from './comment-markup.js';
 import { commentShell, commentsHTML, reactionsHTML, commentEpisodeLabel } from './comments-view.js';
-import { isComment, isCommentPage, isRepliesPage, isReactionSummary } from './comment-data.js';
+import { isComment, isCommentPage, isRepliesPage, isReactionSummary, commentFilterEpisode, commentFilterLocation } from './comment-data.js?v=2';
 
 /** @param {HTMLElement} root
  * @param {{slug: string, episode?: number, episodes: Array<{episode_no: number | string}>, video?: HTMLVideoElement}} options */
@@ -12,19 +12,19 @@ export function mountComments(root, { slug, episode = 0, episodes, video }) {
   const editor = $('[data-text]'), form = $('[data-form]'), list = $('[data-list]');
   const feedback = $('[data-feedback]'), submit = form.querySelector('[type=submit]');
   const episodeSelect = $('[data-episodes]'), sortSelect = $('[data-sort]'), expanded = new Map();
-  let user = null, sessionChecked = false, selected = episode, page = 1, data = null;
+  let user = null, sessionChecked = false, selected = commentFilterEpisode(location.search, episode), page = 1, data = null;
   let request = null, version = 0, timer = null, busy = false, reply = null, pendingDraft = null;
   let fingerprint = '', episodeSignature = '', preview = false;
-  const next = safeReturnPath(location.pathname + location.search + '#comments');
+  const next = () => safeReturnPath(location.pathname + location.search + '#comments');
   const options = () => ({ slug, watchEpisode: video ? episode : null, signedIn: Boolean(user) });
   function say(message, error = false) {
     feedback.textContent = message; feedback.hidden = !message; feedback.classList.toggle('error', error);
   }
   function postingEpisode() { return reply?.episode ?? (selected === 'all' ? episode : selected); }
-  function timestampReady() { return Boolean(user && !busy && video?.currentSrc && video.readyState >= 1); }
+  function timestampReady() { return Boolean(user && !busy && postingEpisode() === episode && video?.currentSrc && video.readyState >= 1); }
   function applyAuth() {
     const enabled = Boolean(user && !busy);
-    $('[data-auth]').innerHTML = user ? 'Anda sudah login dan dapat mengirim komentar.' : !sessionChecked ? 'Memeriksa sesi login…' : `Anda harus <a href="/login?next=${encodeURIComponent(next)}">login</a> untuk mengirim komentar.`;
+    $('[data-auth]').innerHTML = user ? 'Anda sudah login dan dapat mengirim komentar.' : !sessionChecked ? 'Memeriksa sesi login…' : `Anda harus <a href="/login?next=${encodeURIComponent(next())}">login</a> untuk mengirim komentar.`;
     editor.disabled = !enabled;
     for (const control of root.querySelectorAll('[data-tool],[data-emoji-toggle],[data-spoiler],[data-preview-toggle]')) control.disabled = !enabled;
     for (const control of root.querySelectorAll('[data-write]')) control.disabled = !enabled || (control.hasAttribute('data-mood') && !data) || (control.hasAttribute('data-reply') && control.dataset.locked === 'true');
@@ -37,7 +37,7 @@ export function mountComments(root, { slug, episode = 0, episodes, video }) {
     episodeSelect.disabled = busy; sortSelect.disabled = busy;
     $('[data-reply-notice]').hidden = !reply;
     $('[data-reply-notice]').innerHTML = reply ? `Membalas ${esc(reply.author)} · ${esc(commentEpisodeLabel(reply.episode))} <button type="button" data-cancel-reply>× Batal</button>` : '';
-    if (preview) $('[data-preview]').innerHTML = commentMarkup(editor.value, Boolean(video));
+    if (preview) $('[data-preview]').innerHTML = commentMarkup(editor.value, Boolean(video && postingEpisode() === episode));
   }
   async function session() {
     try {
@@ -180,6 +180,7 @@ export function mountComments(root, { slug, episode = 0, episodes, video }) {
   };
   function changeFilter() {
     selected = episodeSelect.value === 'all' ? 'all' : Number(episodeSelect.value); page = 1; data = null; reply = null; expanded.clear(); fingerprint = '';
+    history.replaceState(null, '', commentFilterLocation(location.href, selected, episode));
     list.innerHTML = '<div class="comment-empty">Memuat komentar…</div>'; $('[data-total]').textContent = 'Memuat komentar…'; applyAuth(); void load();
   }
   episodeSelect.onchange = changeFilter; sortSelect.onchange = changeFilter;
@@ -187,7 +188,7 @@ export function mountComments(root, { slug, episode = 0, episodes, video }) {
     const numbers = [...new Set(values.map(item => Number(item.episode_no)).filter(value => Number.isFinite(value) && value > 0 && value <= 100000))].sort((a, b) => a - b).slice(0, 10000);
     const signature = JSON.stringify(numbers); if (signature === episodeSignature) return; episodeSignature = signature;
     episodeSelect.innerHTML = '<option value="0">Diskusi anime</option><option value="all">Semua episode</option>' + numbers.map(value => `<option value="${value}">Episode ${value}</option>`).join('');
-    if (selected !== 'all' && selected !== 0 && !numbers.includes(selected)) selected = 0;
+    if (selected !== 'all' && selected !== 0 && !numbers.includes(selected)) selected = numbers.includes(episode) ? episode : 0;
     episodeSelect.value = String(selected); applyAuth();
   }
   function stop() { clearInterval(timer); request?.abort(); }

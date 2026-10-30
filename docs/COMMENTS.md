@@ -13,6 +13,7 @@ angka reaksi contoh yang dimasukkan pada production.
 
 - Pada pemutar, filter awal mengikuti episode yang sedang ditonton. Halaman
   detail membuka Diskusi anime. Filter juga menyediakan semua episode.
+  Pilihan episode dipertahankan melalui URL ketika login atau memuat ulang halaman.
 - Jika semua episode dipilih, label di bawah editor menunjukkan episode tujuan
   komentar baru. Balasan selalu mengikuti episode komentar induknya.
 - Format yang tersedia: `**bold**`, `_italic_`, `~~strike~~`, `> quote`, dan

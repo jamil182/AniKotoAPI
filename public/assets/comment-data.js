@@ -9,6 +9,18 @@ export const COMMENT_PAGE_SIZE = 20;
 export const REPLY_PREVIEW_SIZE = 3;
 export const COMMENT_MAX_LENGTH = 4000;
 
+export function commentFilterEpisode(search, fallback = 0) {
+  const value = new URLSearchParams(search).get('commentsEpisode');
+  if (value === 'all') return 'all';
+  return value !== null && /^\d{1,6}(?:\.\d{1,3})?$/.test(value) && Number(value) <= 100000 ? Number(value) : fallback;
+}
+export function commentFilterLocation(href, selected, fallback = 0) {
+  const url = new URL(href);
+  if (selected === fallback) url.searchParams.delete('commentsEpisode');
+  else url.searchParams.set('commentsEpisode', String(selected));
+  return url.pathname + url.search + url.hash;
+}
+
 const count = value => Number.isSafeInteger(value) && value >= 0;
 const positive = value => count(value) && value > 0;
 /** @param {unknown} value @returns {value is import('./comments.types.js').Comment} */

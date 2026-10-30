@@ -4,9 +4,17 @@ import * as cheerio from 'cheerio';
 import { commentMarkup, formatCommentSelection, timestampText } from './comment-markup.js';
 import { commentHTML, reactionsHTML, commentShell } from './comments-view.js';
 import { commentRequest } from './comments-api.js';
-import { isComment, isCommentPage, COMMENT_MOODS } from './comment-data.js';
+import { isComment, isCommentPage, COMMENT_MOODS, commentFilterEpisode, commentFilterLocation } from './comment-data.js';
 
 const item={id:1,animeSlug:'test-anime',episode:2,parentId:null,author:'<img src=x onerror=bad()>',body:'**<script>bad()</script>** _italics_ ~~strike~~ ||secret|| [12:34]\n> quote',spoiler:false,createdAt:0,deleted:false,likes:0,liked:false,canDelete:false,replyCount:0};
+test('episode context survives login redirects and refreshes without accepting malformed filters',()=>{
+  const path=commentFilterLocation('https://anime.example/watch/test/8?mode=direct#comments',12.5,8);
+  assert.equal(path,'/watch/test/8?mode=direct&commentsEpisode=12.5#comments');
+  assert.equal(commentFilterEpisode(new URL(path,'https://anime.example').search,8),12.5);
+  assert.equal(commentFilterEpisode('?commentsEpisode=all',8),'all');
+  for(const value of ['-1','Infinity','100001','<script>'])assert.equal(commentFilterEpisode('?commentsEpisode='+encodeURIComponent(value),8),8);
+  assert.equal(commentFilterLocation('https://anime.example/watch/test/8?commentsEpisode=2',8,8),'/watch/test/8');
+});
 test('comment formatting escapes all user HTML while providing safe formatting, spoilers and episode-aware timestamps',()=>{
   const $=cheerio.load(commentHTML(item,{watchEpisode:2,signedIn:false}));
   assert.equal($('script,img,iframe,a').length,0); assert.equal($('strong').text(),'<script>bad()</script>'); assert.equal($('em').text(),'italics'); assert.equal($('s').text(),'strike');
