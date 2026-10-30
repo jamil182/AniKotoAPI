@@ -8,9 +8,12 @@ function showSelection(params) {
   document.querySelectorAll('#browseTabs button').forEach(button => button.classList.toggle('on', button.dataset.src === params.source));
   const filter = params.genre ? `Genre: ${params.genre}.` : params.letter ? `Titles starting with ${params.letter === '0' ? '#' : params.letter.toUpperCase()}.` : '';
   const view = CATALOG_VIEWS[params.source];
-  const title = params.type ? ANIME_TYPES[params.type] : view.title;
+  let title = params.type ? ANIME_TYPES[params.type] : view.title;
+  if (params.genre) title = params.genre.replace(/-/g, ' ') + ' Anime';
+  if (params.letter) title = 'Anime: ' + params.letter.toUpperCase();
+  if (Number(params.page) > 1) title += ' — Page ' + params.page;
   document.getElementById('browseTitle').textContent = title;
-  document.title = title + ' — AniJs';
+  document.title = title + ' — ' + (document.querySelector('meta[name="application-name"]')?.content || 'Aniyear');
   document.getElementById('browseDescription').textContent = filter || (params.type ? 'Browse anime by type.' : view.description);
 }
 const catalog = createCatalogGrid({

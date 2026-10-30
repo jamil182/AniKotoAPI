@@ -2651,6 +2651,8 @@ and `tz=7` (timezone offset in hours; default WIB).
 
 Direct subtitle setup and translation progress: [Subtitle translation](docs/SUBTITLE_TRANSLATION.md).
 
+Search metadata, server-rendered anime details, robots.txt, and automatic XML sitemaps: [SEO setup](docs/SEO.md).
+
 ### Admin visitor statistics
 
 The admin dashboard includes IP/location estimates, online visitors, daily visitor

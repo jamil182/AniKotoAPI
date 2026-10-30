@@ -4,7 +4,7 @@ import { mountComments } from './comments.js?v=2';
 mountNav();
 const id = decodeURIComponent(location.pathname.replace(/^\/anime\//, '').replace(/\/$/, ''));
 const page = document.getElementById('page');
-let stopLive = null, loaded = false, fingerprint = '';
+let stopLive = null, loaded = !!page.querySelector('#animeDescription h1'), fingerprint = '';
 let discussion = null;
 
 function renderDetail(info, eps) {
@@ -14,7 +14,7 @@ function renderDetail(info, eps) {
   document.getElementById('episodeSection').innerHTML = `<div class="section-head"><h2 class="section-title">Episodes${total ? ` (${total})` : ''}</h2></div>
     ${episodes.length ? `<div class="eps-grid">${episodes.map(episode => `<a class="ep" href="/watch/${encodeURIComponent(id)}/${encodeURIComponent(episode.episode_no)}" title="Episode ${esc(episode.episode_no)}${episode.title ? ' — ' + esc(episode.title) : ''}" style="text-decoration:none">${esc(episode.episode_no)}</a>`).join('')}</div>` : '<div class="state">No episodes listed.</div>'}`;
   mountAnimeDescription(document.getElementById('animeDescription'), { ...info, total }, { heading: 'h1' });
-  document.title = `${info.title} — AniJs`;
+  document.title = `${info.title} — ${document.querySelector('meta[name="application-name"]')?.content || 'Aniyear'}`;
   if (!discussion) discussion = mountComments(document.getElementById('comments'), { slug: info.slug, episodes });
   else discussion.updateEpisodes(episodes);
 }

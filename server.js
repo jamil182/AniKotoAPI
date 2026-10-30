@@ -45,6 +45,7 @@ import { createVisitorsRouter } from './src/routes/visitors.route.js';
 import { createSubtitleTranslationRouter } from './src/routes/subtitleTranslation.route.js';
 import { visitorAddress } from './src/services/visitorAddress.js';
 import { getDb } from "./src/db/index.js";
+import { createSeoRouter } from './src/routes/seo.route.js';
 
 // ══════════════════════════════════════════════════════════════
 // SERVER CONFIGURATION
@@ -58,6 +59,9 @@ app.set("trust proxy", "loopback");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const publicDir = path.join(process.cwd(), "public");
+const catalogClient = createAniKotoClient();
+const publishedCatalog = createPublishedCatalog(getDb, catalogClient);
+const publicCatalog = getCatalogMode(process.env.PUBLIC_CATALOG_MODE) === 'managed' ? publishedCatalog : null;
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",");
 
 // ---- FEATURE: Response compression ----
@@ -131,6 +135,7 @@ app.use((req, res, next) => {
 // NOTE: redirect: false prevents automatic redirects to index.html.
 // index: false stops it answering "/" with index.html, so the landing route
 // below can own the root; the anime home lives at /home.
+app.use(createSeoRouter({ publicDir, client: catalogClient, catalog: publicCatalog }));
 app.use('/api/branding', createBrandingRouter(publicDir));
 app.use(express.static(publicDir, { redirect: false, index: false }));
 
@@ -145,18 +150,6 @@ app.get("/docs", (req, res) => {
   res.sendFile(path.join(publicDir, "docs.html"));
 });
 
-// NOTE: "/" is the landing page; the anime home lives at /home.
-app.get("/", (req, res) => {
-  res.sendFile(path.join(publicDir, "landing.html"));
-});
-
-app.get("/home", (req, res) => {
-  res.sendFile(path.join(publicDir, "index.html"));
-});
-
-app.get('/browse', (req, res) => res.sendFile(path.join(publicDir, 'browse.html')));
-app.get('/schedule', (req, res) => res.sendFile(path.join(publicDir, 'schedule.html')));
-
 app.get('/account', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.sendFile(path.join(publicDir, 'account.html'));
@@ -164,12 +157,6 @@ app.get('/account', (req, res) => {
 app.get(['/login', '/register'], (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.sendFile(path.join(publicDir, req.path === '/register' ? 'register.html' : 'login.html'));
-});
-
-// NOTE: Anime detail page. The slug is read client-side from the path, so every
-// /anime/<slug> serves the same shell.
-app.get("/anime/:slug", (req, res) => {
-  res.sendFile(path.join(publicDir, "anime.html"));
 });
 
 // NOTE: Watch page. Slug and episode are read client-side from the path.
@@ -181,14 +168,6 @@ app.get(["/watch/:slug/:ep", "/watch/:slug"], (req, res) => {
 // token to the (token-protected) /api/admin/* endpoints.
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(publicDir, "admin.html"));
-});
-
-app.get("/tos", (req, res) => {
-  res.sendFile(path.join(publicDir, "tos.html"));
-});
-
-app.get("/privacy", (req, res) => {
-  res.sendFile(path.join(publicDir, "privacy.html"));
 });
 
 // ══════════════════════════════════════════════════════════════
@@ -281,9 +260,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const catalogClient = createAniKotoClient();
-const publishedCatalog = createPublishedCatalog(getDb, catalogClient);
-const publicCatalog = getCatalogMode(process.env.PUBLIC_CATALOG_MODE) === 'managed' ? publishedCatalog : null;
 app.use('/api/auth', createAccountsRouter(getDb));
 app.use('/api/comments', createCommentsRouter(getDb, catalogClient, publicCatalog));
 app.use('/api/admin/comments', createCommentsModerationRouter(getDb));
