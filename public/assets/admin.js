@@ -1,8 +1,10 @@
 import { createAdminClient } from './admin-client.js';
 import { createAdminVisitors } from './admin-visitors.js';
+import { createAdminComments } from './admin-comments.js?v=1';
 
 const client = createAdminClient();
 const visitorStats = createAdminVisitors(client, signedOut);
+const commentModeration = createAdminComments(client, signedOut);
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 const tokenKey = 'anijs_admin_token';
@@ -32,6 +34,7 @@ function notice(message, error = false) {
 }
 function signedOut() {
   visitorStats.stop();
+  commentModeration.stop();
   client.setToken('');
   $('workspace').hidden = true;
   $('authPanel').hidden = false;
@@ -58,6 +61,7 @@ async function connect(token) {
   $('runSync').hidden = false;
   $('logout').hidden = false;
   visitorStats.start();
+  commentModeration.start();
   $('authError').textContent = '';
   $('token').value = '';
   try { sessionStorage.setItem(tokenKey, token); localStorage.removeItem(tokenKey); } catch { /* Session remains usable without storage. */ }

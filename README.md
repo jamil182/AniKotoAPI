@@ -2660,6 +2660,12 @@ definitions, retention, geolocation configuration and reverse proxy requirements
 
 ### User accounts
 
+Anime and watch pages include an episode-aware comment section. Everyone can
+read; posting, replying, likes and anime reactions require a valid local session
+(email or Google). Comments include safe text formatting, spoiler controls,
+pagination and real counts. Admins can hide inappropriate comments from the
+moderation panel. See [docs/COMMENTS.md](docs/COMMENTS.md) for limits and endpoints.
+
 Login and Register also support **Continue with Google**. Configure the three
 Google OAuth environment variables in `.env.example`; setup and account-linking
 instructions are in [docs/GOOGLE_LOGIN.md](docs/GOOGLE_LOGIN.md). Existing users

@@ -38,6 +38,7 @@ import { createAniKotoClient } from "./src/services/anikotoApi.js";
 import { createPublishedCatalog } from "./src/services/publishedCatalog.js";
 import { getCatalogMode } from "./src/services/catalogMode.js";
 import { createAccountsRouter } from "./src/routes/accounts.route.js";
+import { createCommentsRouter, createCommentsModerationRouter } from './src/routes/comments.route.js';
 import { createCmsRouter } from "./src/routes/cms.route.js";
 import { createBrandingRouter } from "./src/routes/branding.route.js";
 import { createVisitorsRouter } from './src/routes/visitors.route.js';
@@ -70,6 +71,7 @@ app.use(compression({
 }));
 
 // ---- FEATURE: Request body size limits ----
+app.use('/api/comments', express.json({ limit: '32kb' }));
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: false, limit: "10kb" }));
 
@@ -283,6 +285,8 @@ const catalogClient = createAniKotoClient();
 const publishedCatalog = createPublishedCatalog(getDb, catalogClient);
 const publicCatalog = getCatalogMode(process.env.PUBLIC_CATALOG_MODE) === 'managed' ? publishedCatalog : null;
 app.use('/api/auth', createAccountsRouter(getDb));
+app.use('/api/comments', createCommentsRouter(getDb, catalogClient, publicCatalog));
+app.use('/api/admin/comments', createCommentsModerationRouter(getDb));
 app.use('/api', createVisitorsRouter(getDb));
 app.use('/api/stream/sub-translate', createSubtitleTranslationRouter(getDb));
 app.use("/api/admin", createCmsRouter(getDb, catalogClient));

@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/app.css?v=weekly-1" />
   <link rel="stylesheet" href="/assets/anime-description.css" />
+  <link rel="stylesheet" href="/assets/comments.css?v=1" />
   <script type="module" src="/assets/branding.js"></script>
   <script type="module" src="/assets/visitors.js"></script>
 </head>
@@ -91,6 +92,7 @@
       </aside>
       <div id="infoPanel" class="watch-description"></div>
     </div>
+    <section id="comments" class="comments-panel" hidden></section>
   </div>
 
   <footer class="foot">
@@ -109,6 +111,7 @@
     import { withIndonesianTranslation, loadSubtitleTrack, subtitleLanguage } from '/assets/subtitles.js?v=2';
     import { serverRowsHTML } from '/assets/server-list.js';
     import { mountAnimeDescription } from '/assets/anime-description.js';
+    import { mountComments } from '/assets/comments.js?v=1';
 
     mountNav();
 
@@ -124,6 +127,7 @@
     let subtitles = [], ccOn = false;
     let playbackMode = 'embed', currentEpisode = null, currentEmbed = null;
     let playbackRequest = null, sourceSelection = 0, nativeControlsReady = false;
+    let discussion = null;
 
     // Offer a machine-translated Indonesian track alongside the real ones.
     // It is built from the English source when the stream ships one, since
@@ -915,6 +919,8 @@
           renderInfo(info);
           loadCountdown(info.slug, ep.episode_no);
           currentEpisode = ep;
+          if (!discussion) discussion = mountComments(document.getElementById('comments'), { slug: info.slug, episode: Number(ep.episode_no), episodes: rows.episodes, video });
+          else discussion.updateEpisodes(rows.episodes);
           if (playerReady) return;
           playerReady = true;
 

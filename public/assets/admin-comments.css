@@ -1,0 +1,7 @@
+.admin-comments { margin-top: 28px; padding: 24px; border: 1px solid var(--border-hi); border-radius: 12px; background: var(--surface); }
+.admin-comments select { background: var(--bg-soft); color: var(--ink); border: 1px solid var(--border-hi); padding: 8px 10px; border-radius: 7px; }
+.admin-comment-row { display: flex; gap: 16px; align-items: flex-start; padding: 18px 0; border-bottom: 1px solid var(--border); }
+.admin-comment-row > div { flex: 1; min-width: 0; }
+.admin-comment-row span, .admin-comment-row small { display: block; margin-top: 5px; color: var(--muted); font-size: .75rem; overflow-wrap: anywhere; }
+.admin-comment-row p { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflow: auto; font-size: .85rem; }
+@media (max-width: 600px) { .admin-comments { padding: 16px; } .admin-comment-row { flex-wrap: wrap; } }
