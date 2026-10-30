@@ -16,10 +16,11 @@ export async function mountAccountNav(host) {
   try { ({ user } = await accountRequest('me')); }
   catch { return; }
   if (!user) { anonymous(); return; }
-  const name = document.createElement('span');
+  const name = document.createElement('a');
+  name.href = '/account';
   name.className = 'nav-account-name';
   name.textContent = user.displayName;
-  name.title = user.displayName;
+  name.title = 'Pengaturan akun';
   const logout = document.createElement('button');
   logout.className = 'nav-btn solid';
   logout.type = 'button';

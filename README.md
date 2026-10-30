@@ -2660,6 +2660,12 @@ definitions, retention, geolocation configuration and reverse proxy requirements
 
 ### User accounts
 
+Login and Register also support **Continue with Google**. Configure the three
+Google OAuth environment variables in `.env.example`; setup and account-linking
+instructions are in [docs/GOOGLE_LOGIN.md](docs/GOOGLE_LOGIN.md). Existing users
+can open `/account` by clicking their name in the navigation. Google identities
+are linked only after authentication, never silently matched by email.
+
 The shared top navigation links to `/login` and `/register`. Registration signs
 the user in; the menu then shows their name and Logout. User accounts do not
 grant admin access. `/api/auth/register`, `/login` and `/logout` accept JSON POST

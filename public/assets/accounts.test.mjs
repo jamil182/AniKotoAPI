@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { safeReturnPath, accountRequest } from './accounts.js';
 
 test('account redirects remain local and avoid returning to authentication pages', () => {
-  for (const input of [null, '', '//evil.example', 'https://evil.example', '/\\evil.example', '/\r\nevil', '/login', '/register?next=/login', '/a/../login']) {
+  for (const input of [null, '', '//evil.example', 'https://evil.example', '/\\evil.example', '/\r\nevil', '/login', '/register?next=/login', '/a/../login', '/api/auth/google/start', '/api/auth/logout']) {
     assert.equal(safeReturnPath(input), '/home', String(input));
   }
   assert.equal(safeReturnPath('/watch/primal-c9aa2/1?mode=direct'), '/watch/primal-c9aa2/1?mode=direct');

@@ -1,4 +1,5 @@
-import { accountRequest, safeReturnPath } from './accounts.js';
+import { accountRequest, safeReturnPath } from './accounts.js?v=google-1';
+import { googleErrorMessage, mountGoogleButton } from './google-account.js?v=1';
 
 mountNav();
 document.getElementById('liveStatus').remove();
@@ -9,6 +10,9 @@ const registration = form.dataset.action === 'register';
 const next = safeReturnPath(new URLSearchParams(location.search).get('next'));
 const alternate = document.getElementById('accountAlternate');
 alternate.href = (registration ? '/login' : '/register') + '?next=' + encodeURIComponent(next);
+const googleError = googleErrorMessage(new URLSearchParams(location.search).get('google'));
+if (googleError) { errorBox.textContent = googleError; errorBox.hidden = false; }
+void mountGoogleButton({ next, errorBox });
 
 accountRequest('me').then(({ user }) => { if (user) location.replace(next); }).catch(() => {});
 form.addEventListener('submit', async event => {

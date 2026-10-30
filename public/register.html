@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex"><title>Register — AniJs</title>
-  <link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/assets/app.css?v=weekly-1"><link rel="stylesheet" href="/assets/accounts.css">
+  <link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/assets/app.css?v=weekly-1"><link rel="stylesheet" href="/assets/accounts.css?v=google-1">
   <script type="module" src="/assets/branding.js"></script>
 </head>
 <body>
@@ -12,8 +12,11 @@
     <section class="account-card" aria-labelledby="accountTitle">
       <p class="account-eyebrow">AKUN ANIJS</p>
       <h1 id="accountTitle">Buat akun baru</h1>
-      <p class="account-intro">Daftar dengan email dan kata sandi pilihan Anda.</p>
+      <p class="account-intro">Daftar menggunakan akun Google atau email Anda.</p>
       <p id="accountError" class="account-error" role="alert" tabindex="-1" hidden></p>
+      <button id="googleSignIn" class="account-google" type="button" disabled><img src="/assets/google-mark.svg" width="20" height="20" alt=""><span>Lanjutkan dengan Google</span></button>
+      <p id="googleStatus" class="account-provider-status" role="status">Memeriksa login Google…</p>
+      <div class="account-divider">atau dengan email</div>
       <form id="accountForm" class="account-form" data-action="register">
         <div class="account-field"><label for="displayName">Nama</label><input id="displayName" name="displayName" autocomplete="nickname" minlength="2" maxlength="60" required></div>
         <div class="account-field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" maxlength="254" required></div>
@@ -25,6 +28,6 @@
       <a class="account-home" href="/home">← Kembali ke beranda</a>
     </section>
   </main>
-  <script src="/assets/api.js?v=weekly-1"></script><script type="module" src="/assets/account-form.js"></script>
+  <script src="/assets/api.js?v=google-1"></script><script type="module" src="/assets/account-form.js?v=google-1"></script>
 </body>
 </html>

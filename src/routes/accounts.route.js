@@ -1,20 +1,12 @@
 import { Router } from 'express';
-import { createAccountService, SESSION_AGE_MS } from '../services/accounts.js';
+import { createAccountService } from '../services/accounts.js';
 import { AccountError } from '../services/accountError.js';
-
-const cookieName = 'anijs_session';
-function readToken(req) {
-  const entries = (req.get('cookie') || '').split(';');
-  const token = entries.find(entry => entry.trim().startsWith(cookieName + '='));
-  return token?.trim().slice(cookieName.length + 1);
-}
-const cookieOptions = req => ({
-  httpOnly: true, sameSite: 'lax', path: '/',
-  secure: req.secure || req.get('x-forwarded-proto') === 'https',
-});
+import { accountCookieOptions as cookieOptions, readAccountCookie as readToken, sessionCookie as cookieName, writeAccountSession } from './accountCookies.js';
+import { createGoogleAccountsRouter } from './googleAccounts.route.js';
+import { visitorAddress } from '../services/visitorAddress.js';
 
 /** @param {() => import('better-sqlite3').Database} getDatabase */
-export function createAccountsRouter(getDatabase, { now = Date.now, maxAttempts = 10 } = {}) {
+export function createAccountsRouter(getDatabase, { now = Date.now, maxAttempts = 10, google = {} } = {}) {
   const service = createAccountService(getDatabase, { now });
   const router = Router();
   const attempts = new Map();
@@ -29,10 +21,13 @@ export function createAccountsRouter(getDatabase, { now = Date.now, maxAttempts 
     }
     if (!sameOrigin || req.get('sec-fetch-site') === 'cross-site') return res.status(403).json({ success: false, message: 'Permintaan lintas situs ditolak.' });
     if (!req.is('application/json')) return res.status(415).json({ success: false, message: 'Gunakan format JSON.' });
-    if (!['/login', '/register'].includes(req.path)) return next();
+    next();
+  });
+  router.use((req, res, next) => {
+    if (!(req.method === 'POST' && ['/login', '/register', '/google/link'].includes(req.path)) && !(req.method === 'GET' && req.path === '/google/start')) return next();
     const time = now();
     for (const [key, value] of attempts) if (value.until <= time) attempts.delete(key);
-    const key = req.ip;
+    const key = visitorAddress(req) || req.ip;
     const limit = attempts.get(key) || { count: 0, until: time + 15 * 60 * 1000 };
     if (limit.count >= maxAttempts) {
       res.setHeader('Retry-After', String(Math.max(1, Math.ceil((limit.until - time) / 1000))));
@@ -43,6 +38,7 @@ export function createAccountsRouter(getDatabase, { now = Date.now, maxAttempts 
     attempts.set(key, limit);
     next();
   });
+  router.use('/google', createGoogleAccountsRouter(getDatabase, service, { ...google, now }));
   const handle = (method, path, action) => router[method](path, async (req, res) => {
     try { await action(req, res); }
     catch (error) {
@@ -54,7 +50,7 @@ export function createAccountsRouter(getDatabase, { now = Date.now, maxAttempts 
   for (const action of ['register', 'login']) {
     handle('post', '/' + action, async (req, res) => {
       const result = await service[action](req.body, readToken(req));
-      res.cookie(cookieName, result.token, { ...cookieOptions(req), maxAge: SESSION_AGE_MS });
+      writeAccountSession(req, res, result.token);
       res.status(action === 'register' ? 201 : 200).json({ success: true, results: { user: result.user } });
     });
   }

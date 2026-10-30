@@ -50,6 +50,13 @@ export function createAccountService(getDatabase, { now = Date.now } = {}) {
       return { user: publicAccount(row), token };
     },
     current(token) { const hash = sessionHash(token); return hash ? repo().current(hash, now()) : null; },
+    /** @param {import('./googleOAuth.types.js').GoogleIdentity} identity */
+    googleLogin(identity, previousToken, linkUserId = null) {
+      const token = randomBytes(32).toString('base64url'), time = now();
+      const user = repo().googleLogin(identity, digest(token), time, time + SESSION_AGE_MS, sessionHash(previousToken), linkUserId);
+      return { user, token };
+    },
+    googleLinked(id) { return repo().googleLinked(id); },
     logout(token) { const hash = sessionHash(token); if (hash) repo().logout(hash); },
   };
 }

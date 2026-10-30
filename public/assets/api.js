@@ -234,5 +234,5 @@ function mountNav(active) {
   host.innerHTML = navHTML(active);
   wireNav();
   import('/assets/site-menu.js?v=weekly-1').then(module => module.mountSiteMenu(host)).catch(() => {});
-  import('/assets/account-nav.js').then(module => module.mountAccountNav(document.getElementById('navAccount'))).catch(() => {});
+  import('/assets/account-nav.js?v=google-1').then(module => module.mountAccountNav(document.getElementById('navAccount'))).catch(() => {});
 }

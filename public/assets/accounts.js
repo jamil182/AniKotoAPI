@@ -3,7 +3,7 @@ export function safeReturnPath(value) {
   if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || /[\\\x00-\x20\x7f]/.test(value)) return '/home';
   try {
     const url = new URL(value, 'https://anijs.invalid');
-    if (url.origin !== 'https://anijs.invalid' || /^\/(?:login|register)(?:\/|$)/.test(url.pathname)) return '/home';
+    if (url.origin !== 'https://anijs.invalid' || /^\/(?:login|register|api\/auth)(?:\/|$)/.test(url.pathname)) return '/home';
     return url.pathname + url.search + url.hash;
   } catch { return '/home'; }
 }

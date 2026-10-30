@@ -108,6 +108,15 @@ test('untrusted direct requests cannot evade throttling with forwarded headers',
   assert.equal((await post('login', {}, { 'X-Forwarded-For': '198.51.100.2' })).status, 429);
 });
 
+test('verified Cloudflare visitors have separate login budgets while forged client headers remain ineffective', async t => {
+  const { post } = await fixture(t, { trustProxy: 'loopback', maxAttempts: 1 });
+  assert.equal((await post('login', {}, { 'X-Forwarded-For': '104.16.1.1', 'CF-Connecting-IP': '203.0.113.9' })).status, 400);
+  assert.equal((await post('login', {}, { 'X-Forwarded-For': '104.16.1.1', 'CF-Connecting-IP': '203.0.113.10' })).status, 400);
+  assert.equal((await post('login', {}, { 'X-Forwarded-For': '104.17.1.1', 'CF-Connecting-IP': '203.0.113.9' })).status, 429);
+  assert.equal((await post('login', {}, { 'X-Forwarded-For': '198.51.100.2', 'CF-Connecting-IP': '203.0.113.11' })).status, 400);
+  assert.equal((await post('login', {}, { 'X-Forwarded-For': '198.51.100.2', 'CF-Connecting-IP': '203.0.113.12' })).status, 429);
+});
+
 test('sessions expire and each account retains at most five active sessions', async t => {
   const db = openDb(':memory:');
   t.after(() => db.close());

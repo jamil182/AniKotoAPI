@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex"><title>Akun</title>
+  <link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/assets/app.css?v=weekly-1"><link rel="stylesheet" href="/assets/accounts.css?v=google-1">
+  <script type="module" src="/assets/branding.js"></script>
+</head>
+<body>
+  <header id="nav"></header>
+  <main class="wrap account-page"><section class="account-card" aria-labelledby="accountTitle">
+    <p class="account-eyebrow">PENGATURAN AKUN</p><h1 id="accountTitle">Akun Anda</h1>
+    <p id="accountError" class="account-error" role="alert" tabindex="-1" hidden></p>
+    <p id="accountNotice" class="account-notice" role="status" hidden></p>
+    <dl class="account-details"><dt>Nama</dt><dd id="accountName">Memuat…</dd><dt>Email</dt><dd id="accountEmail">Memuat…</dd></dl>
+    <h2 class="account-section-title">Login Google</h2><p class="account-intro">Tautkan akun Google untuk masuk tanpa mengetik kata sandi website.</p>
+    <button id="googleSignIn" class="account-google" type="button" disabled><img src="/assets/google-mark.svg" width="20" height="20" alt=""><span>Hubungkan akun Google</span></button>
+    <p id="googleStatus" class="account-provider-status" role="status">Memeriksa koneksi Google…</p>
+    <a class="account-home" href="/home">← Kembali ke beranda</a>
+  </section></main>
+  <script src="/assets/api.js?v=google-1"></script><script type="module" src="/assets/account-page.js?v=1"></script>
+</body>
+</html>

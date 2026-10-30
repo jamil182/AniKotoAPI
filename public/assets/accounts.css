@@ -15,4 +15,18 @@
 .account-alternate { margin: 22px 0 0; text-align: center; font-size: .85rem; }
 .account-alternate a { color: var(--accent); font-weight: 600; }
 .account-home { display: block; margin-top: 16px; text-align: center; color: var(--muted); font-size: .8rem; }
+.account-google { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 10px 12px; border: 1px solid #747775; border-radius: 5px; background: #fff; color: #1f1f1f; font: 500 14px Roboto, Arial, sans-serif; letter-spacing: .25px; cursor: pointer; }
+.account-google img { flex-shrink: 0; }
+.account-google:hover:enabled { background: #f2f2f2; }
+.account-google:disabled { opacity: .65; cursor: default; }
+.account-google:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.account-provider-status { margin: 10px 0 0; color: var(--muted); font-size: .78rem; }
+.account-provider-status[hidden] { display: none; }
+.account-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0; color: var(--muted); font-size: .78rem; }
+.account-divider::before, .account-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-hi); }
+.account-details { margin: 22px 0 28px; }
+.account-details dt { margin-top: 14px; color: var(--muted); font-size: .8rem; }
+.account-details dd { margin: 4px 0 0; color: var(--ink); overflow-wrap: anywhere; }
+.account-section-title { font-size: 1.1rem; }
+.account-notice { padding: 11px 13px; border: 1px solid var(--accent); border-radius: 9px; color: var(--accent); font-size: .85rem; }
 @media (max-width: 540px) { .account-page { padding: 28px 16px; } .account-card { padding: 26px 22px; } }
