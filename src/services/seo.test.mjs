@@ -5,7 +5,7 @@ import express from 'express';
 import { load } from 'cheerio';
 import { createSeoRouter } from '../routes/seo.route.js';
 import { createSeoCatalog, seoBrowse, seoConfiguration } from './seo.js';
-import { renderSeo, sitemapXml } from './seoRender.js';
+import { renderSeo, seoLanding, seoLinks, sitemapXml } from './seoRender.js';
 import { AniKotoError } from './anikotoApi.js';
 
 const config = {origin:'https://aniyear.com',name:'Aniyear'};
@@ -131,6 +131,12 @@ test('safe head replacement leaves only one canonical and JSON-LD graph and esca
   assert.equal($('meta[name="description"]').length,1);assert.equal($('[onload]').length,0);
   assert.equal($('script').length,1);assert.doesNotThrow(()=>JSON.parse($('script').text()));
   assert.match(sitemapXml(['/browse?a=1&b=2','/browse?a=1&b=2'],config.origin),/a=1&amp;b=2/);
+});
+
+test('custom landing templates retain branding and footer when the original footer paragraph was removed',()=>{
+  const html=seoLanding('<html><head><title>Custom brand</title></head><body><main><section class="landing-right"><h1>Custom text</h1></section></main><footer>Custom footer</footer></body></html>',seoLinks([anime]));
+  const $=load(html);assert.equal($('h1').text(),'Custom text');assert.equal($('footer').text(),'Custom footer');
+  assert.equal($('.landing-right a').text(),anime.title);assert.equal($('title').text(),'Custom brand');
 });
 
 test('SEO requests deduplicate, expire, recover after failure, and cap concurrent upstream work',async()=>{

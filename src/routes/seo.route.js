@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { AniKotoError } from '../services/anikotoApi.js';
 import { createSeoCatalog, seoBrowse, seoConfiguration } from '../services/seo.js';
-import { renderSeo, seoAnimeBody, seoEscape, seoImage, seoLinks, seoText, sitemapXml } from '../services/seoRender.js';
+import { renderSeo, seoAnimeBody, seoEscape, seoImage, seoLanding, seoLinks, seoText, sitemapXml } from '../services/seoRender.js';
 import { CATALOG_VIEWS } from '../../public/assets/catalog-sources.js';
 
 const staticPaths = ['/', '/home', '/browse', '/schedule', '/privacy', '/tos'];
@@ -86,7 +86,7 @@ export function createSeoRouter({ publicDir, client, catalog = null, config = se
         const listing = await data.page(checked.params);
         const links = seoLinks(listing.data);
         if (req.path === '/home') template = template.replace('<div id="latest"></div>', () => '<div id="latest">'+links+'</div>');
-        else if (req.path === '/') template = template.replace('<p class="landing-foot">', () => '<h2>Explore the latest anime</h2>'+links+'<p class="landing-foot">');
+        else if (req.path === '/') template = seoLanding(template, links);
         else {
           title = CATALOG_VIEWS[checked.source].title;
           if (checked.params.has('genre')) title = checked.params.get('genre').replace(/-/g,' ') + ' Anime';

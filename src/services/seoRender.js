@@ -1,4 +1,5 @@
 import { animeDescriptionHTML } from '../../public/assets/anime-description.js';
+import { load } from 'cheerio';
 
 /** @param {unknown} value */
 export const seoEscape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
@@ -51,6 +52,17 @@ export function renderSeo(template, config, metadata) {
 /** @param {import('./seo.types.js').SeoAnime[]} rows */
 export function seoLinks(rows) {
   return `<ul class="seo-catalog-list">${rows.map(anime => `<li><a href="/anime/${encodeURIComponent(anime.slug)}">${seoEscape(anime.title)}</a></li>`).join('')}</ul>`;
+}
+
+/** Preserve customized landing text and footer while adding visible catalog links.
+ * @param {string} template @param {string} links */
+export function seoLanding(template, links) {
+  const page = load(template);
+  const target = page('.landing-right').first();
+  const section = '<section aria-label="Discover anime"><h2>Explore the latest anime</h2>'+links+'</section>';
+  if (target.length) target.append(section);
+  else page('main').first().append(section);
+  return page.html();
 }
 
 /** @param {import('./seo.types.js').SeoDetail} detail */
