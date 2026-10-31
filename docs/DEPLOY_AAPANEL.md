@@ -96,6 +96,21 @@ Periksa `http://127.0.0.1:4455/api/health` dari server, kemudian kunjungi
 Direct dan halaman akun. `/api/catalog/status` harus melaporkan mode `live`.
 Tampilan katalog dan ketersediaan video tetap bergantung pada API/provider.
 
+Pembatas permintaan memisahkan playback (default `PLAYBACK_RATE_LIMIT=300` per IP),
+katalog/akun (default `RATE_LIMIT=100` per IP), dan API native publik. Jendelanya
+`RATE_WINDOW=60000` milidetik. Pindah episode tidak menghabiskan jatah Home.
+Potongan video, subtitle asli, dan health tidak memakai jatah ini; batas khusus
+login, komentar, dan terjemahan tetap berlaku. Respons 429 menyertakan `Retry-After`
+dan `Cache-Control: no-store`, sehingga browser dapat menunggu tanpa menyimpan error.
+
+Saat `ANIKOTO_API_BASE_URL` menunjuk tepat ke `/api` pada origin HTTPS `SITE_URL`,
+client menandai panggilan native dari proses aplikasi sendiri dengan marker acak
+yang hanya hidup di memori proses. Hanya panggilan GET native dengan marker valid
+yang dikecualikan, agar seluruh pengunjung tidak berbagi jatah IP keluar server.
+Marker tidak dikirim ke provider lain dan tidak menggantikan autentikasi akun/admin.
+Tidak perlu menambah credential di `.env`. Provider video tetap dapat membatasi
+permintaan di sisi mereka; perbaikan ini mengatasi pembatas internal aplikasi.
+
 Untuk memperbarui: catat commit lama, jalankan `git pull --ff-only origin main`,
 `npm ci --omit=dev`, lalu restart hanya proses `anijs` dan ulangi pemeriksaan.
 Gunakan binary Node/npm yang sama dengan proses aplikasi. Simpan database di

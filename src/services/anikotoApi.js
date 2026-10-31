@@ -1,4 +1,5 @@
 import axios from "axios";
+import { internalApiHeaders } from './internalApi.js';
 
 export class AniKotoError extends Error {
   constructor(message, status = 502, retryAfter = null) {
@@ -73,7 +74,7 @@ export function createAniKotoClient({
       try {
         const { data } = await request(url.href, {
           timeout: 12000, maxRedirects: 0, maxContentLength: 4 * 1024 * 1024,
-          headers: { Accept: "application/json" },
+          headers: { Accept: "application/json", ...internalApiHeaders(base) },
         });
         if (!isRecord(data) || data.success !== true || data.results === undefined || data.results === null) {
           throw new AniKotoError("AniKotoAPI returned an invalid or unsuccessful response");

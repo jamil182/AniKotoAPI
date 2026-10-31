@@ -43,7 +43,7 @@ import { createCmsRouter } from "./src/routes/cms.route.js";
 import { createBrandingRouter } from "./src/routes/branding.route.js";
 import { createVisitorsRouter } from './src/routes/visitors.route.js';
 import { createSubtitleTranslationRouter } from './src/routes/subtitleTranslation.route.js';
-import { visitorAddress } from './src/services/visitorAddress.js';
+import { createApiRateLimit } from './src/middleware/apiRateLimit.js';
 import { getDb } from "./src/db/index.js";
 import { createSeoRouter } from './src/routes/seo.route.js';
 import { createSynopsisTranslationRouter } from './src/routes/synopsisTranslation.route.js';
@@ -201,51 +201,7 @@ const jsonError = (res, message = "Internal server error", status = 500) =>
 // API ROUTES
 // ══════════════════════════════════════════════════════════════
 
-// ---- FEATURE: Rate limiting (configurable, default 100 requests per minute per IP) ----
-const requestCounts = new Map();
-const RATE_LIMIT = parseInt(process.env.RATE_LIMIT) || 100;
-const RATE_WINDOW = parseInt(process.env.RATE_WINDOW) || 60000;
-
-// ---- FEATURE: Rate limiter cleanup interval (every 5 minutes) ----
-const RATE_CLEANUP_INTERVAL = 300000;
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, timestamps] of requestCounts.entries()) {
-    const validTimestamps = timestamps.filter(t => now - t < RATE_WINDOW);
-    if (validTimestamps.length === 0) {
-      requestCounts.delete(ip);
-    } else {
-      requestCounts.set(ip, validTimestamps);
-    }
-  }
-}, RATE_CLEANUP_INTERVAL);
-
-// Media proxy endpoints stream many segments per minute; they are media
-// delivery, not API calls, so exempt them from the per-IP API rate limit —
-// otherwise a single video trips the limit within seconds.
-const RATE_EXEMPT = ["/api/stream/proxy", "/api/stream/ts-proxy", "/api/stream/sub-proxy"];
-
-app.use((req, res, next) => {
-  if (RATE_EXEMPT.some(p => req.path.startsWith(p))) return next();
-  const ip = visitorAddress(req) || req.ip || req.connection.remoteAddress;
-  const now = Date.now();
-  if (!requestCounts.has(ip)) {
-    requestCounts.set(ip, []);
-  }
-  const timestamps = requestCounts.get(ip).filter(t => now - t < RATE_WINDOW);
-  requestCounts.set(ip, timestamps);
-  if (timestamps.length >= RATE_LIMIT) {
-    return res.status(429).json({
-      success: false,
-      message: "Rate limit exceeded. Try again later.",
-      retryAfter: Math.ceil((timestamps[0] + RATE_WINDOW - now) / 1000)
-    });
-  }
-  timestamps.push(now);
-  res.setHeader("X-RateLimit-Limit", RATE_LIMIT);
-  res.setHeader("X-RateLimit-Remaining", RATE_LIMIT - timestamps.length);
-  next();
-});
+app.use(createApiRateLimit());
 
 // ---- FEATURE: Creator info middleware (injects attribution into all responses) ----
 app.use(addCreatorInfo);
