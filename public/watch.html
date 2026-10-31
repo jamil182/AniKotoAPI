@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/assets/app.css?v=weekly-1" />
   <link rel="stylesheet" href="/assets/anime-description.css" />
   <link rel="stylesheet" href="/assets/comments.css?v=1" />
+  <link rel="stylesheet" href="/assets/episode-navigation.css?v=1" />
   <script type="module" src="/assets/branding.js"></script>
   <script type="module" src="/assets/visitors.js"></script>
 </head>
@@ -19,16 +20,18 @@
 
   <div class="wrap wrap-watch">
     <div class="watch2">
-      <aside class="ep-col">
+      <aside class="ep-col" aria-labelledby="episodeHeading">
         <div class="ep-block">
           <div class="ep-block-head">
-            <h3>Episodes</h3>
-            <select class="ep-range" id="epRange"></select>
+            <h3 id="episodeHeading">Episodes</h3>
+            <select class="ep-range" id="epRange" data-episode-range aria-label="Episode range" disabled></select>
+            <input class="ep-find" data-episode-find type="text" inputmode="decimal" maxlength="10" placeholder="Find no." aria-label="Find episode number" aria-describedby="episodeFindStatus" disabled>
           </div>
-          <div class="ep-list" id="epNums"></div>
+          <nav class="ep-list" id="epNums" data-episode-grid aria-label="Episode list"></nav>
+          <p class="ep-find-status" id="episodeFindStatus" data-episode-status role="status" hidden></p>
         </div>
       </aside>
-      <div>
+      <div class="watch-player-column">
         <div class="player-wrap paused" id="playerWrap">
           <video id="video" playsinline></video>
           <div class="v-center">
@@ -112,6 +115,7 @@
     import { serverRowsHTML } from '/assets/server-list.js';
     import { mountAnimeDescription } from '/assets/anime-description.js';
     import { mountComments } from '/assets/comments.js?v=4';
+    import { createEpisodeNavigation } from '/assets/episode-navigation.js?v=1';
 
     mountNav();
 
@@ -334,37 +338,11 @@
     window.addEventListener('pagehide', () => { resetSubtitles(); playbackRequest?.abort(); embedPlayer.clear(); destroyHls(); });
     window.addEventListener('pageshow', event => { if (event.persisted && currentEpisode) switchPlaybackMode(playbackMode); });
 
-    // ---- Episode grid with 100-episode ranges ----
+    const episodeNavigation = createEpisodeNavigation(document.querySelector('.ep-col'), { href: epUrl, title: decodeEntities });
     function renderEpisodeGrid() {
-      const range = document.getElementById('epRange');
-      const nums = document.getElementById('epNums');
-      const total = episodes.length;
-      const size = 100;
-      const ranges = [];
-      for (let s = 0; s < total; s += size) ranges.push([s, Math.min(s + size, total)]);
-      // which range holds the current episode?
-      curIndex = episodes.findIndex(e => String(e.episode_no) === String(epNo));
-      const activeRange = Math.max(0, Math.floor((curIndex < 0 ? 0 : curIndex) / size));
-
-      range.innerHTML = ranges.map(([a, b], i) =>
-        `<option value="${i}"${i === activeRange ? ' selected' : ''}>${episodes[a].episode_no}-${episodes[b - 1].episode_no}</option>`).join('');
-
-      const drawRange = (ri) => {
-        const [a, b] = ranges[ri];
-        // Vertical list in the left column: number plus title, so the sidebar
-        // reads like a table of contents rather than a grid of bare numbers.
-        nums.innerHTML = episodes.slice(a, b).map(e => {
-          const label = e.title ? decodeEntities(e.title) : 'Episode ' + e.episode_no;
-          const on = String(e.episode_no) === String(epNo) ? ' on' : '';
-          return `<a class="ep-item${on}" href="${epUrl(e.episode_no)}" title="${esc(label)}">` +
-                 `<span class="n">${esc(e.episode_no)}</span>` +
-                 `<span class="t">${esc(label)}</span></a>`;
-        }).join('');
-      };
-      range.onchange = () => drawRange(+range.value);
-      drawRange(activeRange);
+      curIndex = episodes.findIndex(item => String(item.episode_no) === String(epNo));
+      episodeNavigation.update(episodes, epNo);
     }
-
 
     // ---- Sidebar: upstream catalog recommendations ----
     async function loadTopPicks() {

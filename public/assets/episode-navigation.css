@@ -1,0 +1,27 @@
+.watch2 { grid-template-areas: "episodes player related" "description description description"; }
+.watch-player-column { grid-area: player; min-width: 0; }
+.watch2 > .ep-col { grid-area: episodes; position: static; min-width: 0; }
+.watch2 > aside:not(.ep-col) { grid-area: related; min-width: 0; }
+.watch2 > .watch-description { grid-area: description; }
+.ep-col .ep-block { padding: 10px; border-radius: 5px; max-height: min(700px,calc(100dvh - 108px)); overflow: hidden; background: #080f17; }
+.ep-col .ep-block-head { display: grid; grid-template-columns: auto minmax(0,1fr) 66px; gap: 5px; margin-bottom: 10px; flex-shrink: 0; }
+.ep-col .ep-block-head h3 { font-family: var(--font-body); font-size: .73rem; }
+.ep-col .ep-range, .ep-find { width: 100%; min-width: 0; box-sizing: border-box; margin: 0; padding: 6px 4px; border: 1px solid #213145; border-radius: 3px; background: #142232; color: #91a9c4; font: .72rem var(--font-body); }
+.ep-find::placeholder { color: #70879e; }
+.ep-col .ep-list { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); align-content: start; gap: 4px; padding: 2px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-gutter: stable; min-height: 0; }
+.ep-col .ep-item { display: grid; place-items: center; padding: 6px 2px; min-width: 0; border-radius: 3px; background: #142232; color: #91a9c4; font-size: .77rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.ep-col .ep-item:hover { background: #20354c; color: #e2efff; }
+.ep-col .ep-item.on { background: #20a8d2; color: #fff; border-color: #20a8d2; font-weight: 600; }
+.ep-col .ep-item.is-match { outline: 1px solid #8ce1f9; outline-offset: -2px; color: #fff; }
+.ep-col .ep-item:focus-visible, .ep-find:focus-visible, .ep-col .ep-range:focus-visible { outline: 2px solid #53cdf4; outline-offset: 1px; }
+.ep-find[aria-invalid=true] { border-color: #d89175; }
+.ep-find-status { margin: 7px 0 0; font-size: .72rem; color: #d8a48a; }
+.ep-find-status[hidden] { display: none; }
+@media(max-width:1400px) {
+  .watch2 { grid-template-areas: "player related" "episodes episodes" "description description"; }
+  .ep-col .ep-block { max-height: 300px; }
+  .ep-col .ep-block-head { grid-template-columns: auto minmax(100px,160px) minmax(66px,120px); justify-content: start; }
+  .ep-col .ep-list { grid-template-columns: repeat(auto-fill,minmax(48px,1fr)); }
+}
+@media(max-width:980px) { .watch2 { grid-template-areas: "player" "episodes" "description" "related"; } }
+@media(max-width:480px) { .ep-col .ep-list { grid-template-columns: repeat(5,minmax(0,1fr)); } }
