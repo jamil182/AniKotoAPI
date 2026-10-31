@@ -17,3 +17,9 @@ test('related extraction excludes invalid links and unnamed cards and bounds sou
   assert.equal(extractWatchSuggestions($,'Related').length,40);
   assert.deepEqual(extractWatchSuggestions($,'Recommended'),[]);
 });
+
+test('absolute HTTPS links from source mirrors retain the slug and actual anime type', () => {
+  const $=load('<section class="w-side-section"><h3 class="title">Recommended</h3><a class="item" href="https://anikototv.to/watch/one-piece-special-hamg1"><span class="name">One Piece Special</span><div class="meta"><span class="dot">Special</span><span class="dot">2 Eps</span><span class="dot">Unknown</span></div></a><a class="item" href="https://user:pass@anikoto.cz/watch/private"><span class="name">Bad</span></a></section>');
+  const result=extractWatchSuggestions($,'Recommended');
+  assert.equal(result.length,1);assert.equal(result[0].slug,'one-piece-special-hamg1');assert.equal(result[0].type,'Special');
+});
