@@ -17,6 +17,7 @@
 
 import * as cheerio from "cheerio";
 import { fetchWithMirror } from "../helper/mirror.helper.js";
+import { extractWatchSuggestions } from '../services/watchSuggestions.js';
 
 // ══════════════════════════════════════════════════════════════
 // WATCH PAGE EXTRACTOR
@@ -113,23 +114,6 @@ const extractWatchPage = async (slug, ep) => {
       }
     });
 
-    const recommended = [];
-    $(".w-side-section:has(.title:contains('Recommended')) a.item, aside.sidebar:last .w-side-section a.item").each((i, el) => {
-      const recSlug = $(el).attr("href")?.split("/watch/").pop() || "";
-      const recPoster = $(el).find(".poster img").attr("src") || "";
-      const recTitle = $(el).find(".name").text().trim() || "";
-      const recType = $(el).find(".dot:last-child").text().trim() || "";
-
-      if (recSlug) {
-        recommended.push({
-          slug: recSlug,
-          poster: recPoster,
-          title: recTitle,
-          type: recType
-        });
-      }
-    });
-
     return {
       slug,
       animeId,
@@ -152,7 +136,8 @@ const extractWatchPage = async (slug, ep) => {
       nextEpisodeTimestamp,
       servers,
       trending,
-      recommended
+      related: extractWatchSuggestions($, 'Related'),
+      recommended: extractWatchSuggestions($, 'Recommended')
     };
   } catch (error) {
     throw error;

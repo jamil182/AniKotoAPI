@@ -32,7 +32,7 @@ NODE_ENV=production
 HOST=127.0.0.1
 PORT=4455
 PUBLIC_CATALOG_MODE=live
-ANIKOTO_API_BASE_URL=https://anikototvapi.vercel.app/api
+ANIKOTO_API_BASE_URL=https://aniyear.com/api
 ALLOWED_ORIGINS=https://aniyear.com
 DATABASE_PATH=/www/server/anijs-data/anikoto.db
 ```
@@ -105,6 +105,17 @@ sebelum menyalin database beserta WAL/SHM. Jangan menyalin hanya file `.db` keti
 masih ada transaksi yang aktif.
 
 ## Migrasi domain ke aniyear.com
+
+Sumber katalog production memakai `ANIKOTO_API_BASE_URL=https://aniyear.com/api`.
+Endpoint `/api/latest-updated`, `/api/info`, dan `/api/watch` adalah API native
+aplikasi, sehingga katalog tidak bergantung pada deployment Vercel pihak ketiga.
+Jangan memakai `/api/catalog` sebagai base URL karena akan membuat request berulang
+ke adapter yang sama. Jika domain berubah, perbarui base URL ini ke origin baru
+dan periksa respons JSON sebelum restart. Simpan base URL HTTPS dengan sertifikat valid.
+
+Jika muncul `Catalog temporarily unavailable`, periksa `/api/health` dan
+`/api/catalog/browse?page=1`. Health 200 dengan browse 502 menunjukkan kegagalan
+sumber katalog; periksa sumber tersebut sebelum mengubah database atau DNS.
 
 Domain utama adalah `https://aniyear.com`. Aplikasi tetap menggunakan folder,
 proses `anijs`, port, dan database yang sama; akun, komentar, serta katalog tidak
