@@ -1,5 +1,5 @@
 import { mountAnimeDescription } from './anime-description.js';
-import { mountComments } from './comments.js?v=3';
+import { mountComments } from './comments.js?v=4';
 
 mountNav();
 const id = decodeURIComponent(location.pathname.replace(/^\/anime\//, '').replace(/\/$/, ''));

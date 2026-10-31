@@ -1,5 +1,5 @@
-import { searchMedia } from "./comment-media-api.js";
-import { mediaStyles } from "./comment-media-view.js";
+import { searchMedia } from "./comment-media-api.js?v=2";
+import { mediaStyles } from "./comment-media-view.js?v=2";
 
 /** @param {HTMLElement} root @param {(value: import('./comments.types.js').CommentMedia | null) => void} onChange */
 export function createCommentMediaPicker(root, onChange) {

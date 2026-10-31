@@ -53,7 +53,7 @@ tiga titik pada key di Partner Panel.
 Sesuai [persyaratan KLIPY](https://docs.klipy.com/integration-requirements),
 request API dan gambar dilakukan langsung dari browser. Tidak ada proxy API,
 cache media, atau salinan file di server. SQLite menyimpan referensi
-`{provider:"klipy", kind:"gif"|"image", slug, title}` saja; browser mengambil
+`{provider:"klipy", kind:"gif"|"image", id, slug, title}` saja; browser mengambil
 URL terkini melalui Items API saat menampilkan komentar. Semua URL wajib HTTPS
 dan berasal dari domain media resmi KLIPY. Parameter URL provider dipertahankan.
 HTML seperti `<img>` di teks komentar tetap di-escape.

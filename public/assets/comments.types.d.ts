@@ -1,5 +1,5 @@
 export type Mood = 'peak' | 'mid' | 'crying' | 'sus' | 'angry' | 'good' | 'funny' | 'shocked' | 'wholesome';
-export interface CommentMedia { provider: 'klipy'; kind: 'gif' | 'image'; slug: string; title: string }
+export interface CommentMedia { provider: 'klipy'; kind: 'gif' | 'image'; slug: string; title: string; id?: number }
 export interface Comment {
   id: number; animeSlug: string; episode: number; parentId: number | null;
   author: string; body: string; spoiler: boolean; createdAt: number;

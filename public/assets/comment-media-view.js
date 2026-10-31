@@ -1,5 +1,5 @@
-import { commentMedia } from "./comment-media-data.js";
-import { mediaItems } from "./comment-media-api.js";
+import { commentMedia, matchMediaItem } from "./comment-media-data.js?v=2";
+import { mediaItems } from "./comment-media-api.js?v=2";
 
 const escape = (value) =>
   String(value ?? "").replace(
@@ -21,7 +21,7 @@ export function mediaStyles() {
 export function commentMediaHTML(value) {
   const media = commentMedia(value);
   if (!media) return "";
-  return `<figure class="comment-media" data-media-slug="${escape(media.slug)}" data-media-kind="${media.kind}" translate="no"><span class="comment-media-loading">${media.kind === "gif" ? "GIF" : "Image"} · Loading…</span><figcaption>${escape(media.title)}</figcaption></figure>`;
+  return `<figure class="comment-media" data-media-slug="${escape(media.slug)}" data-media-kind="${media.kind}" ${media.id ? `data-media-id="${media.id}"` : ""} translate="no"><span class="comment-media-loading">${media.kind === "gif" ? "GIF" : "Image"} · Loading…</span><figcaption>${escape(media.title)}</figcaption></figure>`;
 }
 /** @param {HTMLElement} host */
 export async function hydrateCommentMedia(host) {
@@ -36,22 +36,50 @@ export async function hydrateCommentMedia(host) {
     const targets = elements.filter(
       (element) => element.getAttribute("data-media-kind") === kind,
     );
+    const identified = targets.filter((element) =>
+      element.hasAttribute("data-media-id"),
+    );
     const slugs = [
       ...new Set(
-        targets.map((element) => element.getAttribute("data-media-slug")),
+        identified.map((element) => element.getAttribute("data-media-slug")),
       ),
     ];
-    for (let offset = 0; offset < slugs.length; offset += 40) {
+    const batches = [];
+    for (let offset = 0; offset < slugs.length; offset += 40)
+      batches.push({
+        slugs: slugs.slice(offset, offset + 40),
+        targets: identified,
+        single: false,
+      });
+    // Older drafts lack the stable ID; resolving one reference prevents position-based mismatches.
+    for (const element of targets.filter(
+      (element) => !element.hasAttribute("data-media-id"),
+    ))
+      batches.push({
+        slugs: [element.getAttribute("data-media-slug")],
+        targets: [element],
+        single: true,
+      });
+    for (const batch of batches) {
       try {
         const data = await mediaItems(
           kind === "gif" ? "gif" : "image",
-          slugs.slice(offset, offset + 40),
+          batch.slugs,
         );
-        const items = new Map(
-          data.items.map((item) => [item.media.slug, item]),
-        );
-        for (const element of targets) {
-          const item = items.get(element.getAttribute("data-media-slug"));
+        for (const element of batch.targets) {
+          const item = matchMediaItem(
+            {
+              provider: "klipy",
+              kind: kind === "gif" ? "gif" : "image",
+              slug: element.getAttribute("data-media-slug"),
+              title: "",
+              ...(element.hasAttribute("data-media-id")
+                ? { id: Number(element.getAttribute("data-media-id")) }
+                : {}),
+            },
+            data.items,
+            batch.single,
+          );
           if (!item || !element.isConnected) continue;
           const image = document.createElement("img");
           image.src = item.url;

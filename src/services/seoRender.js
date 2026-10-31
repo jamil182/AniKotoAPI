@@ -46,7 +46,7 @@ export function renderSeo(template, config, metadata) {
     .replace(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi, '')
     .replace('</head>', () => head + '\n</head>')
     .replace(/\/assets\/api\.js(?:\?[^"']*)?(["'])/g, '/assets/api.js?v=language-2$1')
-    .replace(/\/assets\/anime-page\.js(?:\?[^"']*)?(["'])/g, '/assets/anime-page.js?v=media-1$1')
+    .replace(/\/assets\/anime-page\.js(?:\?[^"']*)?(["'])/g, '/assets/anime-page.js?v=media-2$1')
     .replace(/\/assets\/browse-page\.js(?:\?[^"']*)?(["'])/g, '/assets/browse-page.js?v=language-1$1');
 }
 

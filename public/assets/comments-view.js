@@ -1,6 +1,6 @@
 import { commentEscape as esc, commentMarkup } from './comment-markup.js';
 import { COMMENT_MOODS } from './comment-data.js';
-import { commentMediaHTML } from './comment-media-view.js';
+import { commentMediaHTML } from './comment-media-view.js?v=2';
 
 export function reactionsHTML(counts = {}, current = null, signedIn = false) {
   return COMMENT_MOODS.map(item => `<button type="button" class="comment-reaction" data-mood="${item.key}" data-write aria-pressed="${current === item.key}" ${signedIn ? '' : 'disabled'} title="${signedIn ? item.label : 'Login untuk memberi reaksi'}"><span aria-hidden="true">${item.emoji}</span><b>${item.label}</b><span>${Number.isSafeInteger(counts[item.key]) && counts[item.key] >= 0 ? counts[item.key] : 0}</span></button>`).join('');

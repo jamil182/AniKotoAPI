@@ -1,4 +1,4 @@
-import { commentMedia } from './comment-media-data.js';
+import { commentMedia } from './comment-media-data.js?v=2';
 
 export const COMMENT_MOODS = Object.freeze([
   { key: 'peak', label: 'Peak', emoji: '🔥' }, { key: 'mid', label: 'Mid', emoji: '😐' },

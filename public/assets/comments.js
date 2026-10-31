@@ -1,10 +1,10 @@
 import { accountRequest, safeReturnPath } from './accounts.js?v=google-1';
 import { commentRequest } from './comments-api.js';
 import { commentEscape as esc, commentMarkup, formatCommentSelection, timestampText } from './comment-markup.js';
-import { commentShell, commentsHTML, reactionsHTML, commentEpisodeLabel } from './comments-view.js?v=media-1';
-import { isComment, isCommentPage, isRepliesPage, isReactionSummary, commentFilterEpisode, commentFilterLocation } from './comment-data.js?v=3';
-import { createCommentMediaPicker } from './comment-media-picker.js';
-import { commentMediaHTML, hydrateCommentMedia } from './comment-media-view.js';
+import { commentShell, commentsHTML, reactionsHTML, commentEpisodeLabel } from './comments-view.js?v=media-2';
+import { isComment, isCommentPage, isRepliesPage, isReactionSummary, commentFilterEpisode, commentFilterLocation } from './comment-data.js?v=4';
+import { createCommentMediaPicker } from './comment-media-picker.js?v=2';
+import { commentMediaHTML, hydrateCommentMedia } from './comment-media-view.js?v=2';
 
 /** @param {HTMLElement} root
  * @param {{slug: string, episode?: number, episodes: Array<{episode_no: number | string}>, video?: HTMLVideoElement}} options */

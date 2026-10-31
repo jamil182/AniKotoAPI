@@ -4,9 +4,11 @@ export function commentMedia(value) {
   const row = /** @type {Record<string, unknown>} */ (value);
   if (
     Object.keys(row).some(
-      (key) => !["provider", "kind", "slug", "title"].includes(key),
+      (key) => !["provider", "kind", "slug", "title", "id"].includes(key),
     ) ||
     row.provider !== "klipy" ||
+    (row.id !== undefined &&
+      (!Number.isSafeInteger(row.id) || Number(row.id) <= 0)) ||
     (row.kind !== "gif" && row.kind !== "image") ||
     typeof row.slug !== "string" ||
     !/^[a-z0-9][a-z0-9_-]{0,159}$/i.test(row.slug) ||
@@ -20,7 +22,20 @@ export function commentMedia(value) {
     kind: row.kind === "gif" ? "gif" : "image",
     slug: row.slug,
     title: row.title,
+    ...(row.id === undefined ? {} : { id: Number(row.id) }),
   };
+}
+
+/** @param {import('./comments.types.js').CommentMedia} reference
+ * @param {import('./comment-media.types.js').MediaItem[]} items @param {boolean} [single]
+ * @returns {import('./comment-media.types.js').MediaItem | null} */
+export function matchMediaItem(reference, items, single = false) {
+  if (reference.id !== undefined)
+    return items.find((item) => item.media.id === reference.id) || null;
+  return (
+    items.find((item) => item.media.slug === reference.slug) ||
+    (single && items.length === 1 ? items[0] : null)
+  );
 }
 
 /** @param {unknown} value */

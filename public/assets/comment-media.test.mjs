@@ -1,12 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as cheerio from "cheerio";
-import { commentMedia, klipyImageUrl } from "./comment-media-data.js";
+import {
+  commentMedia,
+  klipyImageUrl,
+  matchMediaItem,
+} from "./comment-media-data.js";
 import { commentMediaHTML } from "./comment-media-view.js";
 import { klipyItem, searchMedia, mediaItems } from "./comment-media-api.js";
 import { commentHTML, commentShell } from "./comments-view.js";
 
 const media = {
+  id: 123,
   provider: "klipy",
   kind: "gif",
   slug: "luffy-laugh",
@@ -15,6 +20,7 @@ const media = {
 const cdn =
   "https://static.klipy.com/ii/example/one.webp?source=search&tracking=original";
 const record = (slug = "luffy-laugh", type = "gif") => ({
+  id: 123,
   slug,
   title: "Luffy",
   type,
@@ -29,6 +35,9 @@ test("only provider references are accepted, and original HTTPS media URLs prese
   for (const value of [
     { ...media, url: cdn },
     { ...media, kind: "html" },
+    { ...media, id: "123" },
+    { ...media, id: -1 },
+    { ...media, id: Number.MAX_SAFE_INTEGER + 1 },
     { ...media, slug: 'x" onerror="bad' },
     null,
     [],
@@ -49,6 +58,25 @@ test("only provider references are accepted, and original HTTPS media URLs prese
     "https://static.klipy.com/a.gif\n",
   ])
     assert.equal(klipyImageUrl(url), null);
+});
+
+test("stable media IDs survive provider canonical slug changes without matching an unrelated result", () => {
+  const requested = { ...media, slug: "luffy-laugh--deliveryToken" };
+  const canonical = klipyItem(record(), "gif");
+  assert.equal(matchMediaItem(requested, [canonical]), canonical);
+  assert.equal(matchMediaItem({ ...requested, id: 456 }, [canonical]), null);
+  const legacy = { ...requested };
+  delete legacy.id;
+  assert.equal(matchMediaItem(legacy, [canonical]), null);
+  assert.equal(matchMediaItem(legacy, [canonical], true), canonical);
+  assert.equal(
+    matchMediaItem(
+      legacy,
+      [canonical, { ...canonical, media: { ...media, id: 456 } }],
+      true,
+    ),
+    null,
+  );
 });
 
 test("media rendering escapes captions, leaves HTML inert and includes attachments within episode spoilers", () => {
@@ -90,6 +118,10 @@ test("KLIPY variant parsing validates delivery hosts, file formats, content type
   assert.equal(parsed.width, 400);
   assert.equal(
     klipyItem(record("anime-meme", "static-meme"), "image").media.kind,
+    "image",
+  );
+  assert.equal(
+    klipyItem(record("anime-meme", "static_meme"), "image").media.kind,
     "image",
   );
   for (const row of [

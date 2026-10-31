@@ -1,4 +1,4 @@
-import { commentMedia, klipyImageUrl } from "./comment-media-data.js";
+import { commentMedia, klipyImageUrl } from "./comment-media-data.js?v=2";
 
 /** @type {Promise<import('./comment-media.types.js').MediaConfig> | null} */ let configuration =
   null;
@@ -37,6 +37,7 @@ export function klipyItem(raw, kind) {
   const row = /** @type {Record<string, unknown>} */ (raw);
   const media = commentMedia({
     provider: "klipy",
+    id: row.id,
     kind,
     slug: row.slug,
     title:
@@ -48,7 +49,10 @@ export function klipyItem(raw, kind) {
   });
   if (
     !media ||
-    row.type !== (kind === "gif" ? "gif" : "static-meme") ||
+    !Number.isSafeInteger(media.id) ||
+    !(kind === "gif"
+      ? row.type === "gif"
+      : ["static-meme", "static_meme"].includes(String(row.type))) ||
     !row.file ||
     typeof row.file !== "object"
   )

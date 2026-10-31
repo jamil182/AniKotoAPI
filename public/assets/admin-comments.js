@@ -1,6 +1,6 @@
 import { commentEscape as esc } from './comment-markup.js';
-import { commentEpisodeLabel } from './comments-view.js?v=media-1';
-import { commentMediaHTML, hydrateCommentMedia } from './comment-media-view.js';
+import { commentEpisodeLabel } from './comments-view.js?v=media-2';
+import { commentMediaHTML, hydrateCommentMedia } from './comment-media-view.js?v=2';
 
 /** @param {ReturnType<import('./admin-client.js').createAdminClient>} client */
 export function createAdminComments(client, onUnauthorized) {

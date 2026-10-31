@@ -155,7 +155,7 @@ test('write budgets are bounded per verified visitor and invalid moods or like p
 });
 
 
-const mediaRef={provider:'klipy',kind:'gif',slug:'one-piece-luffy',title:'Luffy'};
+const mediaRef={provider:'klipy',kind:'gif',slug:'one-piece-luffy',title:'Luffy',id:8041071659142944};
 test('media-only comments persist provider references with idempotency and additive migration',async t=>{
   const f=await fixture(t),body=f.draft({body:'',media:mediaRef}),cookie=f.users[0];
   const sent=await f.request('',{method:'POST',cookie,body});assert.equal(sent.status,201);
