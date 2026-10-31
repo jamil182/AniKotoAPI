@@ -1,9 +1,11 @@
 export type Mood = 'peak' | 'mid' | 'crying' | 'sus' | 'angry' | 'good' | 'funny' | 'shocked' | 'wholesome';
+export interface CommentMedia { provider: 'klipy'; kind: 'gif' | 'image'; slug: string; title: string }
 export interface Comment {
   id: number; animeSlug: string; episode: number; parentId: number | null;
   author: string; body: string; spoiler: boolean; createdAt: number;
   deleted: boolean; likes: number; liked: boolean; canDelete: boolean;
   replyCount: number; replies?: Comment[];
+  media?: CommentMedia | null;
 }
 export interface CommentPage {
   comments: Comment[]; total: number; page: number; pages: number;
@@ -11,4 +13,5 @@ export interface CommentPage {
 }
 export interface CommentDraft {
   slug: string; episode: number; body: string; spoiler: boolean; parentId: number | null; requestId: string;
+  media?: CommentMedia | null;
 }

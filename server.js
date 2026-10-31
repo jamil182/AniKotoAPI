@@ -123,7 +123,7 @@ app.use((req, res, next) => {
   // NOTE: cdn.jsdelivr.net is allowed for hls.js on the watch page. Media and
   // segments are fetched same-origin through the stream proxy, so connect-src
   // stays 'self'; media-src allows blob: for the MediaSource buffers hls.js uses.
-  res.setHeader("Content-Security-Policy", `default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; media-src 'self' blob:; connect-src 'self'; frame-src ${EMBED_ORIGINS.join(' ')}`);
+  res.setHeader("Content-Security-Policy", `default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; media-src 'self' blob:; connect-src 'self' https://api.klipy.com; frame-src ${EMBED_ORIGINS.join(' ')}`);
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
   next();

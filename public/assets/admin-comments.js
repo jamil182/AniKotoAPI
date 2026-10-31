@@ -1,5 +1,6 @@
 import { commentEscape as esc } from './comment-markup.js';
-import { commentEpisodeLabel } from './comments-view.js';
+import { commentEpisodeLabel } from './comments-view.js?v=media-1';
+import { commentMediaHTML, hydrateCommentMedia } from './comment-media-view.js';
 
 /** @param {ReturnType<import('./admin-client.js').createAdminClient>} client */
 export function createAdminComments(client, onUnauthorized) {
@@ -16,6 +17,11 @@ export function createAdminComments(client, onUnauthorized) {
       page = data.page; message.textContent = '';
       rows.innerHTML = data.comments.length ? data.comments.map(item => `<article class="admin-comment-row"><div><b>${esc(item.author)}</b><span>${esc(item.animeSlug)} · ${esc(commentEpisodeLabel(item.episode))}${item.parentId ? ' · Balasan' : ''}</span><p>${esc(item.body)}</p><small>${esc(new Date(item.createdAt).toLocaleString('id-ID'))}${item.deletedAt === null ? '' : item.deletedByAdmin ? ' · Disembunyikan admin' : ' · Dihapus penulis'}</small></div><button class="btn" type="button" data-moderate="${item.id}" data-hidden="${item.deletedAt === null}" ${item.deletedAt !== null && !item.deletedByAdmin ? 'disabled' : ''}>${item.deletedAt === null ? 'Sembunyikan' : 'Pulihkan'}</button></article>`).join('') : '<p class="cms-muted">Tidak ada komentar pada filter ini.</p>';
       root.querySelector('[data-moderation-page]').textContent = `${data.total} komentar · ${data.page} / ${data.pages}`;
+      for (const item of data.comments) if (item.media) {
+        const button = rows.querySelector(`[data-moderate="${item.id}"]`);
+        button?.closest('article')?.querySelector('div')?.insertAdjacentHTML('beforeend', commentMediaHTML(item.media));
+      }
+      void hydrateCommentMedia(rows);
       root.querySelector('[data-moderation-prev]').disabled = data.page <= 1;
       root.querySelector('[data-moderation-next]').disabled = data.page >= data.pages;
     } catch (error) {

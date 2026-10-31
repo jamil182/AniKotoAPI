@@ -1,6 +1,6 @@
 import { createAdminClient } from './admin-client.js';
 import { createAdminVisitors } from './admin-visitors.js';
-import { createAdminComments } from './admin-comments.js?v=1';
+import { createAdminComments } from './admin-comments.js?v=2';
 
 const client = createAdminClient();
 const visitorStats = createAdminVisitors(client, signedOut);

@@ -53,6 +53,11 @@ export function createCommentsRouter(getDatabase, client, catalog = null, { now 
     next();
   });
   router.use(jsonWrite);
+  route(router, 'get', '/media-config', () => {
+    const publicApiKey=process.env.KLIPY_PUBLIC_API_KEY?.trim() || '';
+    const enabled=/^[a-z0-9_-]{8,160}$/i.test(publicApiKey);
+    return {enabled,provider:'klipy',publicApiKey:enabled ? publicApiKey : ''};
+  });
   router.use((req, res, next) => {
     if (req.method === 'GET') return next();
     const time = now();

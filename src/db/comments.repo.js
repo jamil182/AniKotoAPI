@@ -1,5 +1,8 @@
 import { AccountError } from '../services/accountError.js';
 import { COMMENT_MOODS, COMMENT_PAGE_SIZE, REPLY_PREVIEW_SIZE } from '../../public/assets/comment-data.js';
+import { commentMedia } from '../../public/assets/comment-media-data.js';
+
+function storedMedia(value) { try {return commentMedia(JSON.parse(value));} catch {return null;} }
 
 /** @param {import('better-sqlite3').Database} db */
 export function createCommentsRepository(db) {
@@ -10,7 +13,8 @@ export function createCommentsRepository(db) {
     EXISTS(SELECT 1 FROM comment_likes l WHERE l.comment_id = c.id AND l.user_id = @viewer) AS viewer_liked,
     (SELECT COUNT(*) FROM anime_comments r WHERE r.parent_id = c.id AND r.deleted_at IS NULL) AS reply_count`;
   const dto = (row, viewer) => ({ id: row.id, animeSlug: row.anime_slug, episode: row.episode, parentId: row.parent_id,
-    author: row.deleted_at === null ? row.display_name : 'Komentar dihapus', body: row.deleted_at === null ? row.body : '',
+    author: row.deleted_at === null ? row.display_name : 'Komentar dihapus', body: row.deleted_at === null ? row.body.trim() : '',
+    media: row.deleted_at === null ? storedMedia(row.media_json) : null,
     spoiler: Boolean(row.spoiler), createdAt: row.created_at, deleted: row.deleted_at !== null,
     likes: row.deleted_at === null ? row.like_count : 0, liked: row.deleted_at === null && Boolean(row.viewer_liked),
     canDelete: row.deleted_at === null && row.user_id === viewer, replyCount: row.reply_count });
@@ -50,7 +54,8 @@ export function createCommentsRepository(db) {
     create: db.transaction((draft, user, now) => {
       const prior = existing.get(user, draft.requestId);
       if (prior) {
-        if (prior.anime_slug !== draft.slug || prior.episode !== draft.episode || prior.body !== draft.body || prior.parent_id !== draft.parentId || Boolean(prior.spoiler) !== draft.spoiler) throw new AccountError('ID pengiriman sudah dipakai untuk komentar lain.', 409);
+        if (prior.anime_slug !== draft.slug || prior.episode !== draft.episode || prior.body.trim() !== draft.body || prior.parent_id !== draft.parentId || Boolean(prior.spoiler) !== draft.spoiler
+          || JSON.stringify(storedMedia(prior.media_json)) !== JSON.stringify(draft.media || null)) throw new AccountError('ID pengiriman sudah dipakai untuk komentar lain.', 409);
         return one(prior.id, user);
       }
       if (draft.parentId !== null) {
@@ -62,8 +67,9 @@ export function createCommentsRepository(db) {
       const hour = db.prepare('SELECT COUNT(*) AS n, MIN(created_at) AS first FROM anime_comments WHERE user_id=? AND created_at>?').get(user, now - 3600000);
       const retry = Math.max(recent ? 10000 - (now - recent.created_at) : 0, minute.n >= 5 ? minute.first + 60000 - now : 0, hour.n >= 30 ? hour.first + 3600000 - now : 0);
       if (retry > 0) { const error = new AccountError('Terlalu cepat mengirim komentar. Silakan tunggu sebentar.', 429); error.retryAfter = Math.ceil(retry / 1000); throw error; }
-      const result = db.prepare(`INSERT INTO anime_comments (anime_slug,episode,user_id,parent_id,body,spoiler,request_id,created_at) VALUES (?,?,?,?,?,?,?,?)`)
-        .run(draft.slug, draft.episode, user, draft.parentId, draft.body, Number(draft.spoiler), draft.requestId, now);
+      // Legacy databases require a nonempty body. A blank stores a media-only post; the DTO restores its empty caption.
+      const result = db.prepare(`INSERT INTO anime_comments (anime_slug,episode,user_id,parent_id,body,spoiler,request_id,created_at,media_json) VALUES (?,?,?,?,?,?,?,?,?)`)
+        .run(draft.slug, draft.episode, user, draft.parentId, draft.body || ' ', Number(draft.spoiler), draft.requestId, now, draft.media ? JSON.stringify(draft.media) : null);
       return one(Number(result.lastInsertRowid), user);
     }),
     like: db.transaction((id, user, liked) => {
@@ -97,9 +103,9 @@ export function createCommentsRepository(db) {
       const total = db.prepare(`SELECT COUNT(*) AS n FROM anime_comments c WHERE ${where}`).get(params).n;
       const pages = Math.max(1, Math.ceil(total / COMMENT_PAGE_SIZE)); page = Math.min(page, pages);
       const comments = db.prepare(`SELECT c.id,c.anime_slug AS animeSlug,c.episode,c.parent_id AS parentId,c.body,a.display_name AS author,
-        c.created_at AS createdAt,c.deleted_at AS deletedAt,c.deleted_by_admin AS deletedByAdmin
+        c.created_at AS createdAt,c.deleted_at AS deletedAt,c.deleted_by_admin AS deletedByAdmin,c.media_json
         FROM anime_comments c JOIN user_accounts a ON a.id=c.user_id WHERE ${where} ORDER BY c.id DESC LIMIT @limit OFFSET @offset`)
-        .all({ ...params, limit: COMMENT_PAGE_SIZE, offset: (page - 1) * COMMENT_PAGE_SIZE });
+        .all({ ...params, limit: COMMENT_PAGE_SIZE, offset: (page - 1) * COMMENT_PAGE_SIZE }).map(({media_json,...row}) => ({...row,media:storedMedia(media_json)}));
       return { comments, total, page, pages };
     },
   };

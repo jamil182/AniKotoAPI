@@ -153,3 +153,65 @@ test('write budgets are bounded per verified visitor and invalid moods or like p
   assert.equal((await f.request('/reaction',{method:'PUT',cookie:f.users[1],body:{slug,mood:'not-real'}})).status,400);
   assert.ok(Object.values((await f.list()).reactions).every(value=>value===0));
 });
+
+
+const mediaRef={provider:'klipy',kind:'gif',slug:'one-piece-luffy',title:'Luffy'};
+test('media-only comments persist provider references with idempotency and additive migration',async t=>{
+  const f=await fixture(t),body=f.draft({body:'',media:mediaRef}),cookie=f.users[0];
+  const sent=await f.request('',{method:'POST',cookie,body});assert.equal(sent.status,201);
+  const item=(await sent.json()).results;assert.equal(item.body,'');assert.deepEqual(item.media,mediaRef);
+  assert.equal((await f.list()).comments[0].body,'');
+  const stored=f.db.prepare('SELECT body,media_json FROM anime_comments WHERE id=?').get(item.id);
+  assert.equal(stored.body,' ');assert.deepEqual(JSON.parse(stored.media_json),mediaRef);assert.ok(!stored.media_json.includes('https:'));
+  assert.equal((await (await f.request('',{method:'POST',cookie,body})).json()).results.id,item.id);
+  assert.equal((await f.request('',{method:'POST',cookie,body:{...body,media:{...mediaRef,slug:'different'}}})).status,409);
+  migrate(f.db);migrate(f.db);assert.deepEqual((await f.list()).comments[0].media,mediaRef);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM anime_comments').get().n,1);
+});
+
+test('media writes reject arbitrary URLs, malformed refs, forged users and missing sessions',async t=>{
+  const f=await fixture(t),cookie=f.users[0];
+  for(const media of [[],{},'https://evil.example/a.gif',{...mediaRef,provider:'other'},{...mediaRef,kind:'video'},{...mediaRef,kind:{toString:'gif'}},{...mediaRef,url:'https://evil.example/a.gif'},{...mediaRef,slug:'../../private'},{...mediaRef,title:'bad\u0000text'},{...mediaRef,title:'x'.repeat(161)}]){
+    assert.equal((await f.request('',{method:'POST',cookie,body:f.draft({media})})).status,400);
+  }
+  for(const body of [null,{},42])assert.equal((await f.request('',{method:'POST',cookie,body:f.draft({body,media:mediaRef})})).status,400);
+  assert.equal((await f.request('',{method:'POST',body:f.draft({body:'',media:mediaRef})})).status,401);
+  assert.equal((await f.request('',{method:'POST',cookie,body:f.draft({media:mediaRef,userId:2})})).status,400);
+  assert.equal((await f.request('',{method:'POST',cookie,body:f.draft({media:mediaRef}),headers:{Origin:'https://evil.example'}})).status,403);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM anime_comments').get().n,0);
+});
+
+test('image replies, deleted parents and admin moderation keep attachments private when hidden',async t=>{
+  const f=await fixture(t),root=await f.create({body:'',media:mediaRef});f.advance();
+  const image={...mediaRef,kind:'image',slug:'anime-meme'};
+  const reply=await f.create({body:'Caption',parentId:root.id,media:image},f.users[1]);
+  assert.deepEqual((await f.list()).comments[0].replies[0].media,image);
+  await f.request('/'+root.id,{method:'DELETE',cookie:f.users[0],body:{}});
+  assert.equal((await f.list()).comments[0].media,null);
+  const headers={'X-Admin-Token':'comments-test-admin'};
+  await f.request('/'+reply.id,{admin:true,method:'PATCH',headers,body:{hidden:true}});
+  assert.equal((await f.list()).comments.length,0);
+  const moderation=(await (await f.request('?state=hidden',{admin:true,headers})).json()).results;
+  assert.deepEqual(moderation.comments.find(row=>row.id===reply.id).media,image);
+  await f.request('/'+reply.id,{admin:true,method:'PATCH',headers,body:{hidden:false}});
+  assert.deepEqual((await f.list()).comments[0].replies[0].media,image);
+});
+
+test('public media configuration exposes only the explicit public Web App Key',async t=>{
+  const f=await fixture(t),prior=process.env.KLIPY_PUBLIC_API_KEY;
+  t.after(()=>{if(prior===undefined)delete process.env.KLIPY_PUBLIC_API_KEY;else process.env.KLIPY_PUBLIC_API_KEY=prior;});
+  delete process.env.KLIPY_PUBLIC_API_KEY;
+  assert.deepEqual((await (await f.request('/media-config')).json()).results,{enabled:false,provider:'klipy',publicApiKey:''});
+  process.env.KLIPY_PUBLIC_API_KEY='public_fixture_key';
+  const response=await f.request('/media-config');assert.equal(response.headers.get('cache-control'),'no-store');
+  assert.deepEqual((await response.json()).results,{enabled:true,provider:'klipy',publicApiKey:'public_fixture_key'});
+  process.env.KLIPY_PUBLIC_API_KEY='invalid key';assert.equal((await (await f.request('/media-config')).json()).results.enabled,false);
+});
+
+test('old comment schemas gain media without losing comment identities, likes or reply relations',async t=>{
+  const f=await fixture(t),root=await f.create();f.advance();const reply=await f.create({parentId:root.id},f.users[1]);
+  await f.request('/'+root.id+'/like',{method:'PUT',cookie:f.users[1],body:{liked:true}});
+  f.db.exec('ALTER TABLE anime_comments DROP COLUMN media_json');migrate(f.db);migrate(f.db);
+  const result=(await f.list()).comments[0];assert.equal(result.id,root.id);assert.equal(result.likes,1);
+  assert.equal(result.replies[0].id,reply.id);assert.equal(result.media,null);assert.equal(result.replies[0].media,null);
+});

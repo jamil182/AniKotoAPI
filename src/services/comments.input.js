@@ -1,5 +1,6 @@
 import { AccountError } from './accountError.js';
 import { COMMENT_MAX_LENGTH, COMMENT_MOODS } from '../../public/assets/comment-data.js';
+import { commentMedia } from '../../public/assets/comment-media-data.js';
 
 export function commentSlug(value) {
   if (typeof value !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,239}$/i.test(value)) throw new AccountError('Slug anime tidak valid.');
@@ -31,11 +32,14 @@ export function commentObject(body, fields) {
 }
 /** @param {unknown} body @returns {import('../../public/assets/comments.types.js').CommentDraft} */
 export function commentDraft(body) {
-  const input = commentObject(body, ['slug', 'episode', 'body', 'spoiler', 'parentId', 'requestId']);
-  const text = typeof input.body === 'string' ? input.body.replace(/\r\n?/g, '\n').trim() : '';
-  if (!text.replace(/[\p{Cf}\s]/gu, '') || text.length > COMMENT_MAX_LENGTH || /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(text)) throw new AccountError('Komentar harus berisi 1–4.000 karakter tanpa karakter kontrol.');
+  const input = commentObject(body, ['slug', 'episode', 'body', 'spoiler', 'parentId', 'requestId', 'media']);
+  const media = commentMedia(input.media);
+  if (input.media !== undefined && input.media !== null && !media) throw new AccountError('Lampiran komentar tidak valid.');
+  if (typeof input.body !== 'string') throw new AccountError('Isi komentar tidak valid.');
+  const text = input.body.replace(/\r\n?/g, '\n').trim();
+  if ((!text.replace(/[\p{Cf}\s]/gu, '') && !media) || text.length > COMMENT_MAX_LENGTH || /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(text)) throw new AccountError('Isi komentar atau pilih GIF/gambar; maksimal 4.000 karakter.');
   if (typeof input.spoiler !== 'boolean' || typeof input.requestId !== 'string' || !/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(input.requestId)) throw new AccountError('Data komentar tidak valid.');
-  return { slug: commentSlug(input.slug), episode: commentEpisode(input.episode), body: text, spoiler: input.spoiler,
+  return { slug: commentSlug(input.slug), episode: commentEpisode(input.episode), body: text, spoiler: input.spoiler, media,
     parentId: input.parentId === null || input.parentId === undefined ? null : commentId(input.parentId), requestId: input.requestId };
 }
 export function commentMood(value) {

@@ -1,8 +1,10 @@
 import { accountRequest, safeReturnPath } from './accounts.js?v=google-1';
 import { commentRequest } from './comments-api.js';
 import { commentEscape as esc, commentMarkup, formatCommentSelection, timestampText } from './comment-markup.js';
-import { commentShell, commentsHTML, reactionsHTML, commentEpisodeLabel } from './comments-view.js';
-import { isComment, isCommentPage, isRepliesPage, isReactionSummary, commentFilterEpisode, commentFilterLocation } from './comment-data.js?v=2';
+import { commentShell, commentsHTML, reactionsHTML, commentEpisodeLabel } from './comments-view.js?v=media-1';
+import { isComment, isCommentPage, isRepliesPage, isReactionSummary, commentFilterEpisode, commentFilterLocation } from './comment-data.js?v=3';
+import { createCommentMediaPicker } from './comment-media-picker.js';
+import { commentMediaHTML, hydrateCommentMedia } from './comment-media-view.js';
 
 /** @param {HTMLElement} root
  * @param {{slug: string, episode?: number, episodes: Array<{episode_no: number | string}>, video?: HTMLVideoElement}} options */
@@ -15,6 +17,8 @@ export function mountComments(root, { slug, episode = 0, episodes, video }) {
   let user = null, sessionChecked = false, selected = commentFilterEpisode(location.search, episode), page = 1, data = null;
   let request = null, version = 0, timer = null, busy = false, reply = null, pendingDraft = null;
   let fingerprint = '', episodeSignature = '', preview = false;
+  let previewSignature = '';
+  const mediaPicker = createCommentMediaPicker(root, () => { pendingDraft = null; applyAuth(); });
   const next = () => safeReturnPath(location.pathname + location.search + '#comments');
   const options = () => ({ slug, watchEpisode: video ? episode : null, signedIn: Boolean(user) });
   function say(message, error = false) {
@@ -26,18 +30,24 @@ export function mountComments(root, { slug, episode = 0, episodes, video }) {
     const enabled = Boolean(user && !busy);
     $('[data-auth]').innerHTML = user ? 'Anda sudah login dan dapat mengirim komentar.' : !sessionChecked ? 'Memeriksa sesi login…' : `Anda harus <a href="/login?next=${encodeURIComponent(next())}">login</a> untuk mengirim komentar.`;
     editor.disabled = !enabled;
+    mediaPicker.setEnabled(enabled);
+    editor.required = !mediaPicker.value();
     for (const control of root.querySelectorAll('[data-tool],[data-emoji-toggle],[data-spoiler],[data-preview-toggle]')) control.disabled = !enabled;
     for (const control of root.querySelectorAll('[data-write]')) control.disabled = !enabled || (control.hasAttribute('data-mood') && !data) || (control.hasAttribute('data-reply') && control.dataset.locked === 'true');
     $('[data-timestamp]').hidden = !video;
     $('[data-timestamp]').disabled = !timestampReady();
     $('[data-length]').textContent = `${editor.value.length} / 4000`;
     $('[data-posting]').textContent = commentEpisodeLabel(postingEpisode());
-    submit.disabled = !enabled || !editor.value.trim();
+    submit.disabled = !enabled || (!editor.value.trim() && !mediaPicker.value());
     submit.textContent = busy ? 'Mengirim…' : 'Post comment';
     episodeSelect.disabled = busy; sortSelect.disabled = busy;
     $('[data-reply-notice]').hidden = !reply;
     $('[data-reply-notice]').innerHTML = reply ? `Membalas ${esc(reply.author)} · ${esc(commentEpisodeLabel(reply.episode))} <button type="button" data-cancel-reply>× Batal</button>` : '';
-    if (preview) $('[data-preview]').innerHTML = commentMarkup(editor.value, Boolean(video && postingEpisode() === episode));
+    const previewKey = JSON.stringify([editor.value, mediaPicker.value()]);
+    if (preview && previewSignature !== previewKey) {
+      $('[data-preview]').innerHTML = commentMarkup(editor.value, Boolean(video && postingEpisode() === episode)) + commentMediaHTML(mediaPicker.value());
+      previewSignature = previewKey; void hydrateCommentMedia($('[data-preview]'));
+    }
   }
   async function session() {
     try {
@@ -52,6 +62,7 @@ export function mountComments(root, { slug, episode = 0, episodes, video }) {
     const key = JSON.stringify([data.comments, user?.id, [...expanded]]);
     if (key !== fingerprint) {
       list.innerHTML = commentsHTML(data.comments, options(), expanded); fingerprint = key;
+      void hydrateCommentMedia(list);
       for (const id of opened) list.querySelector(`[data-comment-id="${id}"] details`)?.setAttribute('open', '');
     }
     $('[data-reactions]').innerHTML = reactionsHTML(data.reactions, data.myReaction, Boolean(user));
@@ -110,8 +121,8 @@ export function mountComments(root, { slug, episode = 0, episodes, video }) {
     editor.setRangeText(value, start, end, 'end'); editor.focus(); pendingDraft = null; applyAuth();
   }
   form.onsubmit = event => {
-    event.preventDefault(); if (!user || busy || !editor.value.trim()) return;
-    const payload = { slug, episode: postingEpisode(), body: editor.value, spoiler: $('[data-spoiler]').checked, parentId: reply?.id ?? null };
+    event.preventDefault(); if (!user || busy || (!editor.value.trim() && !mediaPicker.value())) return;
+    const payload = { slug, episode: postingEpisode(), body: editor.value, spoiler: $('[data-spoiler]').checked, parentId: reply?.id ?? null, media: mediaPicker.value() };
     const signature = JSON.stringify(payload);
     if (pendingDraft?.signature !== signature) pendingDraft = { signature, id: crypto.randomUUID() };
     void action(submit, async () => {
@@ -119,6 +130,7 @@ export function mountComments(root, { slug, episode = 0, episodes, video }) {
       if (!isComment(created)) throw new Error('Respons pengiriman komentar tidak valid.');
       const parent = payload.parentId;
       editor.value = ''; $('[data-spoiler]').checked = false; pendingDraft = null; reply = null; preview = false; $('[data-preview]').hidden = true;
+      mediaPicker.clear(); previewSignature = '';
       if (parent === null) { page = 1; sortSelect.value = 'newest'; }
       say('Komentar berhasil dikirim.'); await load();
       if (parent !== null) await replies(parent, 1000000);
@@ -191,7 +203,7 @@ export function mountComments(root, { slug, episode = 0, episodes, video }) {
     if (selected !== 'all' && selected !== 0 && !numbers.includes(selected)) selected = numbers.includes(episode) ? episode : 0;
     episodeSelect.value = String(selected); applyAuth();
   }
-  function stop() { clearInterval(timer); request?.abort(); }
+  function stop() { clearInterval(timer); request?.abort(); mediaPicker.close(); }
   function start() { clearInterval(timer); void session().then(() => load()); timer = setInterval(() => { if (!document.hidden && !busy) void session().then(() => load(true)); }, 30000); }
   const visibility = () => { if (document.hidden) request?.abort(); else void session().then(() => load(true)); };
   const pageshow = event => { if (event.persisted) start(); };
@@ -199,5 +211,5 @@ export function mountComments(root, { slug, episode = 0, episodes, video }) {
   const metadata = () => { $('[data-timestamp]').disabled = !timestampReady(); };
   video?.addEventListener('loadedmetadata', metadata); video?.addEventListener('emptied', metadata);
   $('[data-reactions]').innerHTML = reactionsHTML(); updateEpisodes(episodes); applyAuth(); start();
-  return { updateEpisodes, destroy() { stop(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', stop); window.removeEventListener('pageshow', pageshow); video?.removeEventListener('loadedmetadata', metadata); video?.removeEventListener('emptied', metadata); } };
+  return { updateEpisodes, destroy() { stop(); mediaPicker.destroy(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', stop); window.removeEventListener('pageshow', pageshow); video?.removeEventListener('loadedmetadata', metadata); video?.removeEventListener('emptied', metadata); } };
 }

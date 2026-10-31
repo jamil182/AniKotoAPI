@@ -26,6 +26,46 @@ angka reaksi contoh yang dimasukkan pada production.
 - Daftar diperbarui setiap 30 detik saat halaman terlihat. Teks yang sedang
   ditulis tidak diganti ketika daftar diperbarui.
 
+## GIF dan pencarian gambar KLIPY
+
+Setelah login, tombol film di kanan bawah editor membuka pencarian **GIFs**
+dan **Images**. Images memakai katalog gambar/meme statis KLIPY, bukan pencarian
+web umum. Popup menampilkan 24 hasil per halaman, pencarian setelah jeda 350 ms,
+dan **Load more**. Pilih satu lampiran, tambahkan teks jika diperlukan, lalu
+kirim. Lampiran juga didukung pada balasan dan mengikuti penanda Spoiler.
+Tombol × pada pratinjau menghapus lampiran sebelum dikirim.
+
+1. Buat akun dan Web App Key di [KLIPY Partner Panel](https://partner.klipy.com/api-keys).
+   Daftarkan domain aplikasi `aniyear.com`. Gunakan integrasi tanpa iklan;
+   versi ini tidak menampilkan format iklan KLIPY.
+2. Isi `KLIPY_PUBLIC_API_KEY=...` di `.env` aplikasi, lalu restart proses `anijs`.
+   Ini **Web App Key publik**, bukan Google Client Secret atau ADMIN_TOKEN.
+   Key ini sengaja tersedia melalui `GET /api/comments/media-config` agar
+   browser dapat menghubungi KLIPY secara langsung.
+3. Muat ulang halaman, login, lalu cari misalnya `one piece`. Jika key belum
+   diatur, popup menampilkan informasi bahwa pencarian belum aktif. Komentar
+   teks dan emoji tetap dapat dipakai.
+
+Key berstatus **Testing** dapat digunakan untuk pengujian, dengan batas 100
+request API per jam. Setelah diuji, ajukan **Request Production** melalui menu
+tiga titik pada key di Partner Panel.
+
+Sesuai [persyaratan KLIPY](https://docs.klipy.com/integration-requirements),
+request API dan gambar dilakukan langsung dari browser. Tidak ada proxy API,
+cache media, atau salinan file di server. SQLite menyimpan referensi
+`{provider:"klipy", kind:"gif"|"image", slug, title}` saja; browser mengambil
+URL terkini melalui Items API saat menampilkan komentar. Semua URL wajib HTTPS
+dan berasal dari domain media resmi KLIPY. Parameter URL provider dipertahankan.
+HTML seperti `<img>` di teks komentar tetap di-escape.
+
+Pencarian memakai `content_filter=high`, mempertahankan urutan provider, serta
+menampilkan atribusi **Powered by KLIPY**. Atur pemblokiran kata/konten melalui
+Partner Panel. Hasil dengan format yang tidak didukung menyebabkan pesan
+kesalahan untuk keseluruhan respons, bukan dihilangkan dari daftar diam-diam.
+Jika media dihapus provider atau layanan tidak tersedia, komentar tetap terbaca
+dengan keterangan **Media unavailable**. Kuota dan ketersediaan mengikuti paket
+KLIPY yang digunakan; integrasi ini tidak menjanjikan penggunaan tanpa batas.
+
 ## Batas dan moderasi
 
 Maksimum 4.000 karakter per komentar, satu tingkat balasan, 20 komentar utama
@@ -55,7 +95,8 @@ interaksi publik. Komentar memakai slug publik anime sebagai kunci diskusi.
 | Endpoint | Tujuan |
 | --- | --- |
 | `GET /api/comments?slug=...&episode=1&sort=newest&page=1` | Baca diskusi; episode `0` = umum, `all` = semua |
-| `POST /api/comments` | Kirim teks dengan `slug, episode, body, spoiler, parentId, requestId` |
+| `GET /api/comments/media-config` | Status fitur dan Web App Key publik KLIPY |
+| `POST /api/comments` | Kirim `slug, episode, body, spoiler, parentId, requestId`, opsional `media` |
 | `GET /api/comments/:id/replies?page=1` | Balasan dengan pagination |
 | `PUT /api/comments/:id/like` | JSON `{ "liked": true }` atau false |
 | `PUT /api/comments/reaction` | JSON `{ "slug": "...", "mood": "peak" }`; null menghapus reaksi |
@@ -63,6 +104,9 @@ interaksi publik. Komentar memakai slug publik anime sebagai kunci diskusi.
 | `GET /api/admin/comments?state=visible&page=1` | Daftar moderasi; filter visible/hidden/all |
 | `PATCH /api/admin/comments/:id` | JSON `{ "hidden": true }` atau false |
 
-Migrasi hanya menambahkan tabel dan indeks. Tetap cadangkan database dengan
+Migrasi menambahkan tabel, indeks, dan kolom `media_json` tanpa mengubah identitas
+komentar lama. Lampiran tanpa teks memakai satu spasi internal untuk kompatibilitas
+dengan batas skema lama; respons API tetap mengembalikan caption kosong.
+Tetap cadangkan database dengan
 SQLite backup API sebelum deployment, dan pertahankan `.env` serta aset merek
 yang sudah disesuaikan pada server.

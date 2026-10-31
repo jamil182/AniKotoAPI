@@ -1,3 +1,5 @@
+import { commentMedia } from './comment-media-data.js';
+
 export const COMMENT_MOODS = Object.freeze([
   { key: 'peak', label: 'Peak', emoji: '🔥' }, { key: 'mid', label: 'Mid', emoji: '😐' },
   { key: 'crying', label: 'Crying', emoji: '😭' }, { key: 'sus', label: 'Sus', emoji: '🤨' },
@@ -31,6 +33,7 @@ export function isComment(value, withReplies = false) {
     && Number.isFinite(row.episode) && row.episode >= 0 && row.episode <= 100000
     && (row.parentId === null || positive(row.parentId)) && typeof row.author === 'string' && row.author.length <= 60
     && typeof row.body === 'string' && row.body.length <= COMMENT_MAX_LENGTH && typeof row.spoiler === 'boolean'
+    && (row.media === undefined || row.media === null || Boolean(commentMedia(row.media)))
     && count(row.createdAt) && typeof row.deleted === 'boolean' && count(row.likes) && typeof row.liked === 'boolean'
     && typeof row.canDelete === 'boolean' && count(row.replyCount)
     && (row.replies === undefined || (withReplies && Array.isArray(row.replies) && row.replies.length <= REPLY_PREVIEW_SIZE && row.replies.every(reply => isComment(reply)))));

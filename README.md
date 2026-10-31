@@ -2789,6 +2789,11 @@ permissions. The parent site's camera, microphone and location remain disabled.
 
 For deployment on aaPanel, see [Deployment aaPanel](docs/DEPLOY_AAPANEL.md).
 
+For authenticated comments with GIF and static-image search, see
+[Comments and KLIPY setup](docs/COMMENTS.md). Set `KLIPY_PUBLIC_API_KEY` to a
+KLIPY Web App Key, restart the app, and reload the page. Media search requests
+originate in the browser; only provider references are stored in SQLite.
+
 ### Replace the logo and favicon
 
 The shared navigation, landing page and admin use `public/logo.png`. All HTML

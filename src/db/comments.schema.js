@@ -30,4 +30,7 @@ export function migrateComments(db) {
       PRIMARY KEY(anime_slug, user_id)
     );
   `);
+  if (!db.prepare('PRAGMA table_info(anime_comments)').all().some(column => column.name === 'media_json')) {
+    db.exec('ALTER TABLE anime_comments ADD COLUMN media_json TEXT CHECK(media_json IS NULL OR length(media_json)<=2000)');
+  }
 }

@@ -76,7 +76,7 @@ test('anime HTML contains visible safe content, unique metadata, JSON-LD and epi
   assert.equal(graph.find(row=>row['@type']==='CreativeWorkSeries').name,anime.title);
   assert.equal(graph.filter(row=>row['@type']==='BreadcrumbList').length,1);
   assert.ok(!html.includes('<script>alert(1)</script>'));assert.ok(!html.includes('aggregateRating'));
-  assert.match($('script[src*="anime-page.js"]').attr('src'),/seo-1/);
+  assert.match($('script[src*="anime-page.js"]').attr('src'),/media-1/);
   assert.equal((await f.request('/anime/alias')).headers.get('location'),'/anime/test-anime-123');
   assert.equal((await f.request('/anime/test-anime-123/')).status,301);
 });
