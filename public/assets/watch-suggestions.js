@@ -30,6 +30,7 @@ export function createWatchSuggestions(root, current) {
   const notice = root.querySelector('[role=status]');
   let selected = 0, fingerprint = '';
   function select(index, focus = false) {
+    if (tabs[index].hidden) return;
     selected = index;
     tabs.forEach((tab, number) => { tab.setAttribute('aria-selected', String(number === index)); tab.tabIndex = number === index ? 0 : -1; panels[number].hidden = number !== index; });
     if (focus) tabs[index].focus();
@@ -38,7 +39,11 @@ export function createWatchSuggestions(root, current) {
     tab.addEventListener('click', () => select(index));
     tab.addEventListener('keydown', event => {
       if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
-      event.preventDefault(); select(event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1 - selected, true);
+      event.preventDefault();
+      const available = tabs.flatMap((option, number) => option.hidden ? [] : [number]);
+      const position = available.indexOf(selected), step = event.key === 'ArrowLeft' ? -1 : 1;
+      const target = event.key === 'Home' ? available[0] : event.key === 'End' ? available.at(-1) : available[(position + step + available.length) % available.length];
+      select(target, true);
     });
   });
   return {
@@ -47,6 +52,8 @@ export function createWatchSuggestions(root, current) {
       notice.hidden = true; root.setAttribute('aria-busy', 'false');
       if (key === fingerprint) return;
       const first = !fingerprint; fingerprint = key;
+      tabs[0].hidden = !groups.related.length;
+      tabs[1].hidden = !groups.recommended.length && Boolean(groups.related.length);
       ['related','recommended'].forEach((kind, index) => {
         const panel = panels[index]; panel.replaceChildren();
         if (!groups[kind].length) { const empty = document.createElement('p'); empty.className = 'watch-suggestion-empty'; empty.textContent = kind === 'related' ? 'No related titles available.' : 'No recommendations available.'; panel.append(empty); return; }
@@ -59,7 +66,7 @@ export function createWatchSuggestions(root, current) {
           copy.append(title, detail); anchor.append(image, copy); panel.append(anchor);
         }
       });
-      select(first && !groups.related.length && groups.recommended.length ? 1 : selected);
+      select(first || tabs[selected].hidden ? (groups.related.length ? 0 : 1) : selected);
     },
     error() { root.setAttribute('aria-busy', 'false'); notice.hidden = false; notice.textContent = fingerprint ? 'Suggestions could not be refreshed.' : 'Suggestions are temporarily unavailable.'; }
   };
