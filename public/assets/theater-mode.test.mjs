@@ -7,7 +7,7 @@ function fixture(storage) {
   const document = new EventTarget();
   document.fullscreenElement = null;
   const label = { textContent: '' }, attributes = new Map(), classes = new Set();
-  const root = { ownerDocument: document, classList: { toggle(name, on) { if (on) classes.add(name); else classes.delete(name); } } };
+  const root = { ownerDocument: document, querySelector: () => null, classList: { toggle(name, on) { if (on) classes.add(name); else classes.delete(name); } } };
   const button = Object.assign(new EventTarget(), {
     classList: { toggle() {} }, querySelector: () => label,
     setAttribute(name, value) { attributes.set(name, value); },

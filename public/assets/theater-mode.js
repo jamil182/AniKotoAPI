@@ -28,7 +28,10 @@ export function mountTheaterMode(root, button, { storage } = {}) {
       catch { /* Keep the current layout even when a preference cannot be saved. */ }
     }
   }
-  function toggle() { apply(!expanded, true); }
+  function toggle() {
+    apply(!expanded, true);
+    root.querySelector('.watch-player-column')?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }
   /** @param {KeyboardEvent} event */
   function escape(event) {
     if (event.key !== 'Escape' || event.defaultPrevented || document.fullscreenElement || !expanded) return;

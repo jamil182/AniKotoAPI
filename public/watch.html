@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="/assets/comments.css?v=1" />
   <link rel="stylesheet" href="/assets/episode-navigation.css?v=1" />
   <link rel="stylesheet" href="/assets/watch-layout.css?v=3" />
-  <link rel="stylesheet" href="/assets/theater-mode.css?v=1" />
+  <link rel="stylesheet" href="/assets/theater-mode.css?v=2" />
   <script type="module" src="/assets/branding.js"></script>
   <script type="module" src="/assets/visitors.js"></script>
 </head>
@@ -120,7 +120,7 @@
     import { mountComments } from '/assets/comments.js?v=4';
     import { createEpisodeNavigation } from '/assets/episode-navigation.js?v=1';
     import { createWatchSuggestions } from '/assets/watch-suggestions.js?v=2';
-    import { mountTheaterMode } from '/assets/theater-mode.js?v=1';
+    import { mountTheaterMode } from '/assets/theater-mode.js?v=2';
 
     mountNav();
     mountTheaterMode(document.querySelector('.wrap-watch'), document.getElementById('tbExpand'));
@@ -813,7 +813,7 @@
       // Keyboard
       document.addEventListener('keydown', (e) => {
         if (playbackMode !== 'direct') return;
-        if (/input|select|textarea/i.test(e.target.tagName)) return;
+        if (/^(?:input|select|textarea|button|a)$/i.test(e.target.tagName) || e.target.isContentEditable) return;
         if (e.key === ' ') { e.preventDefault(); toggle(); }
         else if (e.key === 'ArrowLeft') video.currentTime -= 5;
         else if (e.key === 'ArrowRight') video.currentTime += 5;
