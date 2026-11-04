@@ -4,10 +4,11 @@
 .theater-toggle[aria-pressed=true] .theater-collapse-icon { display: inline; }
 .theater-toggle:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
 .watch-player-column { scroll-margin-top: 80px; }
-.wrap-watch.is-expanded { max-width: none; padding-inline: 16px; }
-.wrap-watch.is-expanded .watch2 { grid-template-columns: 240px minmax(0,1fr); grid-template-areas: "episodes player" "description description" "related related"; gap: 16px; padding-top: 16px; }
+.wrap-watch.is-expanded { max-width: 1824px; padding-inline: 16px; }
+.wrap-watch.is-expanded .watch2 { grid-template-columns: 280px minmax(0,1fr); grid-template-areas: "episodes player" "description description" "related related"; gap: 16px; padding-top: 16px; }
 .wrap-watch.is-expanded .watch2 > .ep-col { grid-column: auto; }
-.wrap-watch.is-expanded .player-wrap:not(:fullscreen) { width: 100%; box-sizing: border-box; max-height: none; aspect-ratio: 16/9; border-radius: 5px; }
+.wrap-watch.is-expanded .player-wrap:not(:fullscreen) { width: 100%; box-sizing: border-box; max-height: max(220px,min(820px,calc(100dvh - 180px))); aspect-ratio: 16/9; border-radius: 5px; }
+.wrap-watch.is-expanded .watch-player-column:has(.subtitle-status:not([hidden])) .player-wrap:not(:fullscreen) { max-height: max(220px,min(820px,calc(100dvh - 230px))); }
 .wrap-watch .player-wrap video { object-fit: contain; }
 .wrap-watch.video-fill .player-wrap video { object-fit: fill; }
 .video-fit-control { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; color: var(--body); font: 500 .8rem var(--font-body); }
