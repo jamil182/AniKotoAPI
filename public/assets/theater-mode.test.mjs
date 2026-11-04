@@ -12,8 +12,9 @@ function fixture(storage) {
     classList: { toggle() {} }, querySelector: () => label,
     setAttribute(name, value) { attributes.set(name, value); },
   });
-  const control = mountTheaterMode(root, button, { storage });
-  return { root, button, document, control, label, attributes, expanded: () => classes.has('is-expanded') };
+  const fitControl = Object.assign(new EventTarget(), { value: '' });
+  const control = mountTheaterMode(root, button, { storage, fitControl });
+  return { root, button, document, control, label, attributes, fitControl, expanded: () => classes.has('is-expanded'), fill: () => classes.has('video-fill') };
 }
 function escape(document, prevented = false) {
   const event = new Event('keydown', { cancelable: true });
@@ -27,6 +28,7 @@ test('Expand and Collapse persist the selected layout across episodes without ch
   const storage = { getItem: key => entries.get(key) || null, setItem: (key, value) => entries.set(key, value) };
   const page = fixture(storage);
   assert.equal(page.expanded(), false);
+  assert.equal(page.fill(), true);
   page.button.dispatchEvent(new Event('click'));
   assert.equal(page.expanded(), true);
   assert.equal(page.attributes.get('aria-pressed'), 'true');
@@ -67,4 +69,27 @@ test('storage failures leave the controls usable and both site languages have ma
   assert.equal(languageLabel('Collapse player', 'id'), 'Perkecil pemutar');
   assert.equal(languageLabel('Collapse', 'en'), 'Collapse');
   page.control.destroy();
+});
+
+test('Full fills the player by default and Original preserves the saved proportions across episodes', () => {
+  const entries = new Map();
+  const storage = { getItem: key => entries.get(key) || null, setItem: (key, value) => entries.set(key, value) };
+  const page = fixture(storage);
+  assert.equal(page.fill(), true);
+  assert.equal(page.fitControl.value, 'fill');
+  page.fitControl.value = 'contain';
+  page.fitControl.dispatchEvent(new Event('change'));
+  assert.equal(page.fill(), false);
+  const nextEpisode = fixture(storage);
+  assert.equal(nextEpisode.fill(), false);
+  assert.equal(nextEpisode.fitControl.value, 'contain');
+  nextEpisode.control.setExpanded(true);
+  assert.equal(nextEpisode.fill(), false, 'Expand does not override the selected proportions');
+  nextEpisode.fitControl.value = 'cover';
+  nextEpisode.fitControl.dispatchEvent(new Event('change'));
+  assert.equal(nextEpisode.fitControl.value, 'fill', 'unsupported cropping modes fall back to Full');
+  assert.equal(nextEpisode.fill(), true);
+  assert.equal(languageLabel('Full', 'id'), 'Penuh');
+  assert.equal(languageLabel('Original', 'id'), 'Asli');
+  page.control.destroy(); nextEpisode.control.destroy();
 });

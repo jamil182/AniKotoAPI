@@ -7,9 +7,13 @@
 .wrap-watch.is-expanded { max-width: none; padding-inline: 16px; }
 .wrap-watch.is-expanded .watch2 { grid-template-columns: 240px minmax(0,1fr); grid-template-areas: "episodes player" "description description" "related related"; gap: 16px; padding-top: 16px; }
 .wrap-watch.is-expanded .watch2 > .ep-col { grid-column: auto; }
-.wrap-watch.is-expanded .player-wrap:not(:fullscreen) { width: 100%; box-sizing: border-box; max-height: max(220px,calc(100dvh - 190px)); border-radius: 5px; }
-.wrap-watch.is-expanded .watch-player-column:has(.subtitle-status:not([hidden])) .player-wrap:not(:fullscreen) { max-height: max(220px,calc(100dvh - 240px)); }
-.wrap-watch.is-expanded .player-wrap video { object-fit: contain; }
+.wrap-watch.is-expanded .player-wrap:not(:fullscreen) { width: 100%; box-sizing: border-box; max-height: none; aspect-ratio: 16/9; border-radius: 5px; }
+.wrap-watch .player-wrap video { object-fit: contain; }
+.wrap-watch.video-fill .player-wrap video { object-fit: fill; }
+.video-fit-control { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; color: var(--body); font: 500 .8rem var(--font-body); }
+.video-fit-control[hidden] { display: none; }
+.video-fit-control select { padding: 5px 8px; max-width: 110px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg-soft); color: var(--ink); font: inherit; }
+.video-fit-control select:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
 .wrap-watch.is-expanded .ep-col .ep-block { max-height: min(800px,calc(100dvh - 90px)); }
 .wrap-watch.is-expanded .ep-col .ep-block-head { grid-template-columns: auto minmax(0,1fr) 66px; }
 .wrap-watch.is-expanded .ep-col .ep-list { grid-template-columns: repeat(5,minmax(0,1fr)); }
