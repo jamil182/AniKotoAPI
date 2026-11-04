@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="/assets/comments.css?v=1" />
   <link rel="stylesheet" href="/assets/episode-navigation.css?v=1" />
   <link rel="stylesheet" href="/assets/watch-layout.css?v=3" />
+  <link rel="stylesheet" href="/assets/theater-mode.css?v=1" />
   <script type="module" src="/assets/branding.js"></script>
   <script type="module" src="/assets/visitors.js"></script>
 </head>
@@ -32,7 +33,7 @@
           <p class="ep-find-status" id="episodeFindStatus" data-episode-status role="status" hidden></p>
         </div>
       </aside>
-      <div class="watch-player-column">
+      <div class="watch-player-column" id="watchPlayerColumn">
         <div class="player-wrap paused" id="playerWrap">
           <video id="video" playsinline></video>
           <div class="v-center">
@@ -74,6 +75,7 @@
         </div>
         <p id="subtitleStatus" class="subtitle-status" role="status" aria-live="polite" hidden></p>
         <div class="player-toolbar" id="toolbar">
+          <button class="tbtn theater-toggle" type="button" id="tbExpand" aria-pressed="false" aria-controls="watchPlayerColumn" title="Expand player"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="theater-expand-icon" d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><path class="theater-collapse-icon" d="M3 8h5V3m13 5h-5V3M8 21v-5H3m13 5v-5h5"/></svg><span data-theater-label>Expand</span></button>
           <button class="tbtn" id="tbPrev" title="Previous episode">‹ Prev</button>
           <button class="tbtn" id="tbNext" title="Next episode">Next ›</button>
           <button class="tbtn" id="tbAutoPlay"><span class="dot"></span>Auto Play</button>
@@ -118,8 +120,10 @@
     import { mountComments } from '/assets/comments.js?v=4';
     import { createEpisodeNavigation } from '/assets/episode-navigation.js?v=1';
     import { createWatchSuggestions } from '/assets/watch-suggestions.js?v=2';
+    import { mountTheaterMode } from '/assets/theater-mode.js?v=1';
 
     mountNav();
+    mountTheaterMode(document.querySelector('.wrap-watch'), document.getElementById('tbExpand'));
 
     // Path: /watch/<AniKoto slug>/<episode>.
     const parts = location.pathname.replace(/^\/watch\//, '').split('/');

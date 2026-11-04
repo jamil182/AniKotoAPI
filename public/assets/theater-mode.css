@@ -1,0 +1,20 @@
+.theater-toggle svg { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.theater-toggle .theater-collapse-icon { display: none; }
+.theater-toggle[aria-pressed=true] .theater-expand-icon { display: none; }
+.theater-toggle[aria-pressed=true] .theater-collapse-icon { display: inline; }
+.theater-toggle:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
+.wrap-watch.is-expanded { max-width: none; padding-inline: 16px; }
+.wrap-watch.is-expanded .watch2 { grid-template-columns: 240px minmax(0,1fr); grid-template-areas: "episodes player" "description description" "related related"; gap: 16px; padding-top: 16px; }
+.wrap-watch.is-expanded .watch2 > .ep-col { grid-column: auto; }
+.wrap-watch.is-expanded .player-wrap:not(:fullscreen) { max-height: max(220px,calc(100dvh - 154px)); border-radius: 5px; }
+.wrap-watch.is-expanded .player-wrap video { object-fit: contain; }
+.wrap-watch.is-expanded .ep-col .ep-block { max-height: min(800px,calc(100dvh - 90px)); }
+.wrap-watch.is-expanded .ep-col .ep-block-head { grid-template-columns: auto minmax(0,1fr) 66px; }
+.wrap-watch.is-expanded .ep-col .ep-list { grid-template-columns: repeat(5,minmax(0,1fr)); }
+@media(max-width:980px) {
+  .wrap-watch.is-expanded { padding-inline: 8px; }
+  .wrap-watch.is-expanded .watch2 { grid-template-columns: minmax(0,1fr); grid-template-areas: "player" "episodes" "description" "related"; gap: 12px; padding-top: 8px; }
+  .wrap-watch.is-expanded .ep-col .ep-block { max-height: 300px; }
+  .wrap-watch.is-expanded .ep-col .ep-list { grid-template-columns: repeat(auto-fill,minmax(48px,1fr)); }
+}
+@media(max-width:480px) { .wrap-watch.is-expanded .ep-col .ep-list { grid-template-columns: repeat(5,minmax(0,1fr)); } }

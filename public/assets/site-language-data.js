@@ -21,6 +21,7 @@ const pairs = [
   ['Please bookmark','Silakan bookmark'],['to stay updated. Thank you!','untuk mengikuti kabar terbaru. Terima kasih!'],
   ['Close bookmark reminder','Tutup pengingat bookmark'],['Open menu','Buka menu'],['Close menu','Tutup menu'],
   ['Privacy Policy','Kebijakan Privasi'],['Terms of Service','Syarat Layanan'],['Watch','Tonton'],['Watch now','Tonton sekarang'],
+  ['Expand','Perbesar'],['Collapse','Perkecil'],['Expand player','Perbesar pemutar'],['Collapse player','Perkecil pemutar'],
   ['Embed servers','Server embed'],['Direct','Langsung'],['Light','Lampu'],['Auto Play','Putar Otomatis'],['Auto Next','Episode Berikut Otomatis'],
   ['Auto Skip','Lewati Otomatis'],['Use the embedded player\'s controls for subtitles and quality.','Gunakan kontrol pemutar embed untuk subtitle dan kualitas.'],
   ['Direct mode uses the built-in video controls.','Mode langsung menggunakan kontrol video bawaan.'],
