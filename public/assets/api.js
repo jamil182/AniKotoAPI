@@ -11,7 +11,7 @@ const API = location.protocol.startsWith('http')
   ? location.origin + '/api'
   : 'https://anikototvapi.vercel.app/api';
 
-import('/assets/miruro-theme.js?v=4').then(module => module.mountProviderTheme()).catch(() => {});
+import('/assets/miruro-theme.js?v=5').then(module => module.mountProviderTheme()).catch(() => {});
 import('/assets/image-loading.js?v=1').then(module => module.mountImageLoading()).catch(() => {});
 import('/assets/watch-history.js?v=2').then(module => module.mountWatchHistory()).catch(() => {});
 

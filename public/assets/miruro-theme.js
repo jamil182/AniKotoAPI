@@ -1,3 +1,5 @@
+import { loadMiruroStyles } from './miruro-styles.js?v=1';
+
 const safeSlug = value => typeof value === 'string' && /^[a-z0-9][a-z0-9_-]{0,239}$/i.test(value);
 /** @param {unknown} value */
 function picture(value) {
@@ -19,7 +21,7 @@ function mountRail() {
   };
   for (const [label, href] of [['Home','/home'],['Trending','/browse?source=trending'],['Browse','/browse'],['Search','/search'],['Schedule','/schedule'],['History','/history'],['Account','/account']]) {
     const anchor = link(href, '', 'miruro-rail-link'); anchor.title = label; anchor.setAttribute('aria-label', label);
-    anchor.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">${icons[label]}</svg>`;
+    anchor.innerHTML = `<svg width="21" height="21" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">${icons[label]}</svg>`;
     if (location.pathname === href) anchor.setAttribute('aria-current', 'page'); nav.append(anchor);
   }
   document.body.prepend(nav);
@@ -105,8 +107,8 @@ export async function mountProviderTheme() {
   if (/^\/admin(?:\/|$)/.test(location.pathname)) return;
   const config = await apiGet('/site-config');
   if (config.theme !== 'miruro') return;
+  await loadMiruroStyles();
   document.documentElement.dataset.siteTheme = 'miruro';
-  const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/assets/miruro-theme.css?v=3'; document.head.append(css);
   mountRail(); void mountUpcoming(); void mountInfoExtras();
   const watchSlug = /^\/watch\/([a-z0-9_-]+)(?:\/|$)/i.exec(location.pathname)?.[1];
   if (watchSlug) apiGet('/catalog/anime/' + encodeURIComponent(watchSlug)).then(setBackdrop).catch(() => {});
