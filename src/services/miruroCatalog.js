@@ -2,6 +2,7 @@ import axios from 'axios';
 import { AniKotoError } from './anikotoApi.js';
 import { resolveCatalogStream } from './catalogStream.js';
 import { getEpisodeEmbeds } from './episodeEmbeds.js';
+import { createMiruroReleases } from './miruroReleases.js';
 import { assertProxyableUrl, rememberResolvedHost } from '../helper/streamProxy.helper.js';
 
 /** @typedef {Record<string, unknown>} Data */
@@ -45,8 +46,8 @@ export function normalizeMiruroAnime(raw) {
 }
 
 /** Miruro uses AniList IDs. Existing AniKoto slugs continue through their original client.
- * @param {{legacy: ReturnType<import('./anikotoApi.js').createAniKotoClient>, getDatabase?: () => import('better-sqlite3').Database, request?: typeof axios.get, port?: number, now?: () => number}} options */
-export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, port = Number(process.env.MIRURO_PORT || 4466), now = Date.now }) {
+ * @param {{legacy: ReturnType<import('./anikotoApi.js').createAniKotoClient>, getDatabase?: () => import('better-sqlite3').Database, request?: typeof axios.get, releases?: ReturnType<typeof createMiruroReleases>, port?: number, now?: () => number}} options */
+export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, port = Number(process.env.MIRURO_PORT || 4466), now = Date.now, releases = createMiruroReleases({ getDatabase, now }) }) {
   if (!Number.isInteger(port) || port < 1024 || port > 65535 || [4444, 4455].includes(port)) throw new Error('Invalid Miruro port');
   const cache = new Map(), pending = new Map(), matches = new Map(), issued = new Map();
   let aliases, persistent, streamingRetryAt = 0, metadataRetryAt = 0;
@@ -191,7 +192,8 @@ export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, 
     if (id || endpoint.startsWith('/episodes/') || ['/info','/watch','/servers','/stream'].includes(endpoint)) return legacy.get(endpoint, params);
     if (endpoint === '/search') return page(await raw('/search', { query: params.keyword, per_page: '24' }));
     if (endpoint === '/random') return normalizeMiruroAnime(await raw('/random'));
-    if (['/latest-updated','/newly-added'].includes(endpoint)) return legacy.get(endpoint, params);
+    if (endpoint === '/latest-updated') return releases.page(params);
+    if (endpoint === '/newly-added') return legacy.get(endpoint, params);
     const collections = { '/trending': '/trending', '/most-popular': '/popular', '/status/upcoming': '/upcoming', '/status/ongoing': '/recent' };
     if (collections[endpoint]) {
       try { return page(await raw(collections[endpoint], { page: String(params.page || 1), per_page: '24' })); }
@@ -207,15 +209,16 @@ export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, 
   }
   function page(data) { return { data: list(data.results).map(normalizeMiruroAnime).filter(Boolean), totalPages: Math.max(1, Math.min(9999, Math.ceil(Number(data.total || 1) / Number(data.perPage || 24)))) }; }
   async function home() {
-    const [featured, trending, upcoming, native, popular] = await Promise.allSettled([
+    const [featured, trending, upcoming, native, popular, latest] = await Promise.allSettled([
       raw('/spotlight'), raw('/filter', { status: 'RELEASING', sort: 'POPULARITY_DESC', per_page: '10' }), raw('/upcoming', { per_page: '8' }), legacy.home(), raw('/popular', { per_page: '12' }),
+      releases.page(),
     ]);
     const nativeHome = native.status === 'fulfilled' ? native.value : null;
     const convert = result => result.status === 'fulfilled' ? list(result.value.results || result.value).map(normalizeMiruroAnime).filter(Boolean) : [];
     const spotlights = convert(featured), top = convert(trending);
     if (!spotlights.length && !top.length && !nativeHome) throw new AniKotoError('Catalog is temporarily unavailable', 503);
     return { ...nativeHome, provider: 'miruro', spotlights: spotlights.length ? spotlights : nativeHome?.spotlights || [],
-      latest: nativeHome?.latest || [], top: top.length ? top : nativeHome?.top || [],
+      latest: latest.status === 'fulfilled' ? latest.value.data : [], top: top.length ? top : nativeHome?.top || [],
       rankings: { today: top, week: top, month: top }, popular: convert(popular), upcoming: convert(upcoming),
       genres: [...new Set([...spotlights, ...top].flatMap(anime => anime.genres))].sort(), fetchedAt: new Date(now()).toISOString() };
   }

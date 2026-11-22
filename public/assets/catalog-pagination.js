@@ -24,6 +24,7 @@ export function catalogParams(search = '') {
   const source = query.get('source');
   /** @type {import('./catalog.types.js').CatalogParams} */
   const params = { source: isCatalogSource(source) ? source : 'latest', page: /^[1-9]\d{0,3}$/.test(rawPage) ? Number(rawPage) : 1 };
+  if (params.source === 'latest' && ['sub', 'dub'].includes(query.get('language'))) params.language = query.get('language');
   const genre = query.get('genre');
   const letter = query.get('letter');
   const type = query.get('type');

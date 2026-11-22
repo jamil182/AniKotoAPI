@@ -1,4 +1,5 @@
-import { catalogParams, paginationHTML } from './catalog-pagination.js';
+import { catalogParams, paginationHTML } from './catalog-pagination.js?v=releases-1';
+import { releaseCardHTML } from './card-release.js?v=1';
 import { cardProgressHTML, cardFormat } from './card-progress.js';
 import { fillCatalogRow } from './catalog-row-fill.js';
 
@@ -59,7 +60,7 @@ export function createCatalogGrid({ grid, pager, viewMore = null, initial = cata
         items = items.map(item => ({ ...item, type: cardFormat(item.type) || formats.get(item.id) || '' }));
         const next = JSON.stringify(items);
         if (loadedKey !== key || next !== fingerprint || grid.querySelector('.catalog-retry')) {
-          markup = items.length ? `<div class="grid">${items.map(item => cardHTML(item, cardProgressHTML(item))).join('')}</div>` : '<div class="state">No anime found.</div>';
+          markup = items.length ? `<div class="grid">${items.map(item => cardHTML(item, cardProgressHTML(item) + releaseCardHTML(item))).join('')}</div>` : '<div class="state">No anime found.</div>';
           grid.innerHTML = markup;
         }
         loadedKey = key;

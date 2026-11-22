@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/app.css?v=weekly-1" />
   <link rel="stylesheet" href="/assets/schedule.css?v=1" />
+  <link rel="stylesheet" href="/assets/card-release.css?v=1" />
   <link rel="stylesheet" href="/assets/bookmark-notice.css?v=1" />
   <script type="module" src="/assets/bookmark-notice.js?v=1"></script>
   <script type="module" src="/assets/branding.js"></script>
@@ -44,7 +45,8 @@
         <div class="section-head">
           <h2 class="section-title">Latest Episodes</h2>
           <div class="tabs" id="latestTabs">
-            <button class="tab on" data-src="latest">All</button>
+            <button class="tab on" data-src="latest" data-language="sub">All</button>
+            <button class="tab" data-src="latest" data-language="dub" hidden>Dub</button>
             <button class="tab" data-src="trending">Trending</button>
           </div>
           <a class="view-more" id="latestViewMore" href="/browse">View more &rarr;</a>
@@ -114,8 +116,8 @@
   <script src="/assets/realtime.js"></script>
   <script src="/assets/api.js?v=discovery-1"></script>
   <script type="module">
-    import { catalogParams } from '/assets/catalog-pagination.js';
-    import { createCatalogGrid } from '/assets/catalog-grid.js?v=language-1';
+    import { catalogParams } from '/assets/catalog-pagination.js?v=releases-1';
+    import { createCatalogGrid } from '/assets/catalog-grid.js?v=releases-1';
     import { mountSchedule } from '/assets/schedule-page.js?v=1';
     mountNav();
     mountSchedule(document.getElementById('estimatedSchedule'));
@@ -187,6 +189,10 @@
     // Genre and A-Z controls browse the upstream catalog.
     const initialBrowse = catalogParams(location.search);
     let activeSrc = initialBrowse.source;
+    let activeLanguage = initialBrowse.language || 'sub';
+    function paintLatestTabs() {
+      document.querySelectorAll('#latestTabs .tab').forEach(button => button.classList.toggle('on', button.dataset.src === activeSrc && (activeSrc !== 'latest' || button.dataset.language === activeLanguage)));
+    }
     const filter = { genre: initialBrowse.genre || null, letter: initialBrowse.letter === '0' ? '#' : initialBrowse.letter?.toUpperCase() || null };
     const genreSlug = value => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -211,6 +217,7 @@
     const refreshLatest = () => catalog.refresh().catch(() => {});
     function resetAndRefresh() {
       const params = { source: activeSrc, page: 1 };
+      if (activeSrc === 'latest' && homeCache?.provider === 'miruro') params.language = activeLanguage;
       if (filter.genre) params.genre = genreSlug(filter.genre);
       if (filter.letter) params.letter = filter.letter === '#' ? '0' : filter.letter;
       paintChips();
@@ -219,14 +226,15 @@
     function restorePage() {
       const params = catalogParams(location.search);
       activeSrc = params.source;
+      activeLanguage = params.language || 'sub';
       filter.genre = params.genre || null;
       filter.letter = params.letter === '0' ? '#' : params.letter?.toUpperCase() || null;
-      document.querySelectorAll('#latestTabs .tab').forEach(button => button.classList.toggle('on', button.dataset.src === activeSrc));
+      paintLatestTabs();
       paintChips();
       catalog.set(params, { navigate: false }).catch(() => {});
     }
     window.addEventListener('popstate', restorePage);
-    document.querySelectorAll('#latestTabs .tab').forEach(button => button.classList.toggle('on', button.dataset.src === activeSrc));
+    paintLatestTabs();
 
     function renderGenres(list) {
       const el = document.getElementById('genres');
@@ -266,6 +274,8 @@
       if (fingerprint === homeFingerprint) { refreshLatest(); return; }
       homeFingerprint = fingerprint;
       homeCache = data;
+      document.querySelector('#latestTabs [data-language="sub"]').textContent = data.provider === 'miruro' ? 'Sub' : 'All';
+      document.querySelector('#latestTabs [data-language="dub"]').hidden = data.provider !== 'miruro';
       document.getElementById('topTabs').hidden = Boolean(data.curated);
       document.getElementById('rankingHeading').textContent = data.provider === 'miruro' ? 'Top Airing' : data.curated ? 'Top Rated' : 'Top Anime';
       document.querySelector('#latestTabs [data-src="trending"]').textContent = data.curated ? 'Top Rated' : 'Trending';
@@ -296,6 +306,7 @@
       const b = e.target.closest('.tab'); if (!b) return;
       document.querySelectorAll('#latestTabs .tab').forEach(t => t.classList.toggle('on', t === b));
       activeSrc = b.dataset.src;
+      activeLanguage = b.dataset.language || 'sub';
       resetAndRefresh();
     };
     document.getElementById('topTabs').onclick = (e) => {

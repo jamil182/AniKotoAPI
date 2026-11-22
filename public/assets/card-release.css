@@ -1,0 +1,2 @@
+.card-release { position:absolute; left:0; right:0; bottom:24px; display:flex; justify-content:space-between; gap:8px; padding:28px 9px 9px; background:linear-gradient(transparent,rgba(0,0,0,.9)); color:#fff; font-size:.69rem; font-weight:700; pointer-events:none; }
+.tabs .tab[hidden] { display:none; }

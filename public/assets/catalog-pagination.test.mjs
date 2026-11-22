@@ -18,6 +18,9 @@ test('URL page and filters are normalized safely and conflicting filters use gen
   assert.deepEqual(catalogParams('?source=trending&page=7&letter=A'), { source: 'trending', page: 7, letter: 'a' });
   assert.deepEqual(catalogParams('?genre=action&letter=B'), { source: 'latest', page: 1, genre: 'action' });
   assert.equal(catalogParams('?page=10000').page, 1);
+  assert.deepEqual(catalogParams('?source=latest&page=2&language=dub'), { source: 'latest', page: 2, language: 'dub' });
+  assert.equal(catalogParams('?language=invalid').language, undefined);
+  assert.equal(catalogParams('?source=popular&language=dub').language, undefined);
 });
 
 test('pagination exposes current page and disables unavailable or busy navigation', () => {

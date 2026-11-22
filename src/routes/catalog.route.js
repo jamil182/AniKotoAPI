@@ -68,6 +68,8 @@ export function createCatalogRouter(client = createAniKotoClient(), catalog = nu
     if (typeof page !== "string" || !/^[1-9]\d{0,3}$/.test(page)) throw new AniKotoError("Invalid page", 400);
     const source = req.query.source || 'latest';
     if (!isCatalogSource(source)) throw new AniKotoError('Invalid catalog source', 400);
+    const language = req.query.language;
+    if (language !== undefined && !['sub', 'dub'].includes(language)) throw new AniKotoError('Invalid release language', 400);
     const type = req.query.type;
     if (type !== undefined && !isAnimeType(type)) throw new AniKotoError('Invalid anime type', 400);
     if (catalog) {
@@ -83,7 +85,7 @@ export function createCatalogRouter(client = createAniKotoClient(), catalog = nu
       if (typeof req.query.letter !== "string" || !/^[a-z0]$/i.test(req.query.letter)) throw new AniKotoError("Invalid letter", 400);
       endpoint = `/az-list/${req.query.letter.toLowerCase()}`;
     }
-    const data = await client.get(endpoint, { page });
+    const data = await client.get(endpoint, { page, ...(language && endpoint === '/latest-updated' ? { language } : {}) });
     if (!Array.isArray(data) && !Array.isArray(data?.data)) throw new AniKotoError('Invalid catalog page from AniKotoAPI');
     const totalPages = Number(data.totalPages ?? data.pagination?.totalPages ?? 1);
     if (!Number.isSafeInteger(totalPages) || totalPages < 1 || totalPages > 9999) throw new AniKotoError('Invalid page count from AniKotoAPI');

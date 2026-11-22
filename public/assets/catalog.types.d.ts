@@ -1,6 +1,7 @@
 export interface CatalogParams {
   source: 'latest' | 'trending' | 'added' | 'popular' | 'upcoming' | 'ongoing' | 'completed';
   page: number;
+  language?: 'sub' | 'dub';
   genre?: string;
   letter?: string;
   type?: 'tv' | 'movie' | 'ova' | 'ona' | 'special';

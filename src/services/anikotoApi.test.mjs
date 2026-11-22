@@ -148,6 +148,9 @@ test('catalog pages forward real page numbers, normalize array feeds and reject 
   assert.equal(page.results.data[0].id, 'page-2');
   assert.equal(page.results.totalPages, 301);
   assert.deepEqual(calls.at(-1), { endpoint: '/latest-updated', params: { page: '2' } });
+  assert.equal((await fetch(base + '/browse?source=latest&page=2&language=dub')).status, 200);
+  assert.deepEqual(calls.at(-1), { endpoint: '/latest-updated', params: { page: '2', language: 'dub' } });
+  for (const query of ['language=invalid', 'language[]=dub']) assert.equal((await fetch(base + '/browse?' + query)).status, 400);
   const trending = await (await fetch(base + '/browse?source=trending')).json();
   assert.equal(trending.results.data[0].id, 'trending-one');
   assert.equal(trending.results.totalPages, 1);

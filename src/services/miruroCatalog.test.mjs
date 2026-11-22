@@ -11,12 +11,14 @@ test('validates AniList identities and normalizes metadata without inventing rel
   assert.equal(anime.slug, 'al-21'); assert.equal(anime.rating, '8.7'); assert.equal(anime.synopsis, 'A pirate adventure.'); assert.equal(anime.sub, undefined);
   assert.equal(normalizeMiruroAnime({ id: 21, title: null }), null);
 });
-test('existing AniKoto slugs and real latest-episode feed keep their original source', async () => {
+test('existing AniKoto slugs remain compatible while latest episodes use the Miruro release feed', async () => {
   const calls = [];
   const legacy = { get: async (...args) => { calls.push(args); return { episodes: [] }; } };
-  const client = createMiruroCatalog({ legacy, request: async () => { throw Error('unexpected Miruro request'); } });
-  await client.get('/episodes/one-piece-odmau'); await client.get('/latest-updated', { page: '2' });
-  assert.deepEqual(calls, [['/episodes/one-piece-odmau', {}], ['/latest-updated', { page: '2' }]]);
+  const releases = { page: async params => ({ data: [{ title: 'Fresh release', language: params.language }], totalPages: 3 }) };
+  const client = createMiruroCatalog({ legacy, releases, request: async () => { throw Error('unexpected Miruro request'); } });
+  await client.get('/episodes/one-piece-odmau');
+  assert.equal((await client.get('/latest-updated', { page: '2', language: 'dub' })).data[0].language, 'dub');
+  assert.deepEqual(calls, [['/episodes/one-piece-odmau', {}]]);
 });
 test('deduplicates simultaneous metadata requests and serves stale metadata during an outage', async () => {
   let time = 0, calls = 0, broken = false;

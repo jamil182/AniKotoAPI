@@ -1,5 +1,5 @@
-import { catalogParams } from './catalog-pagination.js';
-import { createCatalogGrid } from './catalog-grid.js?v=language-1';
+import { catalogParams } from './catalog-pagination.js?v=releases-1';
+import { createCatalogGrid } from './catalog-grid.js?v=releases-1';
 import { CATALOG_VIEWS, ANIME_TYPES } from './catalog-sources.js';
 
 mountNav();
