@@ -221,9 +221,11 @@ function wireNav() {
   });
 
   document.getElementById('navRandom').onclick = async (e) => {
-    const btn = e.target; const old = btn.textContent; btn.textContent = '…'; btn.disabled = true;
+    const btn = e.currentTarget; const old = btn.textContent; btn.textContent = '…'; btn.disabled = true;
     try {
-      const anime = await apiGet('/catalog/random');
+      const current = /^\/(?:anime|watch)\/([a-z0-9_-]+)(?:\/|$)/i.exec(location.pathname)?.[1];
+      const anime = await apiGet('/catalog/random' + (current ? '?' + new URLSearchParams({exclude:current}) : ''));
+      if (!anime || typeof anime.id !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,239}$/i.test(anime.id)) throw new Error('No anime is available. Please try again.');
       location.href = animeHref(anime.id);
     } catch (error) {
       drop.innerHTML = `<div class="search-empty">${esc(error.message)}</div>`;

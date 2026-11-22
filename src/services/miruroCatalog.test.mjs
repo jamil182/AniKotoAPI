@@ -27,6 +27,25 @@ test('deduplicates simultaneous metadata requests and serves stale metadata duri
   assert.equal(calls, 1); assert.equal(rows[0].title, 'One Piece');
   time = 910000; broken = true; assert.equal((await client.get('/info', { id: 'al-21' })).slug, 'al-21'); assert.equal(calls, 2);
 });
+
+test('random selections bypass both memory and persisted caches while ordinary metadata stays cached', async () => {
+  const db = new Database(':memory:');
+  let randomCalls = 0, infoCalls = 0;
+  try {
+    db.exec('CREATE TABLE provider_metadata_cache (key TEXT PRIMARY KEY, payload TEXT NOT NULL, expires INTEGER NOT NULL, stale_until INTEGER NOT NULL, updated INTEGER NOT NULL)');
+    db.prepare('INSERT INTO provider_metadata_cache VALUES (?,?,?,?,?)').run('/random?', JSON.stringify(media(99)), 100000, 1000000, 0);
+    const client = createMiruroCatalog({ legacy: {}, getDatabase: () => db, now: () => 1000, request: async url => {
+      if (url.includes('/random?')) return response(media(20 + ++randomCalls));
+      infoCalls++; return response(media());
+    } });
+    const ids = [];
+    for (let i = 0; i < 3; i++) ids.push((await client.get('/random')).id);
+    assert.deepEqual(ids, ['al-21', 'al-22', 'al-23']);
+    await client.get('/info', { id: 'al-21' }); await client.get('/info', { id: 'al-21' });
+    assert.equal(infoCalls, 1);
+    assert.equal(db.prepare('SELECT payload FROM provider_metadata_cache WHERE key=?').get('/random?').payload, JSON.stringify(media(99)), 'random output is never written back to the shared cache');
+  } finally { db.close(); }
+});
 test('blocked Miruro episodes fall back only after exact MAL confirmation, including search episode suffixes', async () => {
   const calls = [];
   const legacy = { get: async (endpoint, params) => {

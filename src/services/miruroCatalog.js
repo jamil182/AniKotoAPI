@@ -77,8 +77,9 @@ export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, 
     if (!/^\/(?:discovery|spotlight|trending|popular|recent|upcoming|random|filter|search|info\/\d+|episodes\/\d+|watch\/[a-z0-9_-]+\/\d+\/(?:sub|dub)\/[a-z0-9_-]+)$/i.test(endpoint)) throw new AniKotoError('Invalid Miruro endpoint', 400);
     const query = new URLSearchParams(params); query.sort(); const key = endpoint + '?' + query;
     const metadata = !endpoint.startsWith('/episodes/') && !endpoint.startsWith('/watch/');
-    let hit = cache.get(key);
-    if (!hit && metadata) {
+    const cacheable = endpoint !== '/random';
+    let hit = cacheable ? cache.get(key) : null;
+    if (!hit && metadata && cacheable) {
       const saved = metadataStore()?.read.get(key);
       if (saved && saved.stale_until > now()) {
         try { hit = { value: JSON.parse(saved.payload), expires: saved.expires, staleUntil: saved.stale_until }; cache.set(key,hit); } catch { /* Corrupt cache entries are replaced by a fresh provider response. */ }
@@ -96,10 +97,12 @@ export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, 
       try {
         const { data } = await request(`http://127.0.0.1:${port}/api${key}`, { timeout: 18000, maxRedirects: 0, maxContentLength: 6 * 1024 * 1024, proxy: false });
         if (data?.success !== true || data.results == null) throw new AniKotoError('Miruro returned an invalid response');
-        if (cache.size >= 240) cache.delete(cache.keys().next().value);
         const entry = { value: data.results, expires: now() + (endpoint.startsWith('/info/') ? 900000 : 120000), staleUntil: now() + 7 * 86400000 };
-        cache.set(key, entry);
-        if (metadata) {
+        if (cacheable) {
+          if (cache.size >= 240) cache.delete(cache.keys().next().value);
+          cache.set(key, entry);
+        }
+        if (metadata && cacheable) {
           const payload = JSON.stringify(data.results), store = metadataStore();
           if (store && Buffer.byteLength(payload) <= 1024 * 1024) { store.write.run(key,payload,entry.expires,entry.staleUntil,now()); store.prune.run(); }
         }

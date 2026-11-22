@@ -91,14 +91,14 @@ export function createCatalogRouter(client = createAniKotoClient(), catalog = nu
     if (!Number.isSafeInteger(totalPages) || totalPages < 1 || totalPages > 9999) throw new AniKotoError('Invalid page count from AniKotoAPI');
     return { data: normalizeList(data), totalPages };
   });
-  route("/random", async () => {
-    if (catalog) return catalog.random();
-    const anime = normalizeAnime(await client.get("/random").catch(() => null));
-    if (anime) return anime;
+  route("/random", async req => {
+    const exclude = req.query.exclude === undefined ? null : slug(req.query.exclude);
+    const anime = catalog ? await catalog.random() : normalizeAnime(await client.get("/random").catch(() => null));
+    if (anime && anime.slug !== exclude && anime.id !== exclude) return anime;
     // Some deployments return /random itself as the slug after a redirect.
-    const home = await client.home();
-    const pool = normalizeList([...home.latest, ...(home.popular || []), ...(home.top || [])]);
-    if (!pool.length) throw new AniKotoError("No anime available from AniKotoAPI");
+    const home = catalog ? await catalog.home() : await client.home();
+    const pool = normalizeList([...(home.latest || []), ...(home.popular || []), ...(home.top || [])]).filter(item => item.slug !== exclude);
+    if (!pool.length) throw new AniKotoError(exclude ? 'No other anime is available. Please try again later.' : 'No anime available from AniKotoAPI', 404);
     return pool[randomInt(pool.length)];
   });
   route("/schedule", req => {

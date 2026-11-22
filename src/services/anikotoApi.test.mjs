@@ -6,6 +6,38 @@ import { createCatalogRouter } from "../routes/catalog.route.js";
 
 const response = results => ({ data: { success: true, results } });
 
+test('random avoids the current title, validates exclusions, and preserves the published-only catalog boundary', async t => {
+  let calls = 0;
+  const client = { get: async () => { calls++; return { slug: 'current-show', title: 'Current' }; }, home: async () => ({ latest: [{ slug: 'current-show' }, { slug: 'other-show' }] }) };
+  const app = express(); app.use('/catalog', createCatalogRouter(client));
+  app.use('/managed', createCatalogRouter(client, {
+    random: async () => ({ slug: 'published-current', id: 'published-current' }),
+    home: async () => ({ latest: [{ slug: 'published-current' }, { slug: 'published-other' }] }),
+  }));
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  assert.equal((await (await fetch(base + '/catalog/random?exclude=current-show')).json()).results.id, 'other-show');
+  assert.equal((await (await fetch(base + '/catalog/random?exclude=other-show')).json()).results.id, 'current-show');
+  const before = calls;
+  for (const query of ['exclude=../private', 'exclude[]=show', 'exclude=']) assert.equal((await fetch(base + '/catalog/random?' + query)).status, 400);
+  assert.equal(calls, before);
+  const managed = await fetch(base + '/managed/random?exclude=published-current');
+  assert.equal(managed.headers.get('cache-control'), 'no-store');
+  assert.equal((await managed.json()).results.id, 'published-other');
+  assert.equal(calls, before, 'managed random never falls back to the public client');
+});
+
+test('random returns a retryable message instead of reloading the same title when no alternative exists', async t => {
+  const app = express();
+  app.use('/catalog', createCatalogRouter({ get: async () => ({ slug: 'only-title' }), home: async () => ({ latest: [{ slug: 'only-title' }] }) }));
+  const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const res = await fetch(`http://127.0.0.1:${server.address().port}/catalog/random?exclude=only-title`);
+  assert.equal(res.status, 404); assert.match((await res.json()).message, /No other anime/);
+});
+
 test("normalizes slugs, names and duplicates without inventing internal library IDs", () => {
   assert.deepEqual(normalizeList({ data: [
     { slug: "naruto-eybxz/ep-1", name: "Naruto", japaneseTitle: "ナルト" },
