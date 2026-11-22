@@ -11,7 +11,7 @@ const API = location.protocol.startsWith('http')
   ? location.origin + '/api'
   : 'https://anikototvapi.vercel.app/api';
 
-import('/assets/miruro-theme.js?v=1').then(module => module.mountProviderTheme()).catch(() => {});
+import('/assets/miruro-theme.js?v=2').then(module => module.mountProviderTheme()).catch(() => {});
 import('/assets/watch-history.js?v=1').then(module => module.mountWatchHistory()).catch(() => {});
 
 async function apiGet(path, { signal } = {}) {
@@ -236,8 +236,8 @@ function mountNav(active) {
   host.className = 'nav';
   host.innerHTML = navHTML(active);
   wireNav();
-  import('/assets/site-menu.js?v=weekly-1').then(module => module.mountSiteMenu(host)).catch(() => {});
+  import('/assets/site-menu.js?v=history-1').then(module => module.mountSiteMenu(host)).catch(() => {});
   import('/assets/account-nav.js?v=google-1').then(module => module.mountAccountNav(document.getElementById('navAccount'))).catch(() => {});
 }
 
-import('/assets/site-language.js?v=2').then(module => module.mountSiteLanguage()).catch(() => {});
+import('/assets/site-language.js?v=history-1').then(module => module.mountSiteLanguage()).catch(() => {});
