@@ -56,13 +56,6 @@
 
       <section class="section">
         <div class="section-head">
-          <h2 class="section-title" id="popularHeading">Most Popular</h2>
-        </div>
-        <div id="popular"></div>
-      </section>
-
-      <section class="section">
-        <div class="section-head">
           <h2 class="section-title" id="genresSection" style="scroll-margin-top:160px">Genres</h2>
           <button class="tab" id="clearFilter" hidden>Clear filter</button>
         </div>
@@ -266,11 +259,6 @@
 
     // ---- Live catalog ----
     let homeCache = null;
-    // Latest uses upstream pages; Most Popular remains a short preview.
-    const loaders = {
-      popular: () => Promise.resolve(homeCache?.popular || []),
-    };
-
     let stopLive = null;
     let homeFingerprint = '';
     function applyHome(data) {
@@ -279,14 +267,12 @@
       homeFingerprint = fingerprint;
       homeCache = data;
       document.getElementById('topTabs').hidden = Boolean(data.curated);
-      document.getElementById('popularHeading').textContent = data.curated ? 'Featured Anime' : 'Most Popular';
       document.getElementById('rankingHeading').textContent = data.provider === 'miruro' ? 'Top Airing' : data.curated ? 'Top Rated' : 'Top Anime';
       document.querySelector('#latestTabs [data-src="trending"]').textContent = data.curated ? 'Top Rated' : 'Trending';
       const featured = homeCache.spotlights?.length ? homeCache.spotlights : homeCache.latest;
       renderHero(featured || []);
       if (!featured?.length) document.getElementById('heroInner').innerHTML = '<h1>Belum ada anime yang dipublikasikan</h1><p>Anime akan tampil setelah admin memilih Publish.</p><a class="btn primary" href="/admin">Buka Admin</a>';
       refreshLatest();
-      renderCards(document.getElementById('popular'), loaders.popular, { count: 12, empty: 'Nothing here yet.' });
 
       topData = homeCache.rankings;
       const activePeriod = document.querySelector('#topTabs .tab.on')?.dataset.k || 'today';
