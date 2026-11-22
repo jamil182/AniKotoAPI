@@ -34,6 +34,7 @@ html[data-site-theme=miruro] .bookmark-notice-wrap { padding-top:10px; }
 html[data-site-theme=miruro] .bookmark-notice { background:#202026; border-color:#45414e; }
 html[data-site-theme=miruro] .main { grid-template-columns:minmax(0,1fr) 310px; gap:30px; padding-top:30px; }
 html[data-site-theme=miruro] .grid { grid-template-columns:repeat(7,minmax(0,1fr)); gap:28px 20px; }
+html[data-site-theme=miruro] #upcomingAnime .grid { grid-template-columns:repeat(6,minmax(0,1fr)); }
 html[data-site-theme=miruro] .card-poster { border-radius:7px; }
 html[data-site-theme=miruro] .card-title { font-size:.79rem; font-weight:600; line-height:1.5; margin-top:9px; }
 html[data-site-theme=miruro] .card-sub { color:#aaa4ba; font-size:.71rem; }
@@ -97,6 +98,7 @@ html[data-site-theme=miruro] .watch-suggestion-list .related-row { padding:8px; 
 html[data-site-theme=miruro] .comments-panel { background:#1c1c2080; border-radius:9px; padding:18px; }
 html[data-site-theme=miruro] .foot { border-color:var(--border); background:#111113; }
 @media(max-width:1500px) {
+ html[data-site-theme=miruro] #upcomingAnime .grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
  html[data-site-theme=miruro] .grid { grid-template-columns:repeat(5,minmax(0,1fr)); gap:24px 15px; }
  html[data-site-theme=miruro] .main { grid-template-columns:minmax(0,1fr) 285px; gap:22px; }
 }
@@ -116,6 +118,7 @@ html[data-site-theme=miruro] .foot { border-color:var(--border); background:#111
  html[data-site-theme=miruro] .continue-card:nth-child(n+4) { display:none; }
 }
 @media(max-width:640px) {
+ html[data-site-theme=miruro] #upcomingAnime .grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
  html[data-site-theme=miruro] body { padding-left:0; padding-bottom:58px; }
  html[data-site-theme=miruro] .miruro-rail { top:auto; right:0; width:auto; height:52px; padding:0 12px; flex-direction:row; justify-content:space-around; border-top:1px solid var(--border); }
  html[data-site-theme=miruro] .miruro-rail-link { border-radius:7px; height:40px; }

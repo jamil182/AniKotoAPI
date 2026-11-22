@@ -1,4 +1,4 @@
-import { browserHistoryStore, watchHistoryCard } from './watch-history.js';
+import { browserHistoryStore, watchHistoryCard } from './watch-history.js?v=2';
 import { historyCompleted } from './watch-history-store.js';
 
 mountNav();

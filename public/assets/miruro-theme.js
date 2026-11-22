@@ -33,11 +33,30 @@ async function mountUpcoming() {
   const aside = document.querySelector('.main.wrap-home > aside'); if (!aside) return;
   try {
     const home = await apiGet('/catalog/home');
-    const rows = Array.isArray(home.upcoming) ? home.upcoming.slice(0, 5) : [];
+    let rows = Array.isArray(home.upcoming) ? home.upcoming.slice(0, 12) : [];
+    if (rows.length < 12) {
+      try { rows = (await apiGet('/catalog/browse?source=upcoming&page=1')).data?.slice(0,12) || rows; }
+      catch { /* The home response remains useful if the larger preview cannot load. */ }
+    }
     if (!rows.length) return;
+    const latest = document.getElementById('latestEpisodes');
+    if (latest && !document.getElementById('upcomingAnime')) {
+      const mainSection = document.createElement('section'); mainSection.className = 'section'; mainSection.id = 'upcomingAnime';
+      const head = document.createElement('div'); head.className = 'section-head';
+      const heading = document.createElement('h2'); heading.className = 'section-title'; heading.textContent = 'Upcoming Anime';
+      head.append(heading,link('/browse?source=upcoming','View more →','view-more'));
+      const grid = document.createElement('div'); grid.className = 'grid';
+      for (const row of rows) {
+        if (!safeSlug(row.slug)) continue;
+        const card = link('/anime/'+encodeURIComponent(row.slug),'','miruro-poster-card');
+        const image = document.createElement('img'); image.src = picture(row.poster); image.alt = row.title; image.loading = 'lazy';
+        const title = document.createElement('strong'); title.textContent = row.title; card.append(image,title); grid.append(card);
+      }
+      mainSection.append(head,grid); latest.after(mainSection);
+    }
     const section = document.createElement('section'); section.className = 'miruro-upcoming';
     const title = document.createElement('h2'); title.className = 'section-title'; title.textContent = 'Upcoming'; section.append(title);
-    for (const row of rows) {
+    for (const row of rows.slice(0,5)) {
       if (!safeSlug(row.slug)) continue;
       const anchor = link('/anime/' + encodeURIComponent(row.slug), '', 'miruro-side-card');
       const image = document.createElement('img'); image.src = picture(row.poster); image.alt = ''; image.loading = 'lazy';
@@ -94,7 +113,7 @@ export async function mountProviderTheme() {
   const config = await apiGet('/site-config');
   if (config.theme !== 'miruro') return;
   document.documentElement.dataset.siteTheme = 'miruro';
-  const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/assets/miruro-theme.css?v=1'; document.head.append(css);
+  const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/assets/miruro-theme.css?v=2'; document.head.append(css);
   mountRail(); void mountUpcoming(); void mountInfoExtras();
   const watchSlug = /^\/watch\/([a-z0-9_-]+)(?:\/|$)/i.exec(location.pathname)?.[1];
   if (watchSlug) apiGet('/catalog/anime/' + encodeURIComponent(watchSlug)).then(setBackdrop).catch(() => {});

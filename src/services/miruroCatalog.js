@@ -193,7 +193,10 @@ export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, 
     if (endpoint === '/random') return normalizeMiruroAnime(await raw('/random'));
     if (['/latest-updated','/newly-added'].includes(endpoint)) return legacy.get(endpoint, params);
     const collections = { '/trending': '/trending', '/most-popular': '/popular', '/status/upcoming': '/upcoming', '/status/ongoing': '/recent' };
-    if (collections[endpoint]) return page(await raw(collections[endpoint], { page: String(params.page || 1), per_page: '24' }));
+    if (collections[endpoint]) {
+      try { return page(await raw(collections[endpoint], { page: String(params.page || 1), per_page: '24' })); }
+      catch (error) { if (error.status !== 503) throw error; return legacy.get(endpoint,params); }
+    }
     const filter = { page: String(params.page || 1), per_page: '24', sort: 'POPULARITY_DESC' };
     if (endpoint === '/status/completed') filter.status = 'FINISHED';
     else if (endpoint.startsWith('/type/')) filter.format = endpoint.slice(6).toUpperCase();

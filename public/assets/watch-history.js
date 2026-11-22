@@ -46,6 +46,17 @@ function recordProgress() {
   if (!match || !(video instanceof HTMLVideoElement)) return;
   const slug = match[1], episode = Number(match[2]), saved = browserHistoryStore().list().find(row => row.slug === slug && row.episode === episode);
   let anime = null, lastSaved = 0, restored = false, thumbnail = saved?.thumbnail || '';
+  const panel = document.getElementById('infoPanel');
+  if (panel) {
+    const readDetails = () => {
+      const title = panel.querySelector('.anime-description-title')?.textContent?.trim();
+      if (!title) return;
+      anime ||= { title, poster: panel.querySelector('.anime-description-poster img')?.getAttribute('src') || '/favicon.svg' };
+      detailsObserver.disconnect();
+    };
+    const detailsObserver = new MutationObserver(readDetails); detailsObserver.observe(panel,{childList:true,subtree:true}); readDetails();
+    window.addEventListener('pagehide',()=>detailsObserver.disconnect(),{once:true});
+  }
   if (new URLSearchParams(location.search).get('resume') === '1') {
     const servers = document.getElementById('servers'), mode = document.getElementById('modeDirect');
     if (servers && mode) {
