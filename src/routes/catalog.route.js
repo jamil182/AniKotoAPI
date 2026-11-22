@@ -40,7 +40,7 @@ export function createCatalogRouter(client = createAniKotoClient(), catalog = nu
       });
     }
   });
-  route('/status', () => ({ mode: catalog ? 'managed' : 'live', refreshIntervalMs: 30000 }));
+  route('/status', () => ({ mode: catalog ? 'managed' : 'live', provider: client.provider || 'anikoto', refreshIntervalMs: 30000 }));
   route("/home", () => catalog ? catalog.home() : client.home());
   route("/search", async req => {
     const keyword = text(req.query.keyword, "keyword", 120);

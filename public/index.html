@@ -137,7 +137,7 @@
       heroSlides.forEach((it, i) => {
         const div = document.createElement('div');
         div.className = 'hero-slide' + (i === 0 ? ' active' : '');
-        div.style.backgroundImage = `url("${it.poster}")`;
+        div.style.backgroundImage = `url("${it.backgroundImage || it.poster}")`;
         hero.prepend(div);
       });
       const dots = document.getElementById('heroDots');
@@ -164,7 +164,7 @@
         <div class="hero-badges">${badges.join('')}</div>
         <h1>${esc(it.title || it.name)}</h1>
         ${(it.description || it.synopsis) ? `<p>${esc(it.description || it.synopsis)}</p>` : ''}
-        <a class="btn primary" href="${animeHref(it.id)}">▶ Details</a>`;
+        <div class="hero-actions"><a class="btn primary" href="/watch/${encodeURIComponent(it.id)}/1">▶ Watch Now</a><a class="btn" href="${animeHref(it.id)}">ⓘ Details</a></div>`;
     }
 
     function heroError() {
@@ -279,7 +279,7 @@
       homeCache = data;
       document.getElementById('topTabs').hidden = Boolean(data.curated);
       document.getElementById('popularHeading').textContent = data.curated ? 'Featured Anime' : 'Most Popular';
-      document.getElementById('rankingHeading').textContent = data.curated ? 'Top Rated' : 'Top Anime';
+      document.getElementById('rankingHeading').textContent = data.provider === 'miruro' ? 'Top Airing' : data.curated ? 'Top Rated' : 'Top Anime';
       document.querySelector('#latestTabs [data-src="trending"]').textContent = data.curated ? 'Top Rated' : 'Trending';
       const featured = homeCache.spotlights?.length ? homeCache.spotlights : homeCache.latest;
       renderHero(featured || []);

@@ -5,6 +5,7 @@ import { assertProxyableUrl, rememberResolvedHost } from '../helper/streamProxy.
 
 /** Resolve locally so changes in provider payloads do not depend on a hosted API release. */
 export async function resolveCatalogStream(client, id, slug, resolver = resolveStreamUrl) {
+  if (typeof client.resolve === 'function') return client.resolve(id, slug);
   const metadata = await client.get('/stream', { id, slug });
   const embed = parseEmbedUrl(metadata?.url);
   if (!embed) throw new AniKotoError('AniKotoAPI did not return a supported video embed');

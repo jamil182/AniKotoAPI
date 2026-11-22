@@ -70,7 +70,8 @@ export function createSeoRouter({ publicDir, client, catalog = null, config = se
   });
   router.get(staticPaths, async (req,res) => {
     try {
-      const file = {'/':'landing.html','/home':'index.html','/browse':'browse.html','/schedule':'schedule.html','/privacy':'privacy.html','/tos':'tos.html'}[req.path];
+      const miruroHome = req.path === '/' && process.env.SITE_THEME === 'miruro';
+      const file = {'/':miruroHome ? 'index.html' : 'landing.html','/home':'index.html','/browse':'browse.html','/schedule':'schedule.html','/privacy':'privacy.html','/tos':'tos.html'}[req.path];
       let template = await readFile(path.join(publicDir,file),'utf8');
       const definitions = {
         '/': ['Discover Anime, Latest Episodes & Release Schedules', 'Discover anime on '+config.name+'. Browse the latest episodes, popular series, anime details, and weekly release schedules.'],
@@ -85,7 +86,7 @@ export function createSeoRouter({ publicDir, client, catalog = null, config = se
         const checked = req.path === '/browse' ? seoBrowse(req.query) : seoBrowse({});
         const listing = await data.page(checked.params);
         const links = seoLinks(listing.data);
-        if (req.path === '/home') template = template.replace('<div id="latest"></div>', () => '<div id="latest">'+links+'</div>');
+        if (req.path === '/home' || miruroHome) template = template.replace('<div id="latest"></div>', () => '<div id="latest">'+links+'</div>');
         else if (req.path === '/') template = seoLanding(template, links);
         else {
           title = CATALOG_VIEWS[checked.source].title;

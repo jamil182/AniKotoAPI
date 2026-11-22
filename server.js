@@ -35,6 +35,8 @@ import { addCreatorInfo } from "./src/middleware/creatorInfo.js";
 import { createCatalogRouter } from "./src/routes/catalog.route.js";
 import { EMBED_ORIGINS } from "./public/assets/embed-policy.js";
 import { createAniKotoClient } from "./src/services/anikotoApi.js";
+import { createMiruroCatalog } from './src/services/miruroCatalog.js';
+import { startMiruroService } from './src/services/miruroProcess.js';
 import { createPublishedCatalog } from "./src/services/publishedCatalog.js";
 import { getCatalogMode } from "./src/services/catalogMode.js";
 import { createAccountsRouter } from "./src/routes/accounts.route.js";
@@ -60,8 +62,12 @@ app.set("trust proxy", "loopback");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const publicDir = path.join(process.cwd(), "public");
-const catalogClient = createAniKotoClient();
-const publishedCatalog = createPublishedCatalog(getDb, catalogClient);
+const legacyCatalogClient = createAniKotoClient();
+const provider = process.env.CATALOG_PROVIDER || 'anikoto';
+if (!['anikoto', 'miruro'].includes(provider)) throw new Error('CATALOG_PROVIDER must be anikoto or miruro');
+if (provider === 'miruro') startMiruroService();
+const catalogClient = provider === 'miruro' ? createMiruroCatalog({ legacy: legacyCatalogClient, getDatabase: getDb }) : legacyCatalogClient;
+const publishedCatalog = createPublishedCatalog(getDb, legacyCatalogClient);
 const publicCatalog = getCatalogMode(process.env.PUBLIC_CATALOG_MODE) === 'managed' ? publishedCatalog : null;
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",");
 
@@ -138,6 +144,9 @@ app.use((req, res, next) => {
 // below can own the root; the anime home lives at /home.
 app.use(createSeoRouter({ publicDir, client: catalogClient, catalog: publicCatalog }));
 app.use('/api/branding', createBrandingRouter(publicDir));
+app.get('/api/site-config', (_req, res) => res.set('Cache-Control', 'no-store').json({ success: true, results: {
+  provider, theme: process.env.SITE_THEME === 'miruro' ? 'miruro' : 'classic',
+} }));
 app.use(express.static(publicDir, { redirect: false, index: false }));
 
 // ══════════════════════════════════════════════════════════════

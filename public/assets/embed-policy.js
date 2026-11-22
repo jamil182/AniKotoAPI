@@ -2,6 +2,8 @@ export const EMBED_ORIGINS = Object.freeze([
   'https://megaplay.buzz',
   'https://vidtube.site',
   'https://vidplay.site',
+  'https://anixo.buzz',
+  'https://megavid.buzz',
 ]);
 
 /** @param {unknown} value @returns {URL | null} */
@@ -9,7 +11,10 @@ export function parseEmbedUrl(value) {
   if (typeof value !== 'string') return null;
   try {
     const url = new URL(value);
-    return EMBED_ORIGINS.includes(url.origin) && !url.username && !url.password && /^\/(?:videojs\/)?stream\//.test(url.pathname)
+    const supported = ['https://anixo.buzz', 'https://megavid.buzz'].includes(url.origin)
+      ? /^\/(?:embed\/)?(?:ani|mal)\/[1-9]\d*\/\d+(?:\.\d+)?\/(?:sub|dub)$/.test(url.pathname)
+      : /^\/(?:videojs\/)?stream\//.test(url.pathname);
+    return EMBED_ORIGINS.includes(url.origin) && !url.username && !url.password && supported
       ? url : null;
   } catch {
     return null;

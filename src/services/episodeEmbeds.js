@@ -9,6 +9,7 @@ import { malEmbedSources, parseEmbedUrl } from '../../public/assets/embed-policy
  * @returns {Promise<{sources: import('./anikotoApi.types.js').CatalogEmbedSource[]}>}
  */
 export async function getEpisodeEmbeds(client, slug, episode) {
+  if (typeof client.embeds === 'function') return client.embeds(slug, episode);
   const data = await client.get(`/episodes/${slug}`);
   if (!Array.isArray(data?.episodes)) throw new AniKotoError('Invalid episode response from AniKotoAPI');
   const row = data.episodes.find(item => Number(item?.episode_no) === Number(episode));

@@ -32,6 +32,7 @@ export function createCommentsRouter(getDatabase, client, catalog = null, { now 
   let repository;
   const repo = () => repository ||= createCommentsRepository(getDatabase());
   const visible = slug => { if (catalog) catalog.require(slug); };
+  const canonical = slug => !catalog && typeof client.canonicalSlug === 'function' ? client.canonicalSlug(slug) : slug;
   const row = id => { const value = repo().get(id); if (!value) throw new AccountError('Komentar tidak ditemukan.', 404); visible(value.anime_slug); return value; };
   async function realAnime(slug, episode = 0) {
     if (catalog) {
@@ -67,18 +68,18 @@ export function createCommentsRouter(getDatabase, client, catalog = null, { now 
     if (attempt.count >= maxWrites || (!attempts.has(key) && attempts.size >= 1000)) return res.status(429).set('Retry-After', '60').json({ success: false, message: 'Terlalu banyak aktivitas. Silakan tunggu sebentar.' });
     attempt.count++; attempts.set(key, attempt); next();
   });
-  route(router, 'get', '/', (req, res) => {
-    const slug = commentSlug(req.query.slug); visible(slug);
+  route(router, 'get', '/', async (req, res) => {
+    const slug = await canonical(commentSlug(req.query.slug)); visible(slug);
     return repo().list({ slug, episode: commentEpisode(req.query.episode ?? '0', true), page: commentPage(req.query.page), sort: commentSort(req.query.sort), viewer: res.locals.viewer });
   });
   route(router, 'post', '/', async (req, res) => {
-    const draft = commentDraft(req.body); visible(draft.slug);
+    const draft = commentDraft(req.body); draft.slug = await canonical(draft.slug); visible(draft.slug);
     if (!repo().existing(res.locals.viewer, draft.requestId)) await realAnime(draft.slug, draft.episode);
     const result = repo().create(draft, res.locals.viewer, now());
     res.status(201); return result;
   });
   route(router, 'put', '/reaction', async (req, res) => {
-    const body = commentObject(req.body, ['slug', 'mood']), slug = commentSlug(body.slug), mood = commentMood(body.mood);
+    const body = commentObject(req.body, ['slug', 'mood']), slug = await canonical(commentSlug(body.slug)), mood = commentMood(body.mood);
     await realAnime(slug); return repo().react(slug, res.locals.viewer, mood);
   });
   route(router, 'get', '/:id/replies', (req, res) => {

@@ -11,6 +11,8 @@ const API = location.protocol.startsWith('http')
   ? location.origin + '/api'
   : 'https://anikototvapi.vercel.app/api';
 
+import('/assets/miruro-theme.js?v=1').then(module => module.mountProviderTheme()).catch(() => {});
+
 async function apiGet(path, { signal } = {}) {
   const timeout = AbortSignal.timeout(25000);
   const res = await fetch(API + path, {
