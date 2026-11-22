@@ -244,4 +244,4 @@ function mountNav(active) {
   import('/assets/account-nav.js?v=google-1').then(module => module.mountAccountNav(document.getElementById('navAccount'))).catch(() => {});
 }
 
-import('/assets/site-language.js?v=history-1').then(module => module.mountSiteLanguage()).catch(() => {});
+import('/assets/site-language.js?v=discovery-1').then(module => module.mountSiteLanguage()).catch(() => {});

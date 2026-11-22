@@ -1,4 +1,8 @@
 const pairs = [
+  ['Search','Pencarian'],['Staff','Staf'],['Characters','Karakter'],['Formats','Format'],['Highest Rated','Rating Tertinggi'],['Most Favourited','Paling Difavoritkan'],['Newest','Terbaru'],
+  ['Airing','Sedang Tayang'],['On hiatus','Sedang Jeda'],['Cancelled','Dibatalkan'],['↺ Reset','↺ Atur ulang'],['⌄ Show more','⌄ Lihat lebih banyak'],['⌃ Show less','⌃ Tampilkan sedikit'],
+  ['Search ready','Pencarian siap'],['Search unavailable','Pencarian tidak tersedia'],['Searching…','Mencari…'],['Search keyword','Kata kunci pencarian'],['Sort results','Urutkan hasil'],
+  ['Search studios…','Cari studio…'],['Search staff…','Cari staf…'],['Search characters…','Cari karakter…'],['› Upcoming','› Mendatang'],
   ['History','Riwayat'],['Continue Watching','Lanjutkan Menonton'],['View all ›','Lihat semua ›'],['› View history','› Lihat riwayat'],
   ['Local history','Riwayat lokal'],['Search history','Cari riwayat'],['Last watched','Terakhir ditonton'],['All titles','Semua judul'],
   ['Sort by','Urutkan'],['Watching','Sedang ditonton'],['Ⅱ Pause history','Ⅱ Jeda riwayat'],['▶ Resume history','▶ Lanjutkan riwayat'],['Clear all','Hapus semua'],['Undo clear','Batalkan hapus'],
