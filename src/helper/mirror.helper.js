@@ -18,6 +18,7 @@
 
 import axios from "axios";
 import { headers } from "../configs/header.config.js";
+import { BASE_URL } from '../configs/dataUrl.js';
 import { getCache, setCache } from "./cache.helper.js";
 import { fetchWithProxy, getProxyStatus } from "./proxy.helper.js";
 
@@ -26,13 +27,10 @@ import { fetchWithProxy, getProxyStatus } from "./proxy.helper.js";
 // ══════════════════════════════════════════════════════════════
 
 // ---- FEATURE: Mirror Domain Configuration ----
-// Default mirrors with names and priority
+// Legacy domains can still return HTTP 200 with an outdated catalog. Only the
+// verified current source is automatic; operators can configure verified mirrors.
 const DEFAULT_MIRRORS = [
-  { url: "https://anikototv.to", name: "Primary", priority: 1 },
-  { url: "https://anikoto.cz", name: "Regional CZ", priority: 2 },
-  { url: "https://anikoto.me", name: "Short TLD", priority: 3 },
-  { url: "https://anikoto.net", name: "Network", priority: 4 },
-  { url: "https://anikototv.se", name: "Nordic .se", priority: 5 },
+  { url: BASE_URL, name: "Primary", priority: 1 },
 ];
 
 // Parse custom mirrors from env or use defaults

@@ -26,9 +26,9 @@
  * This serves as the canonical domain for the site.
  *
  * @type {string}
- * @default "https://anikototv.to"
+ * @default "https://anikototv.bz"
  */
-const BASE_URL = "https://anikototv.to";
+const BASE_URL = "https://anikototv.bz";
 
 // ---- FEATURE: Alternative mirror domains for fallback and redundancy ----
 /**

@@ -132,6 +132,15 @@ Jika muncul `Catalog temporarily unavailable`, periksa `/api/health` dan
 `/api/catalog/browse?page=1`. Health 200 dengan browse 502 menunjukkan kegagalan
 sumber katalog; periksa sumber tersebut sebelum mengubah database atau DNS.
 
+Jika postingan berhenti diperbarui meskipun API mengembalikan 200, bandingkan
+judul dan jumlah episode di `/api/latest-updated?page=1` dengan situs sumber.
+Domain lama dapat tetap online tetapi menyajikan katalog yang tertinggal.
+Sumber yang diverifikasi pada 22 November 2026 adalah `https://anikototv.bz`.
+Gunakan `MIRROR_DOMAINS=https://anikototv.bz`, lalu restart proses `anijs` agar
+sumber dan cache lama dimuat ulang. Hanya tambahkan mirror setelah memastikan
+daftar episode terbarunya sama; status online saja tidak menjamin data mutakhir.
+Pertahankan `ANIKOTO_API_BASE_URL=https://aniyear.com/api` dan mode `live`.
+
 Domain utama adalah `https://aniyear.com`. Aplikasi tetap menggunakan folder,
 proses `anijs`, port, dan database yang sama; akun, komentar, serta katalog tidak
 perlu diimpor ulang. Cookie sesi dibatasi per domain sehingga pengguna perlu
