@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,follow">
+  <title>Search — Aniyear</title><link rel="icon" href="/favicon.png">
+  <link rel="stylesheet" href="/assets/app.css?v=weekly-1"><link rel="stylesheet" href="/assets/search-page.css?v=1">
+  <script type="module" src="/assets/branding.js"></script><script type="module" src="/assets/visitors.js"></script>
+  <style data-dark-loading>html{color-scheme:dark;background:#111113}body{background:#111113}</style>
+</head>
+<body>
+  <header id="nav"></header>
+  <main class="wrap search-page">
+    <div class="search-heading"><div><h1>Search</h1><p>Simple when you want it, extremely specific when you need it.</p></div><nav id="searchKinds" class="search-kinds" aria-label="Search categories"></nav></div>
+    <form id="discoveryForm" class="discovery-form" role="search" aria-label="Advanced search">
+      <div class="search-query"><input id="discoveryQuery" name="q" type="search" placeholder="Search anime…" maxlength="120" aria-label="Search keyword"><button class="btn" type="submit">Search</button></div>
+      <div id="animeFilters" class="search-filter-row">
+        <label><span>Genres</span><select name="genre" id="discoveryGenre" aria-label="Genres"></select></label>
+        <label><span>Formats</span><select name="format" id="discoveryFormat" aria-label="Formats"></select></label>
+        <label><span>Status</span><select name="status" id="discoveryStatus" aria-label="Status"></select></label>
+        <label><span>Year</span><input name="year" id="discoveryYear" type="number" min="1900" max="2100" placeholder="Year" aria-label="Year"></label>
+        <label><span>Sort</span><select name="sort" id="discoverySort" aria-label="Sort results"></select></label>
+        <button class="btn search-reset" id="resetDiscovery" type="button">↺ Reset</button>
+      </div>
+    </form>
+    <div class="search-status-row"><p id="discoveryStatusText" role="status" aria-live="polite"></p><button class="btn" id="retryDiscovery" type="button" hidden>Retry</button></div>
+    <nav id="discoveryPagerTop" class="pager catalog-pagination" aria-label="Search pages, top"></nav>
+    <section id="discoveryResults" class="discovery-results" aria-label="Search results" aria-busy="true"></section>
+    <nav id="discoveryPager" class="pager catalog-pagination" aria-label="Search pages"></nav>
+  </main>
+  <script src="/assets/realtime.js"></script><script src="/assets/api.js?v=discovery-1"></script><script type="module" src="/assets/search-page.js?v=1"></script>
+</body>
+</html>

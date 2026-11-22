@@ -1,5 +1,6 @@
 export const navigationItems = Object.freeze([
   { label: 'HOME', href: '/home' },
+  { label: 'SEARCH', href: '/search' },
   { label: 'HISTORY', href: '/history' },
   { label: 'WEEKLY SCHEDULE', href: '/schedule' },
   { label: 'GENRE', href: '/home#genresSection' },

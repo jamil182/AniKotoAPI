@@ -11,7 +11,8 @@ const API = location.protocol.startsWith('http')
   ? location.origin + '/api'
   : 'https://anikototvapi.vercel.app/api';
 
-import('/assets/miruro-theme.js?v=3').then(module => module.mountProviderTheme()).catch(() => {});
+import('/assets/miruro-theme.js?v=4').then(module => module.mountProviderTheme()).catch(() => {});
+import('/assets/image-loading.js?v=1').then(module => module.mountImageLoading()).catch(() => {});
 import('/assets/watch-history.js?v=2').then(module => module.mountWatchHistory()).catch(() => {});
 
 async function apiGet(path, { signal } = {}) {
@@ -183,6 +184,9 @@ function wireNav() {
   const input = document.getElementById('navSearch');
   const drop = document.getElementById('navSearchDrop');
   let timer = null;
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {event.preventDefault(); location.href = '/search?' + new URLSearchParams({q:input.value.trim()});}
+  });
 
   input.addEventListener('input', () => {
     clearTimeout(timer);
@@ -236,7 +240,7 @@ function mountNav(active) {
   host.className = 'nav';
   host.innerHTML = navHTML(active);
   wireNav();
-  import('/assets/site-menu.js?v=history-1').then(module => module.mountSiteMenu(host)).catch(() => {});
+  import('/assets/site-menu.js?v=discovery-1').then(module => module.mountSiteMenu(host)).catch(() => {});
   import('/assets/account-nav.js?v=google-1').then(module => module.mountAccountNav(document.getElementById('navAccount'))).catch(() => {});
 }
 

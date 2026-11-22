@@ -1,9 +1,14 @@
 // Isolated loopback entry point. Dependencies resolve from the parent application.
 const express = require('express');
 const routes = require('./src/routes/apiRoutes');
+const discover = require('./discovery.cjs');
 const app = express();
 app.disable('x-powered-by');
 app.get('/health', (_req, res) => res.json({success: true, service: 'aniyear-miruro', version: '2.3.3'}));
+app.get('/api/discovery',async (req,res) => {
+  try { res.json({success:true,results:await discover(req.query)}); }
+  catch (error) { res.status(error?.response?.status === 429 ? 429 : 503).set('Retry-After','60').json({success:false,message:'Search source is temporarily unavailable'}); }
+});
 app.use('/api', routes((res, results, status = 200) => res.status(status).json({success: true, results}),
   (res, message = 'Miruro request failed', status = 502) => {
     if (/\b429\b/.test(message)) return res.status(429).set('Retry-After','60').json({success:false,message:'Metadata source rate limit reached'});

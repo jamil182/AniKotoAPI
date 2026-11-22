@@ -33,6 +33,7 @@ import { dirname } from "path";
 import { createApiRoutes } from "./src/routes/apiRoutes.js";
 import { addCreatorInfo } from "./src/middleware/creatorInfo.js";
 import { createCatalogRouter } from "./src/routes/catalog.route.js";
+import { createDiscoveryRouter } from './src/routes/discovery.route.js';
 import { EMBED_ORIGINS } from "./public/assets/embed-policy.js";
 import { createAniKotoClient } from "./src/services/anikotoApi.js";
 import { createMiruroCatalog } from './src/services/miruroCatalog.js';
@@ -168,6 +169,10 @@ app.get('/history', (_req, res) => {
   res.set('Cache-Control', 'no-store').set('X-Robots-Tag', 'noindex, follow');
   res.sendFile(path.join(publicDir, 'history.html'));
 });
+app.get('/search', (_req,res) => {
+  res.set('Cache-Control','no-store').set('X-Robots-Tag','noindex, follow');
+  res.sendFile(path.join(publicDir,'search.html'));
+});
 app.get(['/login', '/register'], (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.sendFile(path.join(publicDir, req.path === '/register' ? 'register.html' : 'login.html'));
@@ -238,6 +243,7 @@ app.use('/api/stream/sub-translate', createSubtitleTranslationRouter(getDb));
 app.use('/api/catalog/synopsis', createSynopsisTranslationRouter(getDb, catalogClient, publicCatalog));
 app.use("/api/admin", createCmsRouter(getDb, catalogClient));
 app.use("/api/catalog", createCatalogRouter(catalogClient, publicCatalog));
+app.use('/api/discovery',createDiscoveryRouter(catalogClient,publicCatalog));
 createApiRoutes(app, jsonResponse, jsonError, publishedCatalog);
 
 // ══════════════════════════════════════════════════════════════

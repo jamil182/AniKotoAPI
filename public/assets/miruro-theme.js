@@ -15,8 +15,9 @@ function mountRail() {
     Schedule: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 11h18"/>',
     Account: '<circle cx="12" cy="7" r="4"/><path d="M4 22v-4a8 8 0 0 1 16 0v4"/>',
     History: '<path d="M3 4v6h6M3 10a9 9 0 1 1 1 8M12 7v5l3 2"/>',
+    Search: '<circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/>',
   };
-  for (const [label, href] of [['Home','/home'],['Trending','/browse?source=trending'],['Browse','/browse'],['Schedule','/schedule'],['History','/history'],['Account','/account']]) {
+  for (const [label, href] of [['Home','/home'],['Trending','/browse?source=trending'],['Browse','/browse'],['Search','/search'],['Schedule','/schedule'],['History','/history'],['Account','/account']]) {
     const anchor = link(href, '', 'miruro-rail-link'); anchor.title = label; anchor.setAttribute('aria-label', label);
     anchor.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">${icons[label]}</svg>`;
     if (location.pathname === href) anchor.setAttribute('aria-current', 'page'); nav.append(anchor);
@@ -33,36 +34,28 @@ async function mountUpcoming() {
   const aside = document.querySelector('.main.wrap-home > aside'); if (!aside) return;
   try {
     const home = await apiGet('/catalog/home');
-    let rows = Array.isArray(home.upcoming) ? home.upcoming.slice(0, 12) : [];
-    if (rows.length < 12) {
-      try { rows = (await apiGet('/catalog/browse?source=upcoming&page=1')).data?.slice(0,12) || rows; }
+    let rows = Array.isArray(home.upcoming) ? home.upcoming.slice(0, 10) : [];
+    if (!rows.length) {
+      try { rows = (await apiGet('/catalog/browse?source=upcoming&page=1')).data?.slice(0,10) || rows; }
       catch { /* The home response remains useful if the larger preview cannot load. */ }
     }
     if (!rows.length) return;
-    const latest = document.getElementById('latestEpisodes');
-    if (latest && !document.getElementById('upcomingAnime')) {
-      const mainSection = document.createElement('section'); mainSection.className = 'section'; mainSection.id = 'upcomingAnime';
-      const head = document.createElement('div'); head.className = 'section-head';
-      const heading = document.createElement('h2'); heading.className = 'section-title'; heading.textContent = 'Upcoming Anime';
-      head.append(heading,link('/browse?source=upcoming','View more →','view-more'));
-      const grid = document.createElement('div'); grid.className = 'grid';
-      for (const row of rows) {
-        if (!safeSlug(row.slug)) continue;
-        const card = link('/anime/'+encodeURIComponent(row.slug),'','miruro-poster-card');
-        const image = document.createElement('img'); image.src = picture(row.poster); image.alt = row.title; image.loading = 'lazy';
-        const title = document.createElement('strong'); title.textContent = row.title; card.append(image,title); grid.append(card);
-      }
-      mainSection.append(head,grid); latest.after(mainSection);
-    }
-    const section = document.createElement('section'); section.className = 'miruro-upcoming';
-    const title = document.createElement('h2'); title.className = 'section-title'; title.textContent = 'Upcoming'; section.append(title);
-    for (const row of rows.slice(0,5)) {
+    const section = document.createElement('section'); section.className = 'miruro-upcoming'; section.id = 'upcomingAnime';
+    const title = document.createElement('h2'); title.className = 'section-title'; title.textContent = '› Upcoming'; section.append(title);
+    const cards = [];
+    for (const row of rows) {
       if (!safeSlug(row.slug)) continue;
       const anchor = link('/anime/' + encodeURIComponent(row.slug), '', 'miruro-side-card');
+      if (cards.length >= 5) anchor.hidden = true;
       const image = document.createElement('img'); image.src = picture(row.poster); image.alt = ''; image.loading = 'lazy';
       const copy = document.createElement('div'), name = document.createElement('strong'), detail = document.createElement('small');
-      name.textContent = row.title; detail.textContent = [row.type, row.year].filter(Boolean).join(' · '); copy.append(name, detail); anchor.append(image, copy); section.append(anchor);
+      name.textContent = row.title; detail.textContent = [row.type, row.year].filter(Boolean).join(' · '); copy.append(name, detail); anchor.append(image, copy); section.append(anchor); cards.push(anchor);
     }
+    if (cards.length > 5) {
+      const more = document.createElement('button'); more.type = 'button'; more.className = 'upcoming-expand'; more.textContent = '⌄ Show more'; more.setAttribute('aria-expanded','false');
+      more.onclick = () => { const expanded = more.getAttribute('aria-expanded') !== 'true'; more.setAttribute('aria-expanded',String(expanded)); more.textContent = expanded ? '⌃ Show less' : '⌄ Show more'; cards.slice(5).forEach(card => {card.hidden = !expanded;}); }; section.append(more);
+    }
+    section.append(link('/search?kind=anime&status=NOT_YET_RELEASED','View more →','view-more upcoming-view-more'));
     aside.append(section);
   } catch { /* The ranking and catalog remain usable independently. */ }
 }
@@ -113,7 +106,7 @@ export async function mountProviderTheme() {
   const config = await apiGet('/site-config');
   if (config.theme !== 'miruro') return;
   document.documentElement.dataset.siteTheme = 'miruro';
-  const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/assets/miruro-theme.css?v=2'; document.head.append(css);
+  const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/assets/miruro-theme.css?v=3'; document.head.append(css);
   mountRail(); void mountUpcoming(); void mountInfoExtras();
   const watchSlug = /^\/watch\/([a-z0-9_-]+)(?:\/|$)/i.exec(location.pathname)?.[1];
   if (watchSlug) apiGet('/catalog/anime/' + encodeURIComponent(watchSlug)).then(setBackdrop).catch(() => {});

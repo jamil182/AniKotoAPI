@@ -73,7 +73,7 @@ export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, 
     return aliases;
   }
   async function raw(endpoint, params = {}) {
-    if (!/^\/(?:spotlight|trending|popular|recent|upcoming|random|filter|search|info\/\d+|episodes\/\d+|watch\/[a-z0-9_-]+\/\d+\/(?:sub|dub)\/[a-z0-9_-]+)$/i.test(endpoint)) throw new AniKotoError('Invalid Miruro endpoint', 400);
+    if (!/^\/(?:discovery|spotlight|trending|popular|recent|upcoming|random|filter|search|info\/\d+|episodes\/\d+|watch\/[a-z0-9_-]+\/\d+\/(?:sub|dub)\/[a-z0-9_-]+)$/i.test(endpoint)) throw new AniKotoError('Invalid Miruro endpoint', 400);
     const query = new URLSearchParams(params); query.sort(); const key = endpoint + '?' + query;
     const metadata = !endpoint.startsWith('/episodes/') && !endpoint.startsWith('/watch/');
     let hit = cache.get(key);
@@ -264,5 +264,18 @@ export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, 
     return { url: validate(stream.url), type: stream.type || 'hls', subtitles, skipData: sources.skipTimes || null, linkId: token };
   }
   async function canonicalSlug(slug) { const id = miruroId(slug); return id ? await legacyMatch(id) || slug : slug; }
-  return { get, home, embeds, resolve, canonicalSlug, provider: 'miruro' };
+  async function discover(filters) {
+    const result = await raw('/discovery',filters), kind = filters.kind || 'anime';
+    const rows = list(result.results);
+    const data = kind === 'anime' ? rows.map(normalizeMiruroAnime).filter(Boolean) : rows.flatMap(row => {
+      const id = Number(row.id); if (!Number.isSafeInteger(id) || id<=0) return [];
+      const title = kind === 'studios' ? plain(row.name) : plain(record(row.name).full);
+      if (!title) return [];
+      const poster = kind === 'studios' ? image(record(record(list(record(row.media).nodes)[0]).coverImage).large) : image(record(row.image).large);
+      return [{id:String(id),title,poster,kind,href:kind === 'studios' ? '/search?' + new URLSearchParams({kind:'anime',studio:title}) : `https://anilist.co/${kind === 'staff' ? 'staff' : 'character'}/${id}/`,external:kind !== 'studios'}];
+    });
+    const current = Number(result.page || filters.page || 1), totalPages = result.hasNextPage === false ? current : Math.max(current,Math.ceil(Number(result.total || current*28)/28));
+    return {data,page:current,totalPages:Math.min(999,totalPages),kind};
+  }
+  return { get, home, embeds, resolve, canonicalSlug, discover, provider: 'miruro' };
 }

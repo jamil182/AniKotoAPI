@@ -1,0 +1,5 @@
+.skeleton { background:#19191d!important; animation:none!important; }
+.image-loading-enabled .image-pending,.image-loading-enabled .image-unavailable { opacity:0; }
+.image-loading-enabled .image-ready { opacity:1; }
+.card-poster,.history-media,.search-result-cover { background:#19191d; }
+html { color-scheme:dark; }

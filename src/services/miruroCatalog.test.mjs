@@ -66,6 +66,14 @@ test('normalizes Miruro provider episodes and rejects a cross-show direct stream
 test('rejects invalid private-service ports', () => {
   for (const port of [4444, 4455, 80, 65536, NaN]) assert.throws(() => createMiruroCatalog({ legacy: {}, port }), /Invalid Miruro port/);
 });
+test('discovery normalizes anime and people without turning untrusted profile links into navigation',async()=>{
+  const client=createMiruroCatalog({legacy:{},request:async url=>{
+    const kind=new URL(url).searchParams.get('kind');
+    return response({page:1,total:60,perPage:28,hasNextPage:true,results:kind==='anime'?[media()]:[{id:77,name:{full:'Test Person'},image:{large:'https://example.com/p.jpg'},siteUrl:'javascript:bad()'}]});
+  }});
+  const anime=await client.discover({kind:'anime',page:'1',sort:'POPULARITY_DESC'});assert.equal(anime.data[0].slug,'al-21');assert.equal(anime.totalPages,3);
+  const people=await client.discover({kind:'characters',page:'1',sort:'POPULARITY_DESC'});assert.equal(people.data[0].href,'https://anilist.co/character/77/');
+});
 test('persists verified legacy identities across restarts so existing comment threads remain addressable', async () => {
   const db = new Database(':memory:');
   try {

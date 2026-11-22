@@ -24,4 +24,5 @@ export interface MiruroCatalog {
   embeds(slug: string, episode: string): Promise<{sources: CatalogEmbedSource[]}>;
   resolve(token: string, slug: string): Promise<Record<string, unknown>>;
   canonicalSlug(slug: string): Promise<string>;
+  discover(filters: import('../../public/assets/search-filters.types.js').SearchFilters): Promise<{data: unknown[];page:number;totalPages:number;kind:string}>;
 }
