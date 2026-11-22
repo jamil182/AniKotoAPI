@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,follow"><title>Watch History — Aniyear</title>
+  <link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/assets/app.css?v=weekly-1"><link rel="stylesheet" href="/assets/watch-history.css?v=1">
+  <script type="module" src="/assets/branding.js"></script><script type="module" src="/assets/visitors.js"></script>
+</head>
+<body>
+  <header id="nav"></header>
+  <main class="wrap history-page">
+    <div class="history-heading"><div><h1>History</h1><p id="historyCount" role="status"></p></div><div class="history-actions"><button class="btn" id="pauseHistory" type="button" aria-pressed="false">Ⅱ Pause history</button><button class="btn" id="clearHistory" type="button">Clear all</button><button class="btn" id="undoHistory" type="button" hidden>Undo clear</button></div></div>
+    <div class="history-layout">
+      <aside class="history-filters" aria-label="History filters">
+        <strong>Local history</strong>
+        <label>Show<select id="historyState"><option value="all">All titles</option><option value="watching">Watching</option><option value="completed">Completed</option></select></label>
+        <label>Search history<input id="historySearch" type="search" placeholder="Search history" maxlength="120"></label>
+        <label>Sort by<select id="historySort"><option value="recent">Last watched</option><option value="title">Title A–Z</option></select></label>
+        <p>Saved in this browser. Direct mode saves your playback position; Embed support depends on the video provider.</p>
+        <a href="/home">← Back to home</a>
+      </aside>
+      <div id="historyList" class="history-list" aria-live="polite"></div>
+    </div>
+    <p id="historyFeedback" class="history-feedback" role="status"></p>
+  </main>
+  <script src="/assets/realtime.js"></script><script src="/assets/api.js?v=history-1"></script><script type="module" src="/assets/history-page.js?v=1"></script>
+</body>
+</html>

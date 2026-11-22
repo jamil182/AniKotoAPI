@@ -1,4 +1,7 @@
 const pairs = [
+  ['History','Riwayat'],['Continue Watching','Lanjutkan Menonton'],['View all ›','Lihat semua ›'],['› View history','› Lihat riwayat'],
+  ['Local history','Riwayat lokal'],['Search history','Cari riwayat'],['Last watched','Terakhir ditonton'],['All titles','Semua judul'],
+  ['Sort by','Urutkan'],['Watching','Sedang ditonton'],['Ⅱ Pause history','Ⅱ Jeda riwayat'],['▶ Resume history','▶ Lanjutkan riwayat'],['Clear all','Hapus semua'],['Undo clear','Batalkan hapus'],
   ['Home','Beranda'],['Weekly Schedule','Jadwal Mingguan'],['Estimated Schedule','Perkiraan Jadwal'],['Random','Acak'],
   ['Login','Masuk'],['Register','Daftar'],['Logout','Keluar'],['Search anime…','Cari anime…'],['Search anime','Cari anime'],
   ['Latest Episodes','Episode Terbaru'],['Most Popular','Terpopuler'],['Top Anime','Anime Teratas'],['Genres','Genre'],['Genre','Genre'],

@@ -164,6 +164,10 @@ app.get('/account', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.sendFile(path.join(publicDir, 'account.html'));
 });
+app.get('/history', (_req, res) => {
+  res.set('Cache-Control', 'no-store').set('X-Robots-Tag', 'noindex, follow');
+  res.sendFile(path.join(publicDir, 'history.html'));
+});
 app.get(['/login', '/register'], (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.sendFile(path.join(publicDir, req.path === '/register' ? 'register.html' : 'login.html'));
