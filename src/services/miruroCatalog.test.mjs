@@ -23,7 +23,7 @@ test('deduplicates simultaneous metadata requests and serves stale metadata duri
   const client = createMiruroCatalog({ legacy: {}, now: () => time, request: async () => { calls++; if (broken) throw Error('offline'); return response(media()); } });
   const rows = await Promise.all([client.get('/info', { id: 'al-21' }), client.get('/info', { id: 'al-21' })]);
   assert.equal(calls, 1); assert.equal(rows[0].title, 'One Piece');
-  time = 130000; broken = true; assert.equal((await client.get('/info', { id: 'al-21' })).slug, 'al-21'); assert.equal(calls, 2);
+  time = 910000; broken = true; assert.equal((await client.get('/info', { id: 'al-21' })).slug, 'al-21'); assert.equal(calls, 2);
 });
 test('blocked Miruro episodes fall back only after exact MAL confirmation, including search episode suffixes', async () => {
   const calls = [];
@@ -75,4 +75,15 @@ test('persists verified legacy identities across restarts so existing comment th
     const restarted = createMiruroCatalog({ legacy: {}, getDatabase: () => db, request: async () => { throw Error('identity should not need network after restart'); } });
     assert.equal(await restarted.canonicalSlug('al-21'), 'one-piece-odmau'); assert.equal(await restarted.canonicalSlug('original-slug'), 'original-slug');
   } finally { db.close(); }
+});
+test('metadata survives process restarts and provider throttling without losing the catalog', async () => {
+  const db = new Database(':memory:'); let time = 1000;
+  try {
+    const first = createMiruroCatalog({legacy:{},getDatabase:()=>db,now:()=>time,request:async()=>response(media())});
+    await first.get('/info',{id:'al-21'}); time = 1000000;
+    let calls = 0;
+    const next = createMiruroCatalog({legacy:{},getDatabase:()=>db,now:()=>time,request:async()=>{calls++; throw {response:{status:429}};}});
+    assert.equal((await next.get('/info',{id:'al-21'})).title,'One Piece');
+    await assert.rejects(next.get('/info',{id:'al-22'}),/busy/); assert.equal(calls,1);
+  } finally {db.close();}
 });

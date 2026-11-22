@@ -49,7 +49,20 @@ export function normalizeMiruroAnime(raw) {
 export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, port = Number(process.env.MIRURO_PORT || 4466), now = Date.now }) {
   if (!Number.isInteger(port) || port < 1024 || port > 65535 || [4444, 4455].includes(port)) throw new Error('Invalid Miruro port');
   const cache = new Map(), pending = new Map(), matches = new Map(), issued = new Map();
-  let aliases, streamingRetryAt = 0;
+  let aliases, persistent, streamingRetryAt = 0, metadataRetryAt = 0;
+  function metadataStore() {
+    if (!getDatabase) return null;
+    if (!persistent) {
+      const db = getDatabase();
+      db.exec('CREATE TABLE IF NOT EXISTS provider_metadata_cache (key TEXT PRIMARY KEY, payload TEXT NOT NULL, expires INTEGER NOT NULL, stale_until INTEGER NOT NULL, updated INTEGER NOT NULL)');
+      persistent = {
+        read: db.prepare('SELECT payload,expires,stale_until FROM provider_metadata_cache WHERE key=?'),
+        write: db.prepare('INSERT OR REPLACE INTO provider_metadata_cache (key,payload,expires,stale_until,updated) VALUES (?,?,?,?,?)'),
+        prune: db.prepare('DELETE FROM provider_metadata_cache WHERE key NOT IN (SELECT key FROM provider_metadata_cache ORDER BY updated DESC LIMIT 64)'),
+      };
+    }
+    return persistent;
+  }
   function identityStore() {
     if (!getDatabase) return null;
     if (!aliases) {
@@ -62,9 +75,20 @@ export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, 
   async function raw(endpoint, params = {}) {
     if (!/^\/(?:spotlight|trending|popular|recent|upcoming|random|filter|search|info\/\d+|episodes\/\d+|watch\/[a-z0-9_-]+\/\d+\/(?:sub|dub)\/[a-z0-9_-]+)$/i.test(endpoint)) throw new AniKotoError('Invalid Miruro endpoint', 400);
     const query = new URLSearchParams(params); query.sort(); const key = endpoint + '?' + query;
-    const hit = cache.get(key);
+    const metadata = !endpoint.startsWith('/episodes/') && !endpoint.startsWith('/watch/');
+    let hit = cache.get(key);
+    if (!hit && metadata) {
+      const saved = metadataStore()?.read.get(key);
+      if (saved && saved.stale_until > now()) {
+        try { hit = { value: JSON.parse(saved.payload), expires: saved.expires, staleUntil: saved.stale_until }; cache.set(key,hit); } catch { /* Corrupt cache entries are replaced by a fresh provider response. */ }
+      }
+    }
     if (hit?.expires > now()) return hit.value;
     if (pending.has(key)) return pending.get(key);
+    if (metadata && metadataRetryAt > now()) {
+      if (hit?.staleUntil > now()) return hit.value;
+      throw new AniKotoError('Miruro metadata is busy. Please retry shortly.', 503, '60');
+    }
     if (endpoint.startsWith('/episodes/') && streamingRetryAt > now()) throw new AniKotoError('Miruro source is temporarily unavailable', 503);
     if (pending.size >= 8) throw new AniKotoError('Miruro is busy. Please retry shortly.', 503);
     const operation = (async () => {
@@ -72,19 +96,32 @@ export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, 
         const { data } = await request(`http://127.0.0.1:${port}/api${key}`, { timeout: 18000, maxRedirects: 0, maxContentLength: 6 * 1024 * 1024, proxy: false });
         if (data?.success !== true || data.results == null) throw new AniKotoError('Miruro returned an invalid response');
         if (cache.size >= 240) cache.delete(cache.keys().next().value);
-        cache.set(key, { value: data.results, expires: now() + 120000, staleUntil: now() + 86400000 });
+        const entry = { value: data.results, expires: now() + (endpoint.startsWith('/info/') ? 900000 : 120000), staleUntil: now() + 7 * 86400000 };
+        cache.set(key, entry);
+        if (metadata) {
+          const payload = JSON.stringify(data.results), store = metadataStore();
+          if (store && Buffer.byteLength(payload) <= 1024 * 1024) { store.write.run(key,payload,entry.expires,entry.staleUntil,now()); store.prune.run(); }
+        }
         return data.results;
       } catch (error) {
         if (endpoint.startsWith('/episodes/')) streamingRetryAt = now() + 60000;
+        if (metadata && (error?.response?.status === 429 || /\b429\b/.test(error?.response?.data?.message || ''))) metadataRetryAt = now() + 60000;
         if (hit?.staleUntil > now() && !endpoint.startsWith('/watch/')) return hit.value;
         throw new AniKotoError(error?.response?.status === 404 ? 'Anime not found' : 'Miruro is temporarily unavailable', error?.response?.status === 404 ? 404 : 503);
       } finally { pending.delete(key); }
     })(); pending.set(key, operation); return operation;
   }
   async function info(id) {
-    const anime = normalizeMiruroAnime(await raw('/info/' + id));
-    if (!anime) throw new AniKotoError('Anime not found', 404);
-    return anime;
+    try {
+      const anime = normalizeMiruroAnime(await raw('/info/' + id));
+      if (!anime) throw new AniKotoError('Anime not found', 404);
+      return anime;
+    } catch (error) {
+      const saved = identityStore()?.read.get(`al-${id}`);
+      if (!saved || error.status === 404) throw error;
+      const anime = await legacy.get('/info',{id:saved.canonical});
+      return { ...anime, id:`al-${id}`, slug:`al-${id}`, related:anime.related || [], recommended:anime.recommended || [] };
+    }
   }
   // A title search alone is never an identity match: confirm the episode's MAL ID.
   async function legacyMatch(id) {
