@@ -72,6 +72,58 @@ test('does not fabricate episodes when both streaming sources are missing or MAL
   assert.deepEqual((await client.get('/episodes/al-21')).episodes, []);
   await assert.rejects(client.embeds('al-21', '1'), /not available/);
 });
+
+test('Detective Conan resolves Case Closed through its alias and verifies MAL 235 before returning all episodes', async () => {
+  const db = new Database(':memory:'), calls = [];
+  const raw = { ...media(235), title: { english: 'Detective Conan', romaji: 'Meitantei Conan', native: '名探偵コナン' }, synonyms: ['Case Closed'] };
+  const client = createMiruroCatalog({ getDatabase: () => db, request: async url => {
+    if (url.includes('/episodes/')) throw Error('legacy Miruro pipe unavailable');
+    return response(raw);
+  }, legacy: { get: async (endpoint, params) => {
+    calls.push({ endpoint, params });
+    if (endpoint === '/search') return { data: params.keyword === 'Case Closed'
+      ? [{ title: 'Case Closed Movie', slug: 'wrong-movie/ep-1' }, { title: 'Case Closed', slug: 'case-closed-w8ehk/ep-1' }]
+      : [{ title: 'Detective Conan Movie 27', slug: 'wrong-movie/ep-1' }] };
+    if (endpoint === '/episodes/case-closed-w8ehk') return { episodes: Array.from({ length: 1221 }, (_, i) => ({ episode_no: i + 1, mal_id: '235', server_ids: 'verified-' + (i + 1) })) };
+    throw Error('wrong title must not be probed first');
+  } } });
+  try {
+    const result = await client.get('/episodes/al-235');
+    assert.equal(result.totalEpisodes, 1221); assert.equal(result.legacySlug, 'case-closed-w8ehk');
+    assert.equal(result.episodes.at(-1).episode_no, 1221);
+    assert.ok(calls.some(call => call.params?.keyword === 'Case Closed'));
+    assert.ok(!calls.some(call => call.endpoint === '/episodes/wrong-movie'));
+    assert.equal(db.prepare('SELECT canonical FROM catalog_aliases WHERE alias=?').get('al-235').canonical, 'case-closed-w8ehk');
+  } finally { db.close(); }
+});
+
+test('an unavailable candidate does not prevent checking a different verified title alias', async () => {
+  const client = createMiruroCatalog({ request: async url => {
+    if (url.includes('/episodes/')) throw Error('pipe unavailable');
+    return response({ ...media(235), title: { english: 'Detective Conan' }, synonyms: ['Case Closed'] });
+  }, legacy: { get: async (endpoint, params) => {
+    if (endpoint === '/search') return { data: params.keyword === 'Case Closed' ? [{ title: 'Case Closed', slug: 'case-closed' }] : [{ title: 'Detective Conan', slug: 'broken-title' }] };
+    if (endpoint === '/episodes/broken-title') throw Error('candidate temporarily unavailable');
+    return { episodes: [{ episode_no: 1, mal_id: 235 }] };
+  } } });
+  assert.equal((await client.get('/episodes/al-235')).legacySlug, 'case-closed');
+});
+
+test('title aliases never override a mismatched MAL identity and candidate requests remain bounded', async () => {
+  const db = new Database(':memory:'); let probes = 0;
+  try {
+    const client = createMiruroCatalog({ getDatabase: () => db, request: async url => {
+      if (url.includes('/episodes/')) throw Error('pipe unavailable');
+      return response({ ...media(235), title: { english: 'Detective Conan' }, synonyms: ['Case Closed', 'Other title', 'Extra title'] });
+    }, legacy: { get: async endpoint => {
+      if (endpoint === '/search') return { data: [{ title: 'Case Closed', slug: 'wrong-exact-match' }, ...Array.from({ length: 30 }, (_, i) => ({ title: 'Movie ' + i, slug: 'movie-' + i }))] };
+      probes++; return { episodes: [{ episode_no: 1, mal_id: 999 }] };
+    } } });
+    assert.deepEqual((await client.get('/episodes/al-235')).episodes, []);
+    assert.equal(probes, 4);
+    assert.equal(db.prepare('SELECT canonical FROM catalog_aliases WHERE alias=?').get('al-235'), undefined);
+  } finally { db.close(); }
+});
 test('normalizes Miruro provider episodes and rejects a cross-show direct stream token', async () => {
   const client = createMiruroCatalog({ legacy: {}, request: async url => {
     if (url.includes('/episodes/')) return response({ providers: { sun: { episodes: { sub: [{ number: 1, title: 'Episode One', id: 'watch/sun/21/sub/abc-1' }], dub: [] } } } });

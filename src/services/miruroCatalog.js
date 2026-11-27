@@ -25,6 +25,8 @@ export function normalizeMiruroAnime(raw) {
   const malId = Number(row.idMal), total = Number(row.episodes);
   return { id: `al-${id}`, slug: `al-${id}`, anilist_id: id, mal_id: Number.isSafeInteger(malId) && malId > 0 ? malId : null,
     title: plain(title.english || title.romaji), japaneseTitle: plain(title.native), japanese_title: plain(title.native),
+    alternativeTitles: [...new Set([list(row.synonyms)[0], title.romaji, title.native, ...list(row.synonyms)]
+      .map(plain).filter(value => value && value.length <= 120 && !/[\x00-\x1f]/.test(value)))].slice(0, 16),
     poster: image(cover.extraLarge) || image(cover.large),
     backgroundImage: image(row.bannerImage) || image(cover.extraLarge) || image(cover.large),
     synopsis: plain(row.description), genres: list(row.genres).filter(g => typeof g === 'string'),
@@ -136,15 +138,42 @@ export function createMiruroCatalog({ legacy, getDatabase, request = axios.get, 
     const anime = await info(id);
     if (!anime.mal_id) return null;
     let found = null;
-    try {
-      const results = await legacy.get('/search', { keyword: anime.title });
-      for (const candidate of list(results?.data).slice(0, 3)) {
-        const slug = String(candidate.slug || '').split('/')[0];
-        if (!/^[a-z0-9][a-z0-9_-]{0,239}$/i.test(slug)) continue;
+    const keywords = [...new Set([anime.title, ...list(anime.alternativeTitles)].map(plain)
+      .filter(value => value && value.length <= 120 && !/[\x00-\x1f]/.test(value)))].slice(0, 4);
+    /** @param {unknown} value */
+    const comparable = value => plain(value).normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    const names = new Set(keywords.map(comparable)), checked = new Set(), deferred = new Map();
+    // Try exact title/alias candidates first, then a bounded fallback pool. Every match still requires a MAL ID.
+    /** @param {unknown} candidate @returns {Promise<string|null>} */
+    async function verify(candidate) {
+      const slug = String(record(candidate).slug || '').split('/')[0];
+      if (!/^[a-z0-9][a-z0-9_-]{0,239}$/i.test(slug) || checked.has(slug) || checked.size >= 4) return null;
+      checked.add(slug);
+      try {
         const episodes = await legacy.get('/episodes/' + slug);
-        if (list(episodes?.episodes).some(row => Number(row.mal_id) === Number(anime.mal_id))) { found = slug; break; }
+        return list(episodes?.episodes).some(row => Number(row.mal_id) === Number(anime.mal_id)) ? slug : null;
+      } catch { return null; }
+    }
+    for (const keyword of keywords) {
+      let results;
+      try { results = await legacy.get('/search', { keyword }); }
+      catch { continue; }
+      const rows = list(results?.data).slice(0, 30);
+      for (const candidate of rows) {
+        const row = record(candidate);
+        if (names.has(comparable(row.title || row.name)) || names.has(comparable(row.japaneseTitle))) {
+          found = await verify(row);
+          if (found) break;
+        } else if (deferred.size < 40) deferred.set(String(row.slug || ''), row);
       }
-    } catch { /* Provider outages must not prevent metadata from loading. */ }
+      if (found || checked.size >= 4) break;
+    }
+    if (!found) {
+      for (const candidate of deferred.values()) {
+        found = await verify(candidate);
+        if (found || checked.size >= 4) break;
+      }
+    }
     if (matches.size >= 300) matches.delete(matches.keys().next().value);
     matches.set(id, { slug: found, expires: now() + (found ? 86400000 : 60000) });
     if (found) identities?.write.run(`al-${id}`, found);
