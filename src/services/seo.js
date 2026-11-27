@@ -84,6 +84,16 @@ export function createSeoCatalog(client, catalog = null, { now = Date.now } = {}
   /** @type {SeoCache<import('./seo.types.js').SeoPage>} */ const pages = new SeoCache(now);
   /** @type {SeoCache<import('./seo.types.js').SeoDetail>} */ const details = new SeoCache(now);
   return {
+    /** Healthy homepage sections can still supply real catalog links during a release-feed outage. */
+    home() {
+      return pages.get('@home', async () => {
+        const home = catalog ? await catalog.home() : await client.home();
+        const rows = normalizeList([...(home.latest || []), ...(home.spotlights || []), ...(home.popular || []), ...(home.top || [])]);
+        const data = rows.slice(0, 100).map(seoAnime).filter(Boolean);
+        if (!data.length) throw new AniKotoError('Catalog is temporarily unavailable', 503);
+        return { data, totalPages: 1 };
+      });
+    },
     /** @param {URLSearchParams} [params] */
     page(params = new URLSearchParams()) {
       const checked = seoBrowse(Object.fromEntries(params));

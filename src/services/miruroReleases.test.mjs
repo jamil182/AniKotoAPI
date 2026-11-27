@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { createMiruroReleases, parseMiruroReleases, decodeReleaseTable } from './miruroReleases.js';
 
-function payload(sub, dub = []) {
+function payload(sub, dub = [], current = false) {
   const table = [];
   function encode(value) {
     const index = table.length; table.push(null);
@@ -11,7 +11,7 @@ function payload(sub, dub = []) {
       ? Array.isArray(value) ? value.map(encode) : Object.fromEntries(Object.entries(value).map(([key, child]) => [key, encode(child)])) : value;
     return index;
   }
-  encode({ raw: { latest: sub }, dub: { latest: dub } });
+  encode(current ? { sub, dub } : { raw: { latest: sub }, dub: { latest: dub } });
   return JSON.stringify({ type: 'data', nodes: [] }) + '\n' + JSON.stringify({ type: 'chunk', id: 1, data: table });
 }
 const release = (id = 21, episode = 8, airingAt = 1795352400) => ({ externalIds: { anilist: [String(id)], mal: ['21'] }, title: { english: 'New episode' }, coverUrl: 'https://example.com/p.jpg', episode, episodeCounts: { raw: episode, sub: episode, dub: 6 }, episodeCount: 12, format: 'TV', seasonYear: 2026, airingAt });
@@ -24,6 +24,15 @@ test('reads deferred Sub/Dub release rails, preserves exact identities and sorts
   assert.equal(rows.dub[0].latestEpisode, 6);
   assert.equal(rows.dub[0].releaseLanguage, 'dub');
   assert.equal(rows.sub[0].releasedAt, new Date(1795352500 * 1000).toISOString());
+});
+test('reads current direct Sub/Dub arrays as well as the legacy nested release feed', () => {
+  const sub = [release(21, 142)], dub = [release(22, 10)];
+  const current = parseMiruroReleases(payload(sub, dub, true));
+  assert.deepEqual(current, parseMiruroReleases(payload(sub, dub)));
+  assert.equal(current.sub[0].latestEpisode, 142);
+  assert.equal(current.dub[0].latestEpisode, 10);
+  assert.deepEqual(parseMiruroReleases(payload(sub, [], true)).dub, []);
+  assert.throws(() => parseMiruroReleases(payload([], [], true)), /Empty release feed/);
 });
 test('rejects malformed, cyclic, excessive and prototype-polluting references without evaluating script', () => {
   for (const input of ['<script>bad()</script>', '{}', payload([], []), 'x'.repeat(2 * 1024 * 1024 + 1)]) assert.throws(() => parseMiruroReleases(input));

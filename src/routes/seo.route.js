@@ -81,11 +81,19 @@ export function createSeoRouter({ publicDir, client, catalog = null, config = se
         '/privacy':['Privacy Policy','Read how '+config.name+' handles account information, comments, visitor statistics, and privacy.'],
         '/tos':['Terms of Service','Read the terms for using '+config.name+', including account access, comments, and third-party playback services.'],
       };
-      let [title, description] = definitions[req.path], canonical = req.path;
+      let [title, description] = definitions[req.path], canonical = req.path, degraded = false;
       if (['/','/home','/browse'].includes(req.path)) {
         const checked = req.path === '/browse' ? seoBrowse(req.query) : seoBrowse({});
-        const listing = await data.page(checked.params);
-        const links = seoLinks(listing.data);
+        let listing;
+        try { listing = await data.page(checked.params); }
+        catch (error) {
+          if (req.path === '/browse' || [400, 404].includes(error?.status)) throw error;
+          listing = await data.home();
+          degraded = true;
+        }
+        const links = degraded
+          ? '<p role="status" data-catalog-fallback>Episode updates are temporarily unavailable. You can still browse these anime titles.</p><div aria-label="Available anime">' + seoLinks(listing.data) + '</div>'
+          : seoLinks(listing.data);
         if (req.path === '/home' || miruroHome) template = template.replace('<div id="latest"></div>', () => '<div id="latest">'+links+'</div>');
         else if (req.path === '/') template = seoLanding(template, links);
         else {
@@ -107,7 +115,7 @@ export function createSeoRouter({ publicDir, client, catalog = null, config = se
           template = template.replace(/(<nav[^>]*id="catalogPager"[^>]*>)[\s\S]*?<\/nav>/, (_match,open) => open+navigation+'</nav>');
         }
       }
-      res.type('html').set('Cache-Control','public, max-age=60').send(renderSeo(template,config,{title,description,path:canonical}));
+      res.type('html').set('Cache-Control',degraded ? 'no-store' : 'public, max-age=60').send(renderSeo(template,config,{title,description,path:canonical}));
     } catch (error) { failure(res,error); }
   });
   return router;

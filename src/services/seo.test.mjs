@@ -10,30 +10,66 @@ import { AniKotoError } from './anikotoApi.js';
 
 const config = {origin:'https://aniyear.com',name:'Aniyear'};
 const anime = {slug:'test-anime-123',title:'Ice & Fire $& <script>alert(1)</script>',poster:'https://images.example/poster.jpg',synopsis:'A story about friendship & adventure.',genres:['Adventure'],type:'TV'};
-async function fixture(t, {broken=false, managed=false}={}) {
+async function fixture(t, {broken=false, managed=false, releaseBroken=false}={}) {
   const calls=[];
   const client={async get(endpoint,params) {
     calls.push({endpoint,params});
     if (broken) throw new AniKotoError('private upstream diagnostic',502);
+    if (releaseBroken && endpoint==='/latest-updated') throw new AniKotoError('release feed diagnostic',503);
     if (endpoint==='/info') {
       if (params.id==='missing') throw new AniKotoError('missing',404);
       return {...anime};
     }
     if (endpoint.startsWith('/episodes/')) return {episodes:[{episode_no:1,title:'First'},{episode_no:1},{episode_no:12.5},{episode_no:-1},{episode_no:'bad'}]};
     return {data:[{...anime,slug:Number(params.page)>1 ? 'second-anime' : anime.slug},{slug:'../invalid',title:'Invalid'}],totalPages:3};
+  }, async home() {
+    calls.push({endpoint:'home'});
+    if (broken) throw new AniKotoError('private upstream diagnostic',502);
+    return {latest:[],spotlights:[{...anime,slug:'available-anime'}]};
   }};
   const catalog=managed ? {
     require(slug) {if(slug!=='published')throw new AniKotoError('draft',404);},
     description:async()=>({...anime,slug:'published'}),episodes:()=>({episodes:[]}),
-    browse:()=>({data:[{...anime,slug:'published'}],totalPages:1}),
+    browse:()=>{if(releaseBroken)throw new AniKotoError('managed listing unavailable',503);return {data:[{...anime,slug:'published'}],totalPages:1};},
+    home:async()=>({latest:[{...anime,slug:'published'}]}),
   } : null;
   const app=express();
   app.use(createSeoRouter({publicDir:fileURLToPath(new URL('../../public/',import.meta.url)),client,catalog,config}));
   app.use((_req,res)=>res.status(404).send('Not found'));
   const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
   t.after(()=>new Promise(resolve=>server.close(resolve)));
-  return {calls,request:(url,options={})=>fetch(`http://127.0.0.1:${server.address().port}`+url,{redirect:'manual',...options})};
+  return {calls,restoreReleaseFeed:()=>{releaseBroken=false;},request:(url,options={})=>fetch(`http://127.0.0.1:${server.address().port}`+url,{redirect:'manual',...options})};
 }
+
+test('a failed release feed keeps home usable with real catalog links and recovers without caching an outage',async t=>{
+  const f=await fixture(t,{releaseBroken:true});
+  for(const path of ['/','/home']) {
+    const response=await f.request(path),html=await response.text();
+    assert.equal(response.status,200);
+    assert.equal(response.headers.get('cache-control'),'no-store');
+    assert.match(html,/data-catalog-fallback/);
+    assert.match(html,/Episode updates are temporarily unavailable/);
+    assert.match(html,/href="\/anime\/available-anime"/);
+    assert.ok(!html.includes('release feed diagnostic'));
+  }
+  assert.equal(f.calls.filter(call=>call.endpoint==='home').length,1,'fallback homepage requests share cached metadata');
+  assert.equal((await f.request('/browse')).status,503,'a broken paginated listing must not be replaced by unrelated data');
+  assert.equal((await f.request('/sitemap.xml')).status,503,'sitemap must not invent a partial page count');
+  f.restoreReleaseFeed();
+  const restored=await f.request('/home');
+  assert.equal(restored.status,200);
+  assert.match(restored.headers.get('cache-control'),/max-age=60/);
+  assert.ok(!(await restored.text()).includes('data-catalog-fallback'));
+});
+
+test('homepage recovery in managed mode uses only published catalog data',async t=>{
+  const f=await fixture(t,{managed:true,releaseBroken:true});
+  const response=await f.request('/home'),html=await response.text();
+  assert.equal(response.status,200);
+  assert.match(html,/href="\/anime\/published"/);
+  assert.ok(!html.includes('/anime/available-anime'));
+  assert.equal(f.calls.length,0,'public provider must never be used for managed fallback');
+});
 
 test('SEO configuration fixes the canonical origin and rejects unsafe operator settings',()=>{
   assert.deepEqual(seoConfiguration({}),config);

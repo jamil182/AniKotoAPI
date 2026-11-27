@@ -67,10 +67,11 @@ export function parseMiruroReleases(payload) {
   for (const line of lines) {
     const message = object(JSON.parse(line));
     const values = message.type === 'chunk' && Array.isArray(message.data) ? message.data : null;
-    if (!values || !Object.hasOwn(object(values[0]), 'raw') || !Object.hasOwn(object(values[0]), 'dub')) continue;
+    const root = object(values?.[0]);
+    if (!values || !Object.hasOwn(root, 'dub') || (!Object.hasOwn(root, 'sub') && !Object.hasOwn(root, 'raw'))) continue;
     const rails = decodeReleaseTable(values);
     const normalize = (kind, language) => {
-      const rows = object(rails[kind]).latest;
+      const rows = Array.isArray(rails[kind]) ? rails[kind] : object(rails[kind]).latest;
       if (!Array.isArray(rows) || rows.length > 500) throw new Error('Invalid release list');
       const seen = new Set();
       return rows.map(row => normalizeRelease(row, language)).filter(row => {
@@ -78,7 +79,7 @@ export function parseMiruroReleases(payload) {
         seen.add(row.id); return true;
       }).sort((a, b) => Date.parse(b.releasedAt) - Date.parse(a.releasedAt));
     };
-    const sub = normalize('raw', 'sub'), dub = normalize('dub', 'dub');
+    const sub = normalize(Object.hasOwn(rails, 'sub') ? 'sub' : 'raw', 'sub'), dub = normalize('dub', 'dub');
     if (!sub.length && !dub.length) throw new Error('Empty release feed');
     return { sub, dub };
   }
